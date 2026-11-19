@@ -1,0 +1,15 @@
+[package]
+name = "p3dp-formats"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Readers of STL (ASCII and binary), OBJ and basic 3MF, writers of binary STL, OBJ, the own 3MF package and G-code files, with ordered refusals and size limits"
+
+[lib]
+name = "p3dp_formats"
+path = "src/lib.rs"
+
+[dependencies]
+p3dp-core = { path = "../p3dp-core" }
