@@ -1,0 +1,16 @@
+[package]
+name = "p3dp-gcode"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "G-code writers for the Marlin, Klipper, RepRapFirmware and Bambu dialects, with a safe start and end and temperature limits that refuse a value instead of cutting it down, and a checker of programs"
+
+[lib]
+name = "p3dp_gcode"
+path = "src/lib.rs"
+
+[dependencies]
+p3dp-core = { path = "../p3dp-core" }
+p3dp-formats = { path = "../p3dp-formats" }
