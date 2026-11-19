@@ -1,0 +1,15 @@
+[package]
+name = "p3dp-profiles"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The catalog of printers built from public facts (volume, nozzle, dialect, ways of connecting, multi-material, temperature limits of the maker), each profile marked verified or not"
+
+[lib]
+name = "p3dp_profiles"
+path = "src/lib.rs"
+
+[dependencies]
+p3dp-core = { path = "../p3dp-core" }

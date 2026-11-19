@@ -1,0 +1,49 @@
+# id | vendor | model | technology | x | y | z (mm) | nozzles (mm) | dialect | connectivity | multimaterial | nozzle max C | bed max C | chamber max C | verified
+# Facts from public data sheets and manuals: volume, firmware, ways of connecting and the highest temperatures the maker states for the model.
+# None of them has been tried on a machine, so every row says verified = false; the limits are the ones of the maker and the owner may lower them in a profile file.
+bambu-lab-a1|Bambu Lab|A1|fdm|256|256|256|0.2,0.4,0.6,0.8|bambu|bambu-lan,bambu-cloud|AMS lite|300|100|-|false
+bambu-lab-a1-mini|Bambu Lab|A1 mini|fdm|180|180|180|0.2,0.4,0.6,0.8|bambu|bambu-lan,bambu-cloud|AMS lite|300|80|-|false
+bambu-lab-p1s|Bambu Lab|P1S|fdm|256|256|256|0.2,0.4,0.6,0.8|bambu|bambu-lan,bambu-cloud|AMS|300|100|-|false
+bambu-lab-p1p|Bambu Lab|P1P|fdm|256|256|256|0.2,0.4,0.6,0.8|bambu|bambu-lan,bambu-cloud|AMS|300|100|-|false
+bambu-lab-x1-carbon|Bambu Lab|X1 Carbon|fdm|256|256|256|0.2,0.4,0.6,0.8|bambu|bambu-lan,bambu-cloud|AMS|300|120|60|false
+prusa-mk4s|Prusa Research|MK4S|fdm|250|210|220|0.25,0.4,0.6|marlin|prusalink,octoprint|MMU3 optional|290|120|-|false
+prusa-mk4|Prusa Research|MK4|fdm|250|210|220|0.25,0.4,0.6|marlin|prusalink,octoprint|MMU3 optional|290|120|-|false
+prusa-mk3s-plus|Prusa Research|MK3S+|fdm|250|210|210|0.25,0.4,0.6|marlin|prusalink,octoprint|MMU3 optional|300|120|-|false
+prusa-mini-plus|Prusa Research|MINI+|fdm|180|180|180|0.25,0.4,0.6|marlin|prusalink,octoprint||280|100|-|false
+prusa-core-one|Prusa Research|Core One|fdm|250|220|270|0.4,0.6|marlin|prusalink,octoprint|toolchanger optional|290|120|55|false
+prusa-xl|Prusa Research|XL|fdm|360|360|360|0.4,0.6|marlin|prusalink,octoprint|toolchanger (up to 5)|290|120|-|false
+creality-ender-3|Creality|Ender-3|fdm|220|220|250|0.4|marlin|octoprint,serial,sd||255|100|-|false
+creality-ender-3-v2|Creality|Ender-3 V2|fdm|220|220|250|0.4|marlin|octoprint,serial,sd||255|100|-|false
+creality-ender-3-v3-ke|Creality|Ender-3 V3 KE|fdm|220|220|240|0.4|klipper|moonraker,octoprint||300|100|-|false
+creality-ender-3-v3-se|Creality|Ender-3 V3 SE|fdm|220|220|250|0.4|marlin|octoprint,serial||260|100|-|false
+creality-k1|Creality|K1|fdm|220|220|250|0.4,0.6|klipper|moonraker,octoprint|CFS optional|300|100|-|false
+creality-k1c|Creality|K1C|fdm|220|220|250|0.4,0.6|klipper|moonraker,octoprint|CFS optional|300|100|-|false
+creality-k1-max|Creality|K1 Max|fdm|300|300|300|0.4,0.6|klipper|moonraker,octoprint|CFS optional|300|100|-|false
+creality-ender-5-max|Creality|Ender-5 Max|fdm|400|400|400|0.4|marlin|octoprint,serial||300|100|-|false
+voron-2-4-300|Voron Design|Voron 2.4 (300 mm)|fdm|300|300|300|0.4|klipper|moonraker,octoprint||300|120|60|false
+voron-trident-300|Voron Design|Voron Trident (300 mm)|fdm|300|300|250|0.4|klipper|moonraker,octoprint||300|120|60|false
+voron-0-2|Voron Design|Voron 0.2|fdm|120|120|120|0.4|klipper|moonraker,octoprint||300|110|60|false
+klipper-generic|Generic|Klipper printer (generic)|fdm|220|220|250|0.4|klipper|moonraker,octoprint||260|100|-|false
+marlin-generic|Generic|Marlin printer (generic)|fdm|220|220|250|0.4|marlin|octoprint,serial,sd||250|100|-|false
+duet-generic|Generic|RepRapFirmware printer (generic)|fdm|300|300|300|0.4|rrf|duet,octoprint||280|110|-|false
+anycubic-kobra-3|Anycubic|Kobra 3|fdm|255|255|260|0.2,0.4,0.6,0.8|klipper|moonraker,octoprint|ACE Pro (4 colours)|260|100|-|false
+anycubic-kobra-s1|Anycubic|Kobra S1|fdm|250|250|250|0.4|klipper|moonraker,octoprint|ACE Pro (4 colours)|320|110|-|false
+anycubic-kobra-2-pro|Anycubic|Kobra 2 Pro|fdm|220|220|250|0.4|klipper|moonraker,octoprint||260|100|-|false
+anycubic-vyper|Anycubic|Vyper|fdm|245|245|260|0.4|marlin|octoprint,serial,sd||260|90|-|false
+elegoo-neptune-4-pro|Elegoo|Neptune 4 Pro|fdm|235|230|265|0.4,0.6|klipper|moonraker,elegoolink||300|110|-|false
+elegoo-neptune-4-max|Elegoo|Neptune 4 Max|fdm|420|420|480|0.4,0.6|klipper|moonraker,octoprint||300|110|-|false
+elegoo-neptune-3-pro|Elegoo|Neptune 3 Pro|fdm|225|225|280|0.4|marlin|elegoolink,serial,sd||260|100|-|false
+elegoo-centauri-carbon|Elegoo|Centauri Carbon|fdm|256|256|256|0.4,0.6|klipper|moonraker,elegoolink|CANVAS (4 colours)|320|110|-|false
+qidi-plus4|Qidi Tech|Plus4|fdm|305|305|280|0.4,0.6|klipper|moonraker,octoprint||370|120|65|false
+qidi-x-max-3|Qidi Tech|X-Max 3|fdm|325|325|315|0.4,0.6|klipper|moonraker,octoprint||350|120|65|false
+qidi-q1-pro|Qidi Tech|Q1 Pro|fdm|245|245|240|0.4|klipper|moonraker,octoprint||350|120|60|false
+sovol-sv08|Sovol|SV08|fdm|350|350|345|0.4|klipper|moonraker,octoprint||300|120|-|false
+sovol-sv06|Sovol|SV06|fdm|220|220|250|0.4|klipper|moonraker,octoprint||300|100|-|false
+artillery-sidewinder-x2|Artillery|Sidewinder X2|fdm|300|300|400|0.4|marlin|octoprint,serial,sd||260|130|-|false
+rat-rig-v-core-3-300|Rat Rig|V-Core 3 (300 mm)|fdm|300|300|300|0.4|klipper|moonraker,octoprint||300|120|60|false
+flsun-v400|FLSUN|V400|fdm|300|300|410|0.4,0.6|klipper|moonraker,octoprint||300|110|-|false
+snapmaker-j1|Snapmaker|J1|fdm|300|200|200|0.4,0.6|klipper|moonraker,octoprint|IDEX (two heads)|300|100|-|false
+elegoo-mars-4|Elegoo|Mars 4|msla|129|80|150||msla|sd|||||false
+elegoo-saturn-3-ultra|Elegoo|Saturn 3 Ultra|msla|218|122|260||msla|elegoolink,sd|||||false
+anycubic-photon-mono-4|Anycubic|Photon Mono 4|msla|153|87|165||msla|sd|||||false
+phrozen-sonic-mini-8k|Phrozen|Sonic Mini 8K|msla|165|72|180||msla|sd|||||false
