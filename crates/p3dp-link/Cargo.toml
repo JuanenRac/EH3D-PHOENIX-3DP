@@ -1,0 +1,17 @@
+[package]
+name = "p3dp-link"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The driver trait for talking to a printer, the normalized state, the Moonraker and OctoPrint drivers over a transport, an in-memory simulator of each protocol, the retry rules and the experimental design of the Bambu LAN link"
+
+[lib]
+name = "p3dp_link"
+path = "src/lib.rs"
+
+[dependencies]
+p3dp-core = { path = "../p3dp-core" }
+p3dp-formats = { path = "../p3dp-formats" }
+p3dp-gcode = { path = "../p3dp-gcode" }
