@@ -1,0 +1,16 @@
+[package]
+name = "p3dp-server-bridge"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The thin layer between PHOENIX-3DP and the EH3D server: the server settings with their ranges, the rules for retries and the token that never prints, over a transport, with a server in memory for the tests"
+
+[lib]
+name = "p3dp_server_bridge"
+path = "src/lib.rs"
+
+[dependencies]
+p3dp-core = { path = "../p3dp-core" }
+p3dp-link = { path = "../p3dp-link" }
