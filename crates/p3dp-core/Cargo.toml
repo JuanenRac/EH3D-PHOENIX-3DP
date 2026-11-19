@@ -1,0 +1,12 @@
+[package]
+name = "p3dp-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Units in nanometres, the mesh and its checks, the limits that can be configured, a small JSON reader and the types shared by the other crates of PHOENIX-3DP"
+
+[lib]
+name = "p3dp_core"
+path = "src/lib.rs"

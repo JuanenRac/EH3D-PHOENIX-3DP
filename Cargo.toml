@@ -1,0 +1,60 @@
+[workspace]
+members = [
+    ".",
+    "crates/p3dp-core",
+    "crates/p3dp-formats",
+    "crates/p3dp-profiles",
+    "crates/p3dp-gcode",
+    "crates/p3dp-link",
+    "crates/p3dp-server-bridge",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+rust-version = "1.88"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/JuanenRac/EH3D-PHOENIX-3DP"
+
+[package]
+name = "eh3d-phoenix-3dp"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "A program to prepare and send 3D prints: models, printer profiles, safe G-code and the link to the printers and to the EH3D server, tried so far only against simulators"
+readme = "README.md"
+
+[lib]
+name = "eh3d_phoenix_3dp"
+path = "src/lib.rs"
+
+[[bin]]
+name = "phoenix-3dp"
+path = "src/main.rs"
+
+[features]
+default = []
+# the window (egui): `cargo run --release --features gui`
+gui = ["dep:eframe"]
+
+[dependencies]
+p3dp-core = { path = "crates/p3dp-core" }
+p3dp-formats = { path = "crates/p3dp-formats" }
+p3dp-profiles = { path = "crates/p3dp-profiles" }
+p3dp-gcode = { path = "crates/p3dp-gcode" }
+p3dp-link = { path = "crates/p3dp-link" }
+p3dp-server-bridge = { path = "crates/p3dp-server-bridge" }
+
+# the window
+eframe = { version = "0.37.0", default-features = false, features = ["glow", "default_fonts"], optional = true }
+
+# the window of Linux needs a windowing system chosen at build time (X11 and Wayland); Windows and macOS have their own
+[target.'cfg(target_os = "linux")'.dependencies]
+eframe = { version = "0.37.0", default-features = false, features = ["glow", "default_fonts", "x11", "wayland"], optional = true }
+
+[profile.release]
+opt-level = 3
+lto = true
