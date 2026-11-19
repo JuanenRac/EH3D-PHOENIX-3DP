@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.1",
+  "ecosystem": "EH3D",
+  "name": "EH3D-PHOENIX-3DP",
+  "version": "0.0.1",
+  "role": "tool",
+  "stack": "rust",
+  "technologies": [
+    "Rust",
+    "G-code",
+    "3MF",
+    "Moonraker",
+    "egui"
+  ],
+  "deployment_target": "user-pc",
+  "maturity": "scaffolding",
+  "evidence": "simulator",
+  "hardware_bound": true,
+  "family": "PHOENIX",
+  "parent": null,
+  "depends_on": [],
+  "build": "cargo build --release; cargo test --workspace",
+  "notes": "EH3D-PHOENIX-3DP is the 3D printing program of the PHOENIX family. Scaffolding v0.0.1: a Cargo workspace of six libraries with no external dependency and a command line (printers, info, check-profile, convert, version) that read STL, OBJ and basic 3MF models with size limits and ordered refusals, write binary STL, OBJ, an own 3MF package and G-code files, hold a catalog of 46 printer profiles (FDM and resin, built from public data, every one verified = false), write G-code for the Marlin, Klipper, RepRapFirmware and Bambu dialects with temperature limits that refuse a value instead of cutting it down, check any program against those limits, drive Moonraker and OctoPrint printers through one normalized state and one list of commands, and keep the settings and a thin client for the draft printer routes of the EH3D server. Everything has been tried only against simulators written for the tests: no real printer, server or network was used. Bambu LAN is a design marked experimental that does not connect. It does not slice yet. A window with four tabs (Prepare, Preview, Device, Project) is written for the gui feature; its logic is tested, but it has not been built or looked at on a screen.",
+  "native_version": {
+    "file": "Cargo.toml",
+    "pattern": "^version\\s*=\\s*\"(\\d+\\.\\d+\\.\\d+)\""
+  }
+}

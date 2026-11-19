@@ -1,0 +1,612 @@
+{
+  "repo": "EH3D-PHOENIX-3DP",
+  "ecosystem": "eh3d",
+  "svg": "en",
+  "exempt": [
+    "build.bat",
+    "build.sh",
+    "run.bat",
+    "run.sh",
+    "test.bat",
+    "test.sh"
+  ],
+  "tagline": {
+    "en": "Two levels: the folders, and the files that carry the logic.",
+    "es": "Dos niveles: las carpetas y los ficheros que llevan la lógica.",
+    "de": "Zwei Ebenen: die Ordner und die Dateien, die die Logik tragen.",
+    "fr": "Deux niveaux : les dossiers et les fichiers qui portent la logique.",
+    "it": "Due livelli: le cartelle e i file che portano la logica.",
+    "ja": "2階層：フォルダと、ロジックを担うファイル。",
+    "zh": "两个层级：文件夹，以及承载逻辑的文件。",
+    "pt": "Dois níveis: as pastas e os ficheiros que levam a lógica."
+  },
+  "cards": [
+    {
+      "name": "crates/",
+      "span": 3,
+      "accent": "a",
+      "rows": [
+        {
+          "name": "p3dp-core/",
+          "desc": {
+            "en": "units, mesh and its checks, limits, JSON, settings",
+            "es": "unidades, malla y sus comprobaciones, límites, JSON, ajustes",
+            "de": "Einheiten, Netz und Prüfungen, Grenzen, JSON, Einstellungen",
+            "fr": "unités, maillage et vérifications, limites, JSON, réglages",
+            "it": "unità, mesh e controlli, limiti, JSON, impostazioni",
+            "ja": "単位、メッシュと検査、上限、JSON、設定",
+            "zh": "单位、网格及检查、上限、JSON、设置",
+            "pt": "unidades, malha e verificações, limites, JSON, definições"
+          }
+        },
+        {
+          "name": "p3dp-formats/",
+          "desc": {
+            "en": "STL, OBJ and 3MF readers, writers, ZIP and inflate",
+            "es": "lectores STL, OBJ y 3MF, escritores, ZIP e inflate",
+            "de": "STL-, OBJ- und 3MF-Leser, Schreiber, ZIP und Inflate",
+            "fr": "lecteurs STL, OBJ et 3MF, écrivains, ZIP et inflate",
+            "it": "lettori STL, OBJ e 3MF, scrittori, ZIP e inflate",
+            "ja": "STL・OBJ・3MF の読み込み、書き出し、ZIP",
+            "zh": "STL、OBJ、3MF 读取与写出、ZIP",
+            "pt": "leitores STL, OBJ e 3MF, escritores, ZIP e inflate"
+          }
+        },
+        {
+          "name": "p3dp-profiles/",
+          "desc": {
+            "en": "the catalog of printers from public facts, the profile file",
+            "es": "el catálogo de impresoras con hechos públicos, el perfil",
+            "de": "der Druckerkatalog aus öffentlichen Fakten, die Profildatei",
+            "fr": "le catalogue d'imprimantes (faits publics), le profil",
+            "it": "il catalogo di stampanti da fatti pubblici, il profilo",
+            "ja": "公開情報によるプリンターのカタログとプロファイル",
+            "zh": "由公开事实建立的打印机目录和配置",
+            "pt": "o catálogo de impressoras com factos públicos, o perfil"
+          }
+        },
+        {
+          "name": "p3dp-gcode/",
+          "desc": {
+            "en": "G-code writers for four dialects, the program checker",
+            "es": "escritores de G-code de cuatro dialectos, el comprobador",
+            "de": "G-Code-Schreiber für vier Dialekte, die Programmprüfung",
+            "fr": "écrivains de G-code pour quatre dialectes, le vérificateur",
+            "it": "scrittori di G-code per quattro dialetti, il controllore",
+            "ja": "4 方言の G コード書き出しとチェッカー",
+            "zh": "四种方言的 G 代码写出器和检查器",
+            "pt": "escritores de G-code de quatro dialetos, o verificador"
+          }
+        },
+        {
+          "name": "p3dp-link/",
+          "desc": {
+            "en": "drivers, normalized state, simulators, Bambu LAN (design)",
+            "es": "controladores, estado normalizado, simuladores, Bambu LAN",
+            "de": "Treiber, normalisierter Zustand, Simulatoren, Bambu LAN",
+            "fr": "pilotes, état normalisé, simulateurs, Bambu LAN (conception)",
+            "it": "driver, stato normalizzato, simulatori, Bambu LAN",
+            "ja": "ドライバー、正規化状態、シミュレーター、Bambu LAN",
+            "zh": "驱动、规范化状态、模拟器、Bambu LAN",
+            "pt": "controladores, estado normalizado, simuladores, Bambu LAN"
+          }
+        },
+        {
+          "name": "p3dp-server-bridge/",
+          "desc": {
+            "en": "settings of the server link, thin client of its routes",
+            "es": "ajustes del enlace con el servidor, cliente fino",
+            "de": "Einstellungen der Serververbindung, dünner Client",
+            "fr": "réglages de la liaison au serveur, client léger",
+            "it": "impostazioni del collegamento al server, client leggero",
+            "ja": "サーバー接続の設定と薄いクライアント",
+            "zh": "服务器连接设置和轻量客户端",
+            "pt": "definições da ligação ao servidor, cliente leve"
+          }
+        }
+      ]
+    },
+    {
+      "name": "src/",
+      "span": 3,
+      "accent": "a",
+      "rows": [
+        {
+          "name": "lib.rs",
+          "desc": {
+            "en": "the library of the program: what the command line and the window use",
+            "es": "la biblioteca del programa: lo que usan la línea de comandos y la ventana",
+            "de": "die Bibliothek des Programms: was Kommandozeile und Fenster nutzen",
+            "fr": "la bibliothèque du programme : ce qu'utilisent la ligne de commande et la fenêtre",
+            "it": "la libreria del programma: ciò che usano la riga di comando e la finestra",
+            "ja": "プログラムのライブラリ：コマンドラインとウィンドウが使うもの",
+            "zh": "程序的库：命令行和窗口使用的部分",
+            "pt": "a biblioteca do programa: o que usam a linha de comandos e a janela"
+          }
+        },
+        {
+          "name": "main.rs",
+          "desc": {
+            "en": "the command line and the start of the window",
+            "es": "la línea de comandos y el arranque de la ventana",
+            "de": "die Kommandozeile und der Start des Fensters",
+            "fr": "la ligne de commande et le démarrage de la fenêtre",
+            "it": "la riga di comando e l'avvio della finestra",
+            "ja": "コマンドラインとウィンドウの起動",
+            "zh": "命令行和窗口的启动",
+            "pt": "a linha de comandos e o arranque da janela"
+          }
+        },
+        {
+          "name": "cli.rs",
+          "desc": {
+            "en": "the commands: printers, info, check-profile, convert and version",
+            "es": "las órdenes: printers, info, check-profile, convert y version",
+            "de": "die Befehle: printers, info, check-profile, convert und version",
+            "fr": "les commandes : printers, info, check-profile, convert et version",
+            "it": "i comandi: printers, info, check-profile, convert e version",
+            "ja": "コマンド：printers、info、check-profile、convert、version",
+            "zh": "命令：printers、info、check-profile、convert 和 version",
+            "pt": "os comandos: printers, info, check-profile, convert e version"
+          }
+        },
+        {
+          "name": "app_state.rs",
+          "desc": {
+            "en": "the state of the window without a window: tabs, printer, model, reports, simulated device",
+            "es": "el estado de la ventana sin ventana: pestañas, impresora, modelo, informes, dispositivo simulado",
+            "de": "der Zustand des Fensters ohne Fenster: Reiter, Drucker, Modell, Berichte, simuliertes Gerät",
+            "fr": "l'état de la fenêtre sans fenêtre : onglets, imprimante, modèle, rapports, appareil simulé",
+            "it": "lo stato della finestra senza finestra: schede, stampante, modello, rapporti, dispositivo simulato",
+            "ja": "ウィンドウなしのウィンドウ状態：タブ、プリンター、モデル、レポート、模擬デバイス",
+            "zh": "无窗口的窗口状态：标签页、打印机、模型、报告、模拟设备",
+            "pt": "o estado da janela sem janela: separadores, impressora, modelo, relatórios, dispositivo simulado"
+          }
+        },
+        {
+          "name": "config.rs",
+          "desc": {
+            "en": "the settings file: limits, server link, language and default printer",
+            "es": "el fichero de ajustes: límites, enlace con el servidor, idioma e impresora por defecto",
+            "de": "die Einstellungsdatei: Grenzen, Serververbindung, Sprache und Standarddrucker",
+            "fr": "le fichier de réglages : limites, liaison serveur, langue et imprimante par défaut",
+            "it": "il file di impostazioni: limiti, collegamento al server, lingua e stampante predefinita",
+            "ja": "設定ファイル：上限、サーバー接続、言語、既定のプリンター",
+            "zh": "设置文件：上限、服务器连接、语言和默认打印机",
+            "pt": "o ficheiro de definições: limites, ligação ao servidor, idioma e impressora por omissão"
+          }
+        },
+        {
+          "name": "i18n.rs",
+          "desc": {
+            "en": "the texts of the program in the eight languages",
+            "es": "los textos del programa en los ocho idiomas",
+            "de": "die Texte des Programms in den acht Sprachen",
+            "fr": "les textes du programme dans les huit langues",
+            "it": "i testi del programma nelle otto lingue",
+            "ja": "8 言語のプログラムの文言",
+            "zh": "程序的八种语言文字",
+            "pt": "os textos do programa nos oito idiomas"
+          }
+        },
+        {
+          "name": "project.rs",
+          "desc": {
+            "en": "the project: a model and its printer in the own 3MF package",
+            "es": "el proyecto: un modelo y su impresora en el paquete 3MF propio",
+            "de": "das Projekt: ein Modell und sein Drucker im eigenen 3MF-Paket",
+            "fr": "le projet : un modèle et son imprimante dans le paquet 3MF propre",
+            "it": "il progetto: un modello e la sua stampante nel pacchetto 3MF proprio",
+            "ja": "プロジェクト：モデルとそのプリンターを独自の 3MF パッケージに保存",
+            "zh": "项目：模型及其打印机，保存在自有的 3MF 包中",
+            "pt": "o projeto: um modelo e a sua impressora no pacote 3MF próprio"
+          }
+        },
+        {
+          "name": "view.rs",
+          "desc": {
+            "en": "the orbit camera that turns a mesh into lines for the preview",
+            "es": "la cámara orbital que convierte una malla en líneas para la vista previa",
+            "de": "die Orbit-Kamera, die ein Netz in Linien für die Vorschau umwandelt",
+            "fr": "la caméra orbitale qui transforme un maillage en lignes pour l'aperçu",
+            "it": "la camera orbitale che trasforma una mesh in linee per l'anteprima",
+            "ja": "メッシュをプレビュー用の線に変換する周回カメラ",
+            "zh": "把网格变成预览线条的轨道相机",
+            "pt": "a câmara orbital que transforma uma malha em linhas para a pré-visualização"
+          }
+        },
+        {
+          "name": "gui.rs",
+          "desc": {
+            "en": "the window (egui, with the gui feature): draws the state and passes on what the person does",
+            "es": "la ventana (egui, con la característica gui): dibuja el estado y transmite lo que hace la persona",
+            "de": "das Fenster (egui, mit dem Feature gui): zeichnet den Zustand und gibt weiter, was die Person tut",
+            "fr": "la fenêtre (egui, avec la fonctionnalité gui) : dessine l'état et transmet ce que fait la personne",
+            "it": "la finestra (egui, con la funzione gui): disegna lo stato e inoltra ciò che fa la persona",
+            "ja": "ウィンドウ（egui、gui 機能）：状態を描画し、操作を伝える",
+            "zh": "窗口（egui，gui 功能）：绘制状态并转达用户的操作",
+            "pt": "a janela (egui, com a funcionalidade gui): desenha o estado e transmite o que a pessoa faz"
+          }
+        }
+      ]
+    },
+    {
+      "name": "tests/",
+      "span": 3,
+      "accent": "d",
+      "rows": [
+        {
+          "name": "end_to_end.rs",
+          "desc": {
+            "en": "tests from a model to a program to a simulated printer",
+            "es": "pruebas de un modelo a un programa a una impresora simulada",
+            "de": "Tests von einem Modell über ein Programm zu einem simulierten Drucker",
+            "fr": "tests d'un modèle à un programme à une imprimante simulée",
+            "it": "test da un modello a un programma a una stampante simulata",
+            "ja": "モデルからプログラム、模擬プリンターまでのテスト",
+            "zh": "从模型到程序再到模拟打印机的测试",
+            "pt": "testes de um modelo a um programa a uma impressora simulada"
+          }
+        },
+        {
+          "name": "examples.rs",
+          "desc": {
+            "en": "tests that the files of examples/ work with the commands",
+            "es": "pruebas de que los ficheros de examples/ funcionan con las órdenes",
+            "de": "Tests, dass die Dateien in examples/ mit den Befehlen funktionieren",
+            "fr": "tests que les fichiers de examples/ fonctionnent avec les commandes",
+            "it": "test che i file di examples/ funzionino con i comandi",
+            "ja": "examples/ のファイルがコマンドで動くことのテスト",
+            "zh": "测试 examples/ 中的文件能配合命令使用",
+            "pt": "testes de que os ficheiros de examples/ funcionam com os comandos"
+          }
+        },
+        {
+          "name": "fuzz.rs",
+          "desc": {
+            "en": "fuzz tests with a fixed seed: cut, damaged and hostile files",
+            "es": "pruebas de fuzzing con semilla fija: ficheros cortados, dañados y hostiles",
+            "de": "Fuzz-Tests mit festem Seed: abgeschnittene, beschädigte und feindliche Dateien",
+            "fr": "tests de fuzzing à graine fixe : fichiers coupés, abîmés et hostiles",
+            "it": "test di fuzzing con seme fisso: file tagliati, danneggiati e ostili",
+            "ja": "固定シードのファズ テスト：切れた、壊れた、悪意あるファイル",
+            "zh": "固定种子的模糊测试：截断、损坏和恶意文件",
+            "pt": "testes de fuzzing com semente fixa: ficheiros cortados, danificados e hostis"
+          }
+        },
+        {
+          "name": "readme.rs",
+          "desc": {
+            "en": "tests that the READMEs tell the truth: the number of tests and the commands",
+            "es": "pruebas de que los README dicen la verdad: el número de pruebas y las órdenes",
+            "de": "Tests, dass die READMEs die Wahrheit sagen: Zahl der Tests und Befehle",
+            "fr": "tests que les README disent la vérité : le nombre de tests et les commandes",
+            "it": "test che i README dicano la verità: il numero di test e i comandi",
+            "ja": "README が事実を述べていることのテスト：テスト数とコマンド",
+            "zh": "测试 README 所述属实：测试数量和命令",
+            "pt": "testes de que os README dizem a verdade: o número de testes e os comandos"
+          }
+        },
+        {
+          "name": "safety.rs",
+          "desc": {
+            "en": "tests that no temperature of any printer of the catalog goes past its limit",
+            "es": "pruebas de que ninguna temperatura de ninguna impresora del catálogo supera su límite",
+            "de": "Tests, dass keine Temperatur eines Druckers des Katalogs ihre Grenze überschreitet",
+            "fr": "tests qu'aucune température d'aucune imprimante du catalogue ne dépasse sa limite",
+            "it": "test che nessuna temperatura di nessuna stampante del catalogo superi il suo limite",
+            "ja": "カタログのどのプリンターの温度も上限を超えないことのテスト",
+            "zh": "测试目录中任何打印机的温度都不会超过其上限",
+            "pt": "testes de que nenhuma temperatura de nenhuma impressora do catálogo ultrapassa o seu limite"
+          }
+        }
+      ]
+    },
+    {
+      "name": "examples/",
+      "span": 3,
+      "accent": "d",
+      "rows": [
+        {
+          "name": "cube-20mm.stl",
+          "desc": {
+            "en": "a 20 mm cube as a text STL",
+            "es": "un cubo de 20 mm como STL de texto",
+            "de": "ein 20-mm-Würfel als Text-STL",
+            "fr": "un cube de 20 mm en STL texte",
+            "it": "un cubo da 20 mm come STL di testo",
+            "ja": "20 mm の立方体（テキスト STL）",
+            "zh": "20 毫米立方体（文本 STL）",
+            "pt": "um cubo de 20 mm como STL de texto"
+          }
+        },
+        {
+          "name": "cube-20mm.obj",
+          "desc": {
+            "en": "the same cube as an OBJ",
+            "es": "el mismo cubo como OBJ",
+            "de": "derselbe Würfel als OBJ",
+            "fr": "le même cube en OBJ",
+            "it": "lo stesso cubo come OBJ",
+            "ja": "同じ立方体（OBJ）",
+            "zh": "同一个立方体（OBJ）",
+            "pt": "o mesmo cubo como OBJ"
+          }
+        },
+        {
+          "name": "phoenix-3dp.cfg",
+          "desc": {
+            "en": "the settings file with every key and its default",
+            "es": "el fichero de ajustes con todas las claves y su valor por defecto",
+            "de": "die Einstellungsdatei mit allen Schlüsseln und Vorgaben",
+            "fr": "le fichier de réglages avec chaque clé et sa valeur par défaut",
+            "it": "il file di impostazioni con ogni chiave e il suo valore predefinito",
+            "ja": "すべてのキーと既定値を含む設定ファイル",
+            "zh": "含所有键及其默认值的设置文件",
+            "pt": "o ficheiro de definições com todas as chaves e o valor por omissão"
+          }
+        },
+        {
+          "name": "my-printer.cfg",
+          "desc": {
+            "en": "a printer profile written by hand (a Klipper machine)",
+            "es": "un perfil de impresora escrito a mano (una máquina Klipper)",
+            "de": "ein von Hand geschriebenes Druckerprofil (eine Klipper-Maschine)",
+            "fr": "un profil d'imprimante écrit à la main (une machine Klipper)",
+            "it": "un profilo di stampante scritto a mano (una macchina Klipper)",
+            "ja": "手書きのプリンター プロファイル（Klipper 機）",
+            "zh": "手写的打印机配置（一台 Klipper 机器）",
+            "pt": "um perfil de impressora escrito à mão (uma máquina Klipper)"
+          }
+        },
+        {
+          "name": "job-safe.gcode",
+          "desc": {
+            "en": "a program that keeps to the limits of that profile",
+            "es": "un programa que respeta los límites de ese perfil",
+            "de": "ein Programm, das die Grenzen dieses Profils einhält",
+            "fr": "un programme qui respecte les limites de ce profil",
+            "it": "un programma che rispetta i limiti di quel profilo",
+            "ja": "そのプロファイルの上限を守るプログラム",
+            "zh": "遵守该配置上限的程序",
+            "pt": "um programa que respeita os limites desse perfil"
+          }
+        },
+        {
+          "name": "job-too-hot.gcode",
+          "desc": {
+            "en": "a program that goes past them on two lines",
+            "es": "un programa que los supera en dos líneas",
+            "de": "ein Programm, das sie in zwei Zeilen überschreitet",
+            "fr": "un programme qui les dépasse sur deux lignes",
+            "it": "un programma che li supera su due righe",
+            "ja": "2 行で上限を超えるプログラム",
+            "zh": "有两行超过上限的程序",
+            "pt": "um programa que os ultrapassa em duas linhas"
+          }
+        }
+      ]
+    },
+    {
+      "name": "docs/",
+      "span": 3,
+      "accent": "d",
+      "rows": [
+        {
+          "name": "ARCHITECTURE.md",
+          "desc": {
+            "en": "the program crate by crate",
+            "es": "el programa crate a crate",
+            "de": "das Programm Crate für Crate",
+            "fr": "le programme crate par crate",
+            "it": "il programma crate per crate",
+            "ja": "プログラムのクレートごとの説明",
+            "zh": "按 crate 说明程序",
+            "pt": "o programa crate a crate"
+          }
+        },
+        {
+          "name": "ROADMAP.md",
+          "desc": {
+            "en": "the nine steps from the base to a complete program",
+            "es": "los nueve pasos de la base a un programa completo",
+            "de": "die neun Schritte von der Basis zum vollständigen Programm",
+            "fr": "les neuf étapes de la base à un programme complet",
+            "it": "i nove passi dalla base a un programma completo",
+            "ja": "基盤から完成までの 9 段階",
+            "zh": "从基础到完整程序的九个步骤",
+            "pt": "os nove passos da base a um programa completo"
+          }
+        },
+        {
+          "name": "NOT_YET.md",
+          "desc": {
+            "en": "what is not done yet and what each part needs",
+            "es": "lo que aún no está hecho y lo que necesita cada parte",
+            "de": "was noch nicht gemacht ist und was jeder Teil braucht",
+            "fr": "ce qui n'est pas encore fait et ce dont chaque partie a besoin",
+            "it": "cosa non è ancora fatto e di cosa ha bisogno ogni parte",
+            "ja": "未実装の内容と各部分に必要なもの",
+            "zh": "尚未完成的内容及各部分的需求",
+            "pt": "o que ainda não está feito e do que cada parte precisa"
+          }
+        },
+        {
+          "name": "SERVER.md",
+          "desc": {
+            "en": "how the program fits with the EH3D server",
+            "es": "cómo encaja el programa con el servidor EH3D",
+            "de": "wie das Programm zum EH3D-Server passt",
+            "fr": "comment le programme s'accorde avec le serveur EH3D",
+            "it": "come si integra il programma con il server EH3D",
+            "ja": "プログラムと EH3D サーバーの関係",
+            "zh": "程序如何与 EH3D 服务器配合",
+            "pt": "como o programa se alinha com o servidor EH3D"
+          }
+        },
+        {
+          "name": "architecture.json",
+          "desc": {
+            "en": "data of the Architecture picture",
+            "es": "datos de la imagen de Arquitectura",
+            "de": "Daten des Architektur-Bildes",
+            "fr": "données de l'image d'Architecture",
+            "it": "dati dell'immagine di Architettura",
+            "ja": "アーキテクチャ図のデータ",
+            "zh": "架构图数据",
+            "pt": "dados da imagem de Arquitetura"
+          }
+        },
+        {
+          "name": "structure.json",
+          "desc": {
+            "en": "data of the Repository Structure picture",
+            "es": "datos de la imagen de Estructura",
+            "de": "Daten des Struktur-Bildes",
+            "fr": "données de l'image de Structure",
+            "it": "dati dell'immagine di Struttura",
+            "ja": "構成図のデータ",
+            "zh": "结构图数据",
+            "pt": "dados da imagem de Estrutura"
+          }
+        }
+      ]
+    },
+    {
+      "name": {
+        "en": "Other folders and the files at the root",
+        "es": "Otras carpetas y los archivos de la raíz",
+        "de": "Weitere Ordner und die Dateien im Wurzelverzeichnis",
+        "fr": "Autres dossiers et fichiers à la racine",
+        "it": "Altre cartelle e i file nella radice",
+        "ja": "その他のフォルダーとルートのファイル",
+        "zh": "其他文件夹和根目录文件",
+        "pt": "Outras pastas e os ficheiros da raiz"
+      },
+      "span": 3,
+      "accent": "a",
+      "kind": "group",
+      "rows": [
+        {
+          "name": "tools/",
+          "desc": {
+            "en": "CI check, README check and the picture tools",
+            "es": "comprobación del CI y del README y herramientas de imágenes",
+            "de": "CI-Prüfung, README-Prüfung und die Bildwerkzeuge",
+            "fr": "vérification de la CI et du README et outils d'images",
+            "it": "controllo della CI e del README e strumenti per le immagini",
+            "ja": "CI チェック、README チェック、図のツール",
+            "zh": "CI 检查、README 检查和图片工具",
+            "pt": "verificação da CI e do README e ferramentas de imagens"
+          }
+        },
+        {
+          "name": "images/",
+          "desc": {
+            "en": "banner and the two README pictures",
+            "es": "banner y las dos imágenes del README",
+            "de": "Banner und die zwei README-Bilder",
+            "fr": "bannière et les deux images du README",
+            "it": "banner e le due immagini del README",
+            "ja": "バナーと README の 2 枚の図",
+            "zh": "横幅图和 README 的两张图",
+            "pt": "banner e as duas imagens do README"
+          }
+        },
+        {
+          "name": ".github/",
+          "desc": {
+            "en": "CI and release workflows, issue and pull-request templates",
+            "es": "flujos de CI y de publicación, plantillas de incidencias y de pull requests",
+            "de": "CI- und Release-Workflows, Vorlagen für Issues und Pull Requests",
+            "fr": "workflows de CI et de publication, modèles de tickets et de pull requests",
+            "it": "workflow di CI e di rilascio, modelli di issue e pull request",
+            "ja": "CI とリリースのワークフロー、Issue と PR のテンプレート",
+            "zh": "CI 与发布工作流、议题和拉取请求模板",
+            "pt": "fluxos de CI e de publicação, modelos de issues e pull requests"
+          }
+        },
+        {
+          "name": "eh3d.project.json",
+          "desc": {
+            "en": "manifest: version, role, maturity and build command",
+            "es": "manifiesto: versión, función, madurez y orden de compilación",
+            "de": "Manifest: Version, Rolle, Reifegrad und Build-Befehl",
+            "fr": "manifeste : version, rôle, maturité et commande de compilation",
+            "it": "manifesto: versione, ruolo, maturità e comando di build",
+            "ja": "マニフェスト：バージョン、役割、成熟度、ビルド コマンド",
+            "zh": "清单：版本、角色、成熟度和构建命令",
+            "pt": "manifesto: versão, função, maturidade e comando de compilação"
+          }
+        },
+        {
+          "name": "Cargo.toml",
+          "desc": {
+            "en": "the workspace and its crates",
+            "es": "el espacio de trabajo y sus crates",
+            "de": "der Workspace und seine Crates",
+            "fr": "l'espace de travail et ses crates",
+            "it": "il workspace e i suoi crate",
+            "ja": "ワークスペースとそのクレート",
+            "zh": "工作区及其 crate",
+            "pt": "o espaço de trabalho e os seus crates"
+          }
+        },
+        {
+          "name": "rust-toolchain.toml",
+          "desc": {
+            "en": "the pinned Rust toolchain",
+            "es": "la cadena de herramientas de Rust fijada",
+            "de": "die festgelegte Rust-Toolchain",
+            "fr": "la chaîne d'outils Rust épinglée",
+            "it": "la toolchain Rust fissata",
+            "ja": "固定された Rust ツールチェーン",
+            "zh": "固定的 Rust 工具链",
+            "pt": "a cadeia de ferramentas Rust fixada"
+          }
+        },
+        {
+          "name": "CHANGELOG.md",
+          "desc": {
+            "en": "what changed in each version",
+            "es": "qué cambió en cada versión",
+            "de": "was sich in jeder Version geändert hat",
+            "fr": "ce qui a changé dans chaque version",
+            "it": "cosa è cambiato in ogni versione",
+            "ja": "各バージョンの変更点",
+            "zh": "每个版本的变更",
+            "pt": "o que mudou em cada versão"
+          }
+        },
+        {
+          "name": "SECURITY.md  SUPPORT.md",
+          "desc": {
+            "en": "how to report a vulnerability and where to ask",
+            "es": "cómo informar de una vulnerabilidad y dónde preguntar",
+            "de": "wie man eine Schwachstelle meldet und wo man fragt",
+            "fr": "comment signaler une vulnérabilité et où demander",
+            "it": "come segnalare una vulnerabilità e dove chiedere",
+            "ja": "脆弱性の報告方法と問い合わせ先",
+            "zh": "如何报告漏洞以及在哪里提问",
+            "pt": "como comunicar uma vulnerabilidade e onde perguntar"
+          },
+          "tree_name": "SECURITY.md SUPPORT.md"
+        },
+        {
+          "name": "CONTRIBUTING.md  LICENSE",
+          "desc": {
+            "en": "how to contribute, the code of conduct and the licence",
+            "es": "cómo contribuir, el código de conducta y la licencia",
+            "de": "wie man beiträgt, der Verhaltenskodex und die Lizenz",
+            "fr": "comment contribuer, le code de conduite et la licence",
+            "it": "come contribuire, il codice di condotta e la licenza",
+            "ja": "貢献方法、行動規範、ライセンス",
+            "zh": "如何贡献、行为准则和许可证",
+            "pt": "como contribuir, o código de conduta e a licença"
+          },
+          "tree_name": "CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE"
+        }
+      ]
+    }
+  ]
+}

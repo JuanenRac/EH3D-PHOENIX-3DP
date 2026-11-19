@@ -1,0 +1,220 @@
+{
+  "repo": "EH3D-PHOENIX-3DP",
+  "ecosystem": "eh3d",
+  "tagline": "A model, a printer profile, a safe G-code and a link to the printer or to the server.",
+  "description": "EH3D-PHOENIX-3DP is a set of Rust libraries and a command line program for 3D printing: it reads STL, OBJ and 3MF models, holds a catalog of printer profiles built from public data, writes G-code for four dialects with temperature limits that refuse a value instead of cutting it down, and drives Moonraker and OctoPrint printers and the EH3D server, so far only against simulators. A window with four tabs is written for the gui feature. It does not slice yet.",
+  "columns": [
+    "WHO USES IT",
+    "THIS REPOSITORY",
+    "WHAT IT DEPENDS ON"
+  ],
+  "nodes": [
+    {
+      "id": "person",
+      "column": 0,
+      "level": "external",
+      "title": "A person",
+      "lines": [
+        "has a model and a printer",
+        "and checks what comes out"
+      ]
+    },
+    {
+      "id": "serverui",
+      "column": 0,
+      "level": "config",
+      "title": "The EH3D server",
+      "lines": [
+        "planned: it holds the printers,",
+        "the queue and the permissions"
+      ]
+    },
+    {
+      "id": "files",
+      "column": 1,
+      "level": "tested",
+      "title": "models and files",
+      "lines": [
+        "STL, OBJ and 3MF in, with limits;",
+        "STL, OBJ, 3MF and G-code out"
+      ],
+      "code": [
+        "crates/p3dp-formats/src/stl.rs::pub fn read",
+        "crates/p3dp-formats/src/obj.rs::pub fn read",
+        "crates/p3dp-formats/src/threemf.rs::pub fn read",
+        "crates/p3dp-formats/src/zip.rs::pub struct Archive"
+      ]
+    },
+    {
+      "id": "profiles",
+      "column": 1,
+      "level": "tested",
+      "title": "printer profiles",
+      "lines": [
+        "a catalog from public facts,",
+        "every profile unverified"
+      ],
+      "code": [
+        "crates/p3dp-profiles/src/catalog.rs::pub struct Catalog",
+        "crates/p3dp-profiles/src/profile.rs::pub struct PrinterProfile"
+      ]
+    },
+    {
+      "id": "gcode",
+      "column": 1,
+      "level": "tested",
+      "title": "G-code",
+      "lines": [
+        "four dialects, a safe start and",
+        "end, limits that refuse"
+      ],
+      "code": [
+        "crates/p3dp-gcode/src/writer.rs::pub struct Writer",
+        "crates/p3dp-gcode/src/check.rs::pub fn check_program"
+      ]
+    },
+    {
+      "id": "link",
+      "column": 1,
+      "level": "tested",
+      "title": "drivers",
+      "lines": [
+        "Moonraker and OctoPrint over a",
+        "transport, one normalized state"
+      ],
+      "code": [
+        "crates/p3dp-link/src/moonraker.rs::pub struct MoonrakerDriver",
+        "crates/p3dp-link/src/octoprint.rs::pub struct OctoPrintDriver",
+        "crates/p3dp-link/src/driver.rs::pub trait PrinterDriver"
+      ]
+    },
+    {
+      "id": "bridge",
+      "column": 1,
+      "level": "tested",
+      "title": "server link",
+      "lines": [
+        "the settings and a thin client",
+        "of the printer routes"
+      ],
+      "code": [
+        "crates/p3dp-server-bridge/src/settings.rs::pub struct Settings",
+        "crates/p3dp-server-bridge/src/client.rs::pub struct ServerClient"
+      ]
+    },
+    {
+      "id": "window",
+      "column": 1,
+      "level": "untested",
+      "title": "window (gui feature)",
+      "lines": [
+        "state and words are tested;",
+        "the drawing is not seen yet"
+      ],
+      "code": [
+        "src/app_state.rs::pub struct AppState",
+        "src/i18n.rs::pub enum Lang",
+        "src/view.rs::pub fn edges",
+        "src/gui.rs::pub fn run"
+      ]
+    },
+    {
+      "id": "sims",
+      "column": 2,
+      "level": "tested",
+      "title": "simulators",
+      "lines": [
+        "a printer in memory behind the",
+        "HTTP of each protocol"
+      ],
+      "code": [
+        "crates/p3dp-link/src/sim.rs::pub struct SimMoonraker",
+        "crates/p3dp-link/src/sim.rs::pub struct SimOctoPrint",
+        "crates/p3dp-server-bridge/src/sim.rs::pub struct SimBridgeServer"
+      ]
+    },
+    {
+      "id": "printer",
+      "column": 2,
+      "level": "external",
+      "title": "A printer",
+      "lines": [
+        "Klipper, Marlin, Duet, Bambu:",
+        "nothing here has run on one"
+      ]
+    },
+    {
+      "id": "server",
+      "column": 2,
+      "level": "external",
+      "title": "eh3d-server",
+      "lines": [
+        "the plugin for printers is",
+        "planned, not served yet"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "person",
+      "to": "files",
+      "label": "convert",
+      "level": "tested"
+    },
+    {
+      "from": "person",
+      "to": "profiles",
+      "label": "printers",
+      "level": "tested"
+    },
+    {
+      "from": "person",
+      "to": "gcode",
+      "label": "check",
+      "level": "tested"
+    },
+    {
+      "from": "person",
+      "to": "window",
+      "label": "window",
+      "level": "untested"
+    },
+    {
+      "from": "serverui",
+      "to": "bridge",
+      "level": "config"
+    },
+    {
+      "from": "gcode",
+      "to": "printer",
+      "level": "config"
+    },
+    {
+      "from": "link",
+      "to": "sims",
+      "level": "tested"
+    },
+    {
+      "from": "bridge",
+      "to": "sims",
+      "level": "tested"
+    },
+    {
+      "from": "link",
+      "to": "printer",
+      "level": "config"
+    },
+    {
+      "from": "bridge",
+      "to": "server",
+      "level": "config"
+    }
+  ],
+  "legend": {
+    "tested": "covered by tests on a computer",
+    "config": "planned, not used today",
+    "external": "a person, a file or another repository",
+    "untested": "written, not built or looked at on a screen yet"
+  },
+  "footer": "No printer has run anything made with this yet."
+}
