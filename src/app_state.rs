@@ -8,6 +8,7 @@ use crate::view::Camera;
 use p3dp_core::mesh::Issue;
 use p3dp_core::Mesh;
 use p3dp_core::Secret;
+use p3dp_formats::project3mf::{read_project, ProjectInfo};
 use p3dp_formats::read_mesh;
 use p3dp_link::moonraker::MoonrakerDriver;
 use p3dp_link::sim::{SimCore, SimMoonraker};
@@ -34,6 +35,21 @@ impl Tab {
             Tab::Device => Msg::TabDevice,
             Tab::Project => Msg::TabProject,
         }
+    }
+
+    /// The name of the tab in the arguments of the command line.
+    pub fn key(self) -> &'static str {
+        match self {
+            Tab::Prepare => "prepare",
+            Tab::Preview => "preview",
+            Tab::Device => "device",
+            Tab::Project => "project",
+        }
+    }
+
+    pub fn from_key(text: &str) -> Option<Tab> {
+        let t = text.trim().to_ascii_lowercase();
+        Tab::ALL.into_iter().find(|tab| tab.key() == t)
     }
 
     /// The next tab, going round.
@@ -83,6 +99,8 @@ pub struct AppState {
     pub model_name: String,
     pub status: Status,
     pub camera: Camera,
+    /// What a project of another program says of itself (read only), with the name of the file.
+    pub project_info: Option<(String, ProjectInfo)>,
 }
 
 impl AppState {
@@ -108,6 +126,7 @@ impl AppState {
             model_name: String::new(),
             status: Status::None,
             camera: Camera::default(),
+            project_info: None,
         })
     }
 
@@ -175,6 +194,90 @@ impl AppState {
                 false
             }
         }
+    }
+
+    /// Reads the objects, plates and a few settings of a 3MF project saved by another program. The size is checked before the file is read, nothing is written, and a file that
+    /// cannot be read leaves what was read before where it was and says why.
+    pub fn load_project_info(&mut self, path: &str) -> bool {
+        let limit = self.config.limits.max_file_bytes;
+        let size = match std::fs::metadata(path) {
+            Ok(m) => m.len(),
+            Err(e) => {
+                self.status = Status::Problem(format!("{path}: {e}"));
+                return false;
+            }
+        };
+        if size > limit {
+            self.status = Status::Problem(format!(
+                "{path}: the file is {size} bytes, more than the limit of {limit}"
+            ));
+            return false;
+        }
+        let bytes = match std::fs::read(path) {
+            Ok(b) => b,
+            Err(e) => {
+                self.status = Status::Problem(format!("{path}: {e}"));
+                return false;
+            }
+        };
+        match read_project(&bytes, &self.config.limits) {
+            Ok(info) => {
+                let name = std::path::Path::new(path)
+                    .file_name()
+                    .map_or_else(|| path.to_string(), |n| n.to_string_lossy().into_owned());
+                self.status = Status::Loaded(name.clone());
+                self.project_info = Some((name, info));
+                true
+            }
+            Err(e) => {
+                self.status = Status::Problem(format!("{path}: {e}"));
+                false
+            }
+        }
+    }
+
+    /// The lines about the project that was read: who made it, how many objects and plates, each plate with the time and the weight the other program predicted, and the settings.
+    pub fn project_info_lines(&self) -> Vec<String> {
+        let Some((name, info)) = &self.project_info else {
+            return Vec::new();
+        };
+        let lang = self.lang;
+        let made = if info.application.is_empty() {
+            info.producer.name().to_string()
+        } else {
+            info.application.clone()
+        };
+        let mut out = vec![
+            name.clone(),
+            fill(Msg::ProjectMadeBy.tr(lang), &[&made]),
+            fill(
+                Msg::ProjectObjects.tr(lang),
+                &[&info.objects.len().to_string()],
+            ),
+            fill(
+                Msg::ProjectPlates.tr(lang),
+                &[&info.plates.len().to_string()],
+            ),
+        ];
+        for p in &info.plates {
+            let mut line = format!(
+                "{}: {}",
+                p.id,
+                if p.name.is_empty() { "-" } else { &p.name }
+            );
+            if let Some(s) = p.predicted_seconds {
+                line.push_str(&format!(" - {}", crate::preview::format_duration(s as f64)));
+            }
+            if let Some(g) = p.weight_g {
+                line.push_str(&format!(" - {g:.1} g"));
+            }
+            line.push_str(&format!(" - {}", p.object_ids.len()));
+            out.push(line);
+        }
+        for (k, v) in &info.settings {
+            out.push(format!("{k} = {v}"));
+        }
+        out
     }
 
     /// The lines that describe the model and say whether it can go on the printer.
@@ -465,6 +568,42 @@ mod tests {
             (back.name.as_str(), back.printer_id.as_str()),
             ("twelve.3mf", "prusa-mk4s")
         );
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn a_project_of_another_program_is_read_for_what_it_says_of_itself_and_nothing_is_written() {
+        let mut s = state();
+        assert!(s.project_info_lines().is_empty());
+        let bytes = write_mesh(&cube(12.0), Format::ThreeMf, "mine").unwrap();
+        let path = temp_path("info.3mf");
+        std::fs::write(&path, &bytes).unwrap();
+        assert!(s.load_project_info(&path));
+        let lines = s.project_info_lines();
+        assert!(lines[0].starts_with("p3dp_test_"), "{lines:?}");
+        assert!(lines.iter().any(|l| l.starts_with("Made by:")), "{lines:?}");
+        assert!(lines.iter().any(|l| l.starts_with("Objects:")), "{lines:?}");
+        assert!(lines.iter().any(|l| l.starts_with("Plates:")), "{lines:?}");
+        s.lang = Lang::Pt;
+        assert!(s
+            .project_info_lines()
+            .iter()
+            .any(|l| l.starts_with("Criado com:")));
+        assert_eq!(
+            std::fs::read(&path).unwrap(),
+            bytes,
+            "the file is not touched"
+        );
+        // what cannot be read leaves what was read and says why
+        let before = s.project_info.clone();
+        std::fs::write(&path, b"not a package").unwrap();
+        assert!(!s.load_project_info(&path));
+        assert!(s.status.is_problem());
+        assert_eq!(s.project_info, before);
+        assert!(!s.load_project_info(&temp_path("none.3mf")));
+        s.config.limits.max_file_bytes = 3;
+        assert!(!s.load_project_info(&path));
+        assert!(s.status.text(Lang::En).contains("more than the limit"));
         let _ = std::fs::remove_file(&path);
     }
 

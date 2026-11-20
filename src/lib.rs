@@ -5,8 +5,15 @@
 pub mod app_state;
 pub mod cli;
 pub mod config;
+pub mod device;
 pub mod i18n;
+pub mod keys;
+pub mod lists;
+pub mod look;
+pub mod preview;
 pub mod project;
+pub mod server_ui;
+pub mod shot;
 pub mod view;
 
 #[cfg(feature = "gui")]

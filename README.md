@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.3-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-429-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-479-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Honesty check - what actually runs today:** a Rust workspace of eight libraries and a command line program (`phoenix-3dp`) with 429 tests that run on a computer. It reads STL, OBJ and 3MF models and checks them, holds a catalog of 120 printer profiles built from public data (none of them tried on a machine), writes G-code for the Marlin, Klipper, RepRapFirmware and Bambu dialects with temperature limits that refuse a value instead of cutting it down, and drives Moonraker and OctoPrint printers and the EH3D server, but only against simulators (in memory, and on a socket of this computer). It slices a closed model into flat layers with perimeters, a rectilinear infill and solid skins (a small slicer with grid and gyroid infill, bridges, plain supports, seams, variable width, a lift on travel and an estimate of the time with acceleration; nothing for several materials yet); the window has not been built or looked at on a screen; nothing has run on a real printer.
+**Honesty check - what actually runs today:** a Rust workspace of eight libraries and a command line program (`phoenix-3dp`) with 479 tests that run on a computer. It reads STL, OBJ and 3MF models and checks them, holds a catalog of 120 printer profiles built from public data (none of them tried on a machine), writes G-code for the Marlin, Klipper, RepRapFirmware and Bambu dialects with temperature limits that refuse a value instead of cutting it down, and drives Moonraker and OctoPrint printers and the EH3D server, but only against simulators (in memory, and on a socket of this computer). It slices a closed model into flat layers with perimeters, a rectilinear infill and solid skins (a small slicer with grid and gyroid infill, bridges, plain supports, seams, variable width, a lift on travel, a skirt, a brim or a raft, a vase mode, slower short layers, retraction that follows the travel and an estimate of the time with acceleration; nothing for several materials yet); the window has not been built or looked at on a screen; nothing has run on a real printer.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Version | `0.0.3` |
 | Maturity | Scaffolding |
-| Tests | 429 |
+| Tests | 479 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a printer, not even on a Bambu Lab A1 or a P1S. |
 
@@ -55,9 +55,9 @@ Each line is one part of this repository and the light says how far it is today.
 | Server link | 🟠 | the settings of the link and a client of the printer plugin of the server over the common client of the suite (login, renewal, retries, errors in eight languages), tried against a server in memory; never against the real server. |
 | Slicer | 🟡 | flat layers of a closed mesh, perimeters, rectilinear, grid or gyroid infill, solid skins, bridges, plain supports, seams, variable width, G-code per dialect, a preview by layers as data and an estimate of the time with acceleration; checked with properties on shapes from a fixed seed (the plastic laid down is the volume of the part, nothing leaves the bed, no temperature goes past a limit); no print has come out of it on a printer. |
 | Command line | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `slice`, `project`, `version`) runs the functions of the libraries and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 429 tests pass (`cargo test --workspace`), with normal cases, edge cases, damaged input and a fixed seed wherever they are random. |
+| Tests | 🟡 | 479 tests pass (`cargo test --workspace`), with normal cases, edge cases, damaged input and a fixed seed wherever they are random. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): a limit is a refusal and never a trim; the token never prints; nothing panics on the files it is given; no independent review. |
-| Window | 🔴 | A first version of the four tabs (Prepare, Preview, Device, Project) is written with `--features gui`; its logic is tested, but it has not been built or looked at on a screen yet. |
+| Window | 🔴 | The four tabs (Prepare, Preview, Device, Project) are written with `--features gui`: lists of printers and filaments with filters, the plan by layers with a slider, the queue of the server with a start that needs a confirmation, an emergency stop, shortcuts that can be changed and a picture mode (`--shot`); the logic is tested without a screen, but the window has not been built or looked at on a screen yet. |
 | Real hardware | 🔴 | Not tried: nothing here has run on a printer, not even on a Bambu Lab A1 or a P1S. |
 | Documentation | 🟡 | README in eight languages, the changelog, the `docs/` folder (architecture, roadmap, what is not done yet, the server) and the two pictures drawn from `docs/`. |
 
@@ -125,9 +125,9 @@ phoenix-3dp check-profile --file PROFILE [--gcode FILE]
 phoenix-3dp convert IN OUT [--printer ID] [--force]
 phoenix-3dp filaments [--printer ID] [--nozzle MM] [--hardened]
 phoenix-3dp slice MODEL --printer ID [--settings FILE] [--filament ID] [--nozzle MM] [--hardened] [--out FILE.gcode] [--force]
-phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.sl1 [--bottom-layers N] [--lift MM]
+phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.sl1 [--bottom-layers N] [--lift MM] [--light-power MW]
 phoenix-3dp version
-phoenix-3dp gui [SETTINGS]                       the window (a build with --features gui)
+phoenix-3dp gui [SETTINGS] [--shot FILE.png]                       the window (a build with --features gui)
 ```
 
 ## ⚙️ Configuration
@@ -150,7 +150,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Testing
 
-The suite has 429 tests (`cargo test --workspace`, run on Windows and Linux in the CI), with a fixed seed wherever they are random. They check the normal cases, the edge cases and damaged input: cut files, garbage and hostile headers never panic, and no temperature of any printer of the catalog goes past its limit. The CI also runs `cargo fmt --all --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 479 tests (`cargo test --workspace`, run on Windows and Linux in the CI), with a fixed seed wherever they are random. They check the normal cases, the edge cases and damaged input: cut files, garbage and hostile headers never panic, and no temperature of any printer of the catalog goes past its limit. The CI also runs `cargo fmt --all --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 
@@ -169,12 +169,12 @@ The version lives in `Cargo.toml` and in `eh3d.project.json`; each version has i
 EH3D-PHOENIX-3DP/
 ├── crates/
 │   ├── p3dp-core/                               units, mesh and its checks, limits, JSON, settings
-│   ├── p3dp-formats/                            STL, OBJ, 3MF, project, bgcode and resin readers; writers, ZIP
+│   ├── p3dp-formats/                            STL, OBJ, 3MF, project, bgcode and resin readers; writers, ZIP, PNG, resin control
 │   ├── p3dp-profiles/                           printers from public facts, filaments, the profile file
 │   ├── p3dp-gcode/                              G-code writers for four dialects, the program checker
-│   ├── p3dp-link/                               drivers, normalized state, TCP, simulators, Bambu LAN (design)
+│   ├── p3dp-link/                               drivers, normalized state, TCP, simulators, Bambu LAN (protocol bytes, no connection)
 │   ├── p3dp-server-bridge/                      settings of the server link, client of the printer plugin
-│   ├── p3dp-slicer/                             the slicer: layers, perimeters, infill, bridges, supports, G-code
+│   ├── p3dp-slicer/                             the slicer: layers, perimeters, infill, bridges, supports, skirt, brim, raft, G-code
 │   └── p3dp-viewer/                             the model of the 3D viewer: camera, picking, layers
 ├── src/
 │   ├── lib.rs                                   the library of the program: what the command line and the window use
@@ -182,8 +182,15 @@ EH3D-PHOENIX-3DP/
 │   ├── cli.rs                                   the commands: printers, info, check-profile, convert, filaments, slice, project, version
 │   ├── app_state.rs                             the state of the window without a window: tabs, printer, model, reports, simulated device
 │   ├── config.rs                                the settings file: limits, server link, language and default printer
+│   ├── device.rs                                the printers of the server, the queue, a start that needs a confirmation, the emergency stop
 │   ├── i18n.rs                                  the texts of the program in the eight languages
+│   ├── keys.rs                                  the keyboard shortcuts: the scheme of the family, an own scheme and the changes
+│   ├── lists.rs                                 the lists of printers and of filaments with their filters
+│   ├── look.rs                                  the colours, the mark and the drawings of the window and its layout by size
+│   ├── preview.rs                               slicing from the window, the slider of layers and the lines of the plan on the screen
 │   ├── project.rs                               the project: a model and its printer in the own 3MF package
+│   ├── server_ui.rs                             the settings of the server, the state of the link and the login, over the panel of the suite
+│   ├── shot.rs                                  the picture mode of the window (--shot) and the PNG file it writes
 │   ├── view.rs                                  the orbit camera that turns a mesh into lines for the preview
 │   └── gui.rs                                   the window (egui, with the gui feature): draws the state and passes on what the person does
 ├── tests/

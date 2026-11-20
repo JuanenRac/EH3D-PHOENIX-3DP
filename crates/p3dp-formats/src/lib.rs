@@ -9,6 +9,7 @@ pub mod error;
 pub mod gcode_file;
 pub mod inflate;
 pub mod obj;
+pub mod png_write;
 pub mod project3mf;
 pub mod resin;
 pub mod resin_control;

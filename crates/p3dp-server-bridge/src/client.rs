@@ -360,6 +360,11 @@ impl ServerClient {
         &self.inner
     }
 
+    /// The same client, to be driven by the panel of the settings and the login of the suite (which is the login of every call made here).
+    pub fn inner_mut(&mut self) -> &mut sc::Client {
+        &mut self.inner
+    }
+
     /// Asks whether the server is there. No token is sent.
     pub fn health(&mut self) -> Result<bool, BridgeError> {
         Ok(self.inner.health()?.status == "ok")

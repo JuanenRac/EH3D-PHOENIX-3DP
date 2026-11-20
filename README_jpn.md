@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.3-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-429-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-479-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**正直さの確認 - 現在実際に動くもの：** 8 つのライブラリと、コマンドライン プログラム（`phoenix-3dp`）からなる Rust ワークスペースで、コンピューター上で動くテストが 429 本あります。STL・OBJ・3MF のモデルを読み込んで検査し、公開情報から作った 120 件のプリンター プロファイル（実機で試したものはありません）を持ち、Marlin・Klipper・RepRapFirmware・Bambu の方言の G コードを、値を切り詰めずに拒否する温度上限付きで書き出し、Moonraker と OctoPrint のプリンターおよび EH3D サーバーを操作しますが、相手はシミュレーター（メモリ上と、このコンピューターのソケット）だけです。閉じたモデルを平らな層に切り、外周・直線インフィル・ソリッド スキンを作る最初の最小限のスライサーがあります（グリッドとジャイロイドのインフィル、ブリッジ、簡易サポート、シーム、可変幅、移動時の持ち上げ、加速度を考慮した時間の見積もりがあり、複数素材向けの機能はまだありません）。ウィンドウはビルドも画面での確認もされておらず、実際のプリンターでは何も動かしていません。
+**正直さの確認 - 現在実際に動くもの：** 8 つのライブラリと、コマンドライン プログラム（`phoenix-3dp`）からなる Rust ワークスペースで、コンピューター上で動くテストが 479 本あります。STL・OBJ・3MF のモデルを読み込んで検査し、公開情報から作った 120 件のプリンター プロファイル（実機で試したものはありません）を持ち、Marlin・Klipper・RepRapFirmware・Bambu の方言の G コードを、値を切り詰めずに拒否する温度上限付きで書き出し、Moonraker と OctoPrint のプリンターおよび EH3D サーバーを操作しますが、相手はシミュレーター（メモリ上と、このコンピューターのソケット）だけです。閉じたモデルを平らな層に切り、外周・直線インフィル・ソリッド スキンを作る最初の最小限のスライサーがあります（グリッドとジャイロイドのインフィル、ブリッジ、簡易サポート、シーム、可変幅、移動時の持ち上げ、スカート・ブリム・ラフト、花瓶モード、短い層の減速、移動量に応じたリトラクト、加速度を考慮した時間の見積もりがあり、複数素材向けの機能はまだありません）。ウィンドウはビルドも画面での確認もされておらず、実際のプリンターでは何も動かしていません。
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | バージョン | `0.0.3` |
 | 成熟度 | 足場 |
-| テスト | 429 |
+| テスト | 479 |
 | 技術スタック | Rust |
 | 実機での動作 | 未試験：ここにあるものはプリンターでは一度も動かしておらず、Bambu Lab A1 や P1S でも試していません。 |
 
@@ -55,9 +55,9 @@
 | サーバー接続 | 🟠 | 接続の設定と、スイート共通のクライアント（ログイン、更新、再試行、8 言語のエラー）の上に載せたサーバーのプリンター プラグイン用クライアント。メモリ上のサーバーに対して試しました。実際のサーバーに対しては試していません。 |
 | スライサー | 🟡 | 閉じたメッシュの平らな層、外周、直線・グリッド・ジャイロイドのインフィル、ソリッド スキン、ブリッジ、簡易サポート、シーム、可変幅、方言ごとの G コード、データとしての層ごとのプレビューと、加速度を考慮した時間の見積もり。固定シードの形状に対する性質テストで確認済み（積層される樹脂量は部品の体積に等しく、ベッドの外に出ず、どの温度も上限を超えません）。実際のプリンターで印刷したことはありません。 |
 | コマンドライン | 🟡 | `phoenix-3dp`（`printers`、`info`、`check-profile`、`convert`、`filaments`、`slice`、`project`、`version`）はライブラリの関数を実行して結果を表示します。エラーはすべてメッセージと 0 以外の終了コードで返ります。 |
-| テスト | 🟡 | 429 本のテストが通ります（`cargo test --workspace`）。通常のケース、境界ケース、壊れた入力を含み、乱数を使う箇所は固定シードです。 |
+| テスト | 🟡 | 479 本のテストが通ります（`cargo test --workspace`）。通常のケース、境界ケース、壊れた入力を含み、乱数を使う箇所は固定シードです。 |
 | セキュリティ | 🟡 | 安全な Rust のみ（`forbid(unsafe_code)`）。上限は拒否であり切り詰めではありません。トークンは決して表示されず、渡されたファイルでパニックしません。独立したレビューは受けていません。 |
-| ウィンドウ | 🔴 | 4 つのタブ（準備・プレビュー・デバイス・プロジェクト）の初版が `--features gui` 付きで書かれています。ロジックはテスト済みですが、まだビルドも画面での確認もされていません。 |
+| ウィンドウ | 🔴 | 4 つのタブ（準備・プレビュー・デバイス・プロジェクト）が `--features gui` 付きで書かれています：フィルター付きのプリンターとフィラメントの一覧、スライダー付きの層ごとのプラン、確認が必要な開始を備えたサーバーのキュー、非常停止、変更できるショートカット、画像モード（`--shot`）。ロジックは画面なしでテスト済みですが、ウィンドウはまだビルドも画面での確認もされていません。 |
 | 実機 | 🔴 | 未試験：ここにあるものはプリンターでは一度も動かしておらず、Bambu Lab A1 や P1S でも試していません。 |
 | ドキュメント | 🟡 | 8 言語の README、変更履歴、`docs/` フォルダー（アーキテクチャ、ロードマップ、未実装の内容、サーバー）、そして `docs/` から描かれる 2 枚の図。 |
 
@@ -125,9 +125,9 @@ phoenix-3dp check-profile --file PROFILE [--gcode FILE]
 phoenix-3dp convert IN OUT [--printer ID] [--force]
 phoenix-3dp filaments [--printer ID] [--nozzle MM] [--hardened]
 phoenix-3dp slice MODEL --printer ID [--settings FILE] [--filament ID] [--nozzle MM] [--hardened] [--out FILE.gcode] [--force]
-phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.sl1 [--bottom-layers N] [--lift MM]
+phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.sl1 [--bottom-layers N] [--lift MM] [--light-power MW]
 phoenix-3dp version
-phoenix-3dp gui [SETTINGS]                       the window (a build with --features gui)
+phoenix-3dp gui [SETTINGS] [--shot FILE.png]                       the window (a build with --features gui)
 ```
 
 ## ⚙️ 設定
@@ -150,7 +150,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 テスト
 
-スイートには 429 本のテストがあります（`cargo test --workspace`。CI では Windows と Linux で実行）。乱数を使う箇所は固定シードです。通常のケース、境界ケース、壊れた入力を確認し、切れたファイル、ゴミ、悪意あるヘッダーでパニックせず、カタログのどのプリンターの温度も上限を超えないことを検証します。CI では `cargo fmt --all --check`、警告をエラーとする `cargo clippy`、`python -I tools/ci_validate.py` も実行します。
+スイートには 479 本のテストがあります（`cargo test --workspace`。CI では Windows と Linux で実行）。乱数を使う箇所は固定シードです。通常のケース、境界ケース、壊れた入力を確認し、切れたファイル、ゴミ、悪意あるヘッダーでパニックせず、カタログのどのプリンターの温度も上限を超えないことを検証します。CI では `cargo fmt --all --check`、警告をエラーとする `cargo clippy`、`python -I tools/ci_validate.py` も実行します。
 
 ## 🏗️ ビルドとリリース
 
@@ -169,12 +169,12 @@ cargo run --release --features gui -- gui   # the window
 EH3D-PHOENIX-3DP/
 ├── crates/
 │   ├── p3dp-core/                               単位、メッシュと検査、上限、JSON、設定
-│   ├── p3dp-formats/                            STL・OBJ・3MF・プロジェクト・bgcode・レジンの読み込み、書き出し、ZIP
+│   ├── p3dp-formats/                            STL・OBJ・3MF・プロジェクト・bgcode・レジンの読み込み、書き出し、ZIP、PNG、レジン制御
 │   ├── p3dp-profiles/                           公開情報によるプリンター、フィラメント、プロファイル ファイル
 │   ├── p3dp-gcode/                              4 方言の G コード書き出しとチェッカー
-│   ├── p3dp-link/                               ドライバー、正規化状態、TCP、シミュレーター、Bambu LAN
+│   ├── p3dp-link/                               ドライバー、正規化された状態、TCP、シミュレーター、Bambu LAN（プロトコルのバイト列のみ、接続なし）
 │   ├── p3dp-server-bridge/                      サーバー接続の設定とプラグインのクライアント
-│   ├── p3dp-slicer/                             スライサー：層、外周、インフィル、ブリッジ、サポート、G コード
+│   ├── p3dp-slicer/                             スライサー：層、外周、インフィル、ブリッジ、サポート、スカート、ブリム、ラフト、G-code
 │   └── p3dp-viewer/                             3D ビューアーのモデル：カメラ、選択、層
 ├── src/
 │   ├── lib.rs                                   プログラムのライブラリ：コマンドラインとウィンドウが使うもの
@@ -182,8 +182,15 @@ EH3D-PHOENIX-3DP/
 │   ├── cli.rs                                   コマンド：printers、info、check-profile、convert、filaments、slice、project、version
 │   ├── app_state.rs                             ウィンドウなしのウィンドウ状態：タブ、プリンター、モデル、レポート、模擬デバイス
 │   ├── config.rs                                設定ファイル：上限、サーバー接続、言語、既定のプリンター
+│   ├── device.rs                                サーバーのプリンター、キュー、確認付きの開始、非常停止
 │   ├── i18n.rs                                  8 言語のプログラムの文言
+│   ├── keys.rs                                  キーボードショートカット：ファミリー共通の割り当て、独自の割り当て、変更
+│   ├── lists.rs                                 プリンターとフィラメントの一覧とそのフィルター
+│   ├── look.rs                                  ウィンドウの色、マーク、図柄、サイズに応じた配置
+│   ├── preview.rs                               ウィンドウからのスライス、層のスライダー、画面上のプランの線
 │   ├── project.rs                               プロジェクト：モデルとそのプリンターを独自の 3MF パッケージに保存
+│   ├── server_ui.rs                             サーバーの設定、接続の状態、ログイン（スイート共通のパネル上）
+│   ├── shot.rs                                  ウィンドウの画像モード（--shot）と書き出す PNG ファイル
 │   ├── view.rs                                  メッシュをプレビュー用の線に変換する周回カメラ
 │   └── gui.rs                                   ウィンドウ（egui、gui 機能）：状態を描画し、操作を伝える
 ├── tests/

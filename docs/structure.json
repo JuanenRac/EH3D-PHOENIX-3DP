@@ -42,14 +42,14 @@
         {
           "name": "p3dp-formats/",
           "desc": {
-            "en": "STL, OBJ, 3MF, project, bgcode and resin readers; writers, ZIP",
-            "es": "lectores de STL, OBJ, 3MF, proyectos, bgcode y resina; escritores, ZIP",
-            "de": "Leser für STL, OBJ, 3MF, Projekte, bgcode und Harz; Schreiber, ZIP",
-            "fr": "lecteurs de STL, OBJ, 3MF, projets, bgcode et résine ; écrivains, ZIP",
-            "it": "lettori di STL, OBJ, 3MF, progetti, bgcode e resina; scrittori, ZIP",
-            "ja": "STL・OBJ・3MF・プロジェクト・bgcode・レジンの読み込み、書き出し、ZIP",
-            "zh": "STL、OBJ、3MF、项目、bgcode 和树脂的读取器；写出器、ZIP",
-            "pt": "leitores de STL, OBJ, 3MF, projetos, bgcode e resina; escritores, ZIP"
+            "en": "STL, OBJ, 3MF, project, bgcode and resin readers; writers, ZIP, PNG, resin control",
+            "es": "lectores de STL, OBJ, 3MF, proyectos, bgcode y resina; escritores, ZIP, PNG, control de resina",
+            "de": "Leser für STL, OBJ, 3MF, Projekte, bgcode und Harz; Schreiber, ZIP, PNG, Harzsteuerung",
+            "fr": "lecteurs de STL, OBJ, 3MF, projets, bgcode et résine ; écrivains, ZIP, PNG, contrôle de la résine",
+            "it": "lettori di STL, OBJ, 3MF, progetti, bgcode e resina; scrittori, ZIP, PNG, controllo della resina",
+            "ja": "STL・OBJ・3MF・プロジェクト・bgcode・レジンの読み込み、書き出し、ZIP、PNG、レジン制御",
+            "zh": "STL、OBJ、3MF、项目、bgcode 和树脂的读取器；写出器、ZIP、PNG、树脂控制",
+            "pt": "leitores de STL, OBJ, 3MF, projetos, bgcode e resina; escritores, ZIP, PNG, controlo da resina"
           }
         },
         {
@@ -81,14 +81,14 @@
         {
           "name": "p3dp-link/",
           "desc": {
-            "en": "drivers, normalized state, TCP, simulators, Bambu LAN (design)",
-            "es": "controladores, estado normalizado, TCP, simuladores, Bambu LAN",
-            "de": "Treiber, normalisierter Zustand, TCP, Simulatoren, Bambu LAN",
-            "fr": "pilotes, état normalisé, TCP, simulateurs, Bambu LAN (conception)",
-            "it": "driver, stato normalizzato, TCP, simulatori, Bambu LAN",
-            "ja": "ドライバー、正規化状態、TCP、シミュレーター、Bambu LAN",
-            "zh": "驱动、规范化状态、TCP、模拟器、Bambu LAN",
-            "pt": "controladores, estado normalizado, TCP, simuladores, Bambu LAN"
+            "en": "drivers, normalized state, TCP, simulators, Bambu LAN (protocol bytes, no connection)",
+            "es": "controladores, estado normalizado, TCP, simuladores, Bambu LAN (bytes del protocolo, sin conexión)",
+            "de": "Treiber, normierter Zustand, TCP, Simulatoren, Bambu LAN (Protokollbytes, keine Verbindung)",
+            "fr": "pilotes, état normalisé, TCP, simulateurs, Bambu LAN (octets du protocole, pas de connexion)",
+            "it": "driver, stato normalizzato, TCP, simulatori, Bambu LAN (byte del protocollo, nessuna connessione)",
+            "ja": "ドライバー、正規化された状態、TCP、シミュレーター、Bambu LAN（プロトコルのバイト列のみ、接続なし）",
+            "zh": "驱动、规范化状态、TCP、模拟器、Bambu LAN（协议字节，不建立连接）",
+            "pt": "controladores, estado normalizado, TCP, simuladores, Bambu LAN (bytes do protocolo, sem ligação)"
           }
         },
         {
@@ -107,14 +107,14 @@
         {
           "name": "p3dp-slicer/",
           "desc": {
-            "en": "the slicer: layers, perimeters, infill, bridges, supports, G-code",
-            "es": "el laminador: capas, perímetros, relleno, puentes, soportes, G-code",
-            "de": "der Slicer: Schichten, Perimeter, Füllung, Brücken, Stützen, G-Code",
-            "fr": "le trancheur : couches, périmètres, remplissage, ponts, supports, G-code",
-            "it": "lo slicer: strati, perimetri, riempimento, ponti, supporti, G-code",
-            "ja": "スライサー：層、外周、インフィル、ブリッジ、サポート、G コード",
-            "zh": "切片器：层、外壁、填充、桥接、支撑、G 代码",
-            "pt": "o fatiador: camadas, perímetros, preenchimento, pontes, suportes, G-code"
+            "en": "the slicer: layers, perimeters, infill, bridges, supports, skirt, brim, raft, G-code",
+            "es": "el laminador: capas, perímetros, relleno, puentes, soportes, falda, borde, balsa, G-code",
+            "de": "der Slicer: Schichten, Umfänge, Füllung, Brücken, Stützen, Skirt, Brim, Raft, G-Code",
+            "fr": "le trancheur : couches, périmètres, remplissage, ponts, supports, jupe, bordure, radeau, G-code",
+            "it": "lo slicer: strati, perimetri, riempimento, ponti, supporti, skirt, brim, raft, G-code",
+            "ja": "スライサー：層、外周、インフィル、ブリッジ、サポート、スカート、ブリム、ラフト、G-code",
+            "zh": "切片器：层、外壁、填充、桥接、支撑、裙边、帽檐、筏板、G-code",
+            "pt": "o fatiador: camadas, perímetros, preenchimento, pontes, suportes, skirt, brim, raft, G-code"
           }
         },
         {
@@ -203,6 +203,19 @@
           }
         },
         {
+          "name": "device.rs",
+          "desc": {
+            "en": "the printers of the server, the queue, a start that needs a confirmation, the emergency stop",
+            "es": "las impresoras del servidor, la cola, un inicio que pide confirmación, la parada de emergencia",
+            "de": "die Drucker des Servers, die Warteschlange, ein Start mit Bestätigung, der Not-Halt",
+            "fr": "les imprimantes du serveur, la file, un démarrage avec confirmation, l'arrêt d'urgence",
+            "it": "le stampanti del server, la coda, un avvio con conferma, l'arresto di emergenza",
+            "ja": "サーバーのプリンター、キュー、確認付きの開始、非常停止",
+            "zh": "服务器的打印机、队列、需确认的开始、紧急停止",
+            "pt": "as impressoras do servidor, a fila, um arranque com confirmação, a paragem de emergência"
+          }
+        },
+        {
           "name": "i18n.rs",
           "desc": {
             "en": "the texts of the program in the eight languages",
@@ -216,6 +229,58 @@
           }
         },
         {
+          "name": "keys.rs",
+          "desc": {
+            "en": "the keyboard shortcuts: the scheme of the family, an own scheme and the changes",
+            "es": "los atajos de teclado: el esquema de la familia, uno propio y los cambios",
+            "de": "die Tastenkürzel: das Schema der Familie, ein eigenes und die Änderungen",
+            "fr": "les raccourcis clavier : le schéma de la famille, un schéma propre et les changements",
+            "it": "le scorciatoie da tastiera: lo schema della famiglia, uno proprio e le modifiche",
+            "ja": "キーボードショートカット：ファミリー共通の割り当て、独自の割り当て、変更",
+            "zh": "键盘快捷键：系列通用方案、自定义方案和修改",
+            "pt": "os atalhos de teclado: o esquema da família, um próprio e as alterações"
+          }
+        },
+        {
+          "name": "lists.rs",
+          "desc": {
+            "en": "the lists of printers and of filaments with their filters",
+            "es": "las listas de impresoras y de filamentos con sus filtros",
+            "de": "die Listen der Drucker und der Filamente mit ihren Filtern",
+            "fr": "les listes d'imprimantes et de filaments avec leurs filtres",
+            "it": "gli elenchi di stampanti e di filamenti con i loro filtri",
+            "ja": "プリンターとフィラメントの一覧とそのフィルター",
+            "zh": "打印机和耗材列表及其筛选",
+            "pt": "as listas de impressoras e de filamentos com os seus filtros"
+          }
+        },
+        {
+          "name": "look.rs",
+          "desc": {
+            "en": "the colours, the mark and the drawings of the window and its layout by size",
+            "es": "los colores, la marca y los dibujos de la ventana y su disposición según el tamaño",
+            "de": "die Farben, das Zeichen und die Zeichnungen des Fensters und seine Anordnung nach Größe",
+            "fr": "les couleurs, la marque et les dessins de la fenêtre et sa disposition selon la taille",
+            "it": "i colori, il marchio e i disegni della finestra e la sua disposizione per dimensione",
+            "ja": "ウィンドウの色、マーク、図柄、サイズに応じた配置",
+            "zh": "窗口的颜色、标志、图案及按大小的布局",
+            "pt": "as cores, a marca e os desenhos da janela e a sua disposição conforme o tamanho"
+          }
+        },
+        {
+          "name": "preview.rs",
+          "desc": {
+            "en": "slicing from the window, the slider of layers and the lines of the plan on the screen",
+            "es": "laminar desde la ventana, el deslizador de capas y las líneas del plan en pantalla",
+            "de": "Slicen im Fenster, der Schichtenregler und die Linien des Plans auf dem Bildschirm",
+            "fr": "découper depuis la fenêtre, le curseur de couches et les lignes du plan à l'écran",
+            "it": "elaborare dalla finestra, il cursore degli strati e le linee del piano sullo schermo",
+            "ja": "ウィンドウからのスライス、層のスライダー、画面上のプランの線",
+            "zh": "在窗口中切片、层滑块和屏幕上的方案线条",
+            "pt": "fatiar a partir da janela, o cursor de camadas e as linhas do plano no ecrã"
+          }
+        },
+        {
           "name": "project.rs",
           "desc": {
             "en": "the project: a model and its printer in the own 3MF package",
@@ -226,6 +291,32 @@
             "ja": "プロジェクト：モデルとそのプリンターを独自の 3MF パッケージに保存",
             "zh": "项目：模型及其打印机，保存在自有的 3MF 包中",
             "pt": "o projeto: um modelo e a sua impressora no pacote 3MF próprio"
+          }
+        },
+        {
+          "name": "server_ui.rs",
+          "desc": {
+            "en": "the settings of the server, the state of the link and the login, over the panel of the suite",
+            "es": "los ajustes del servidor, el estado del enlace y el inicio de sesión, sobre el panel de la suite",
+            "de": "die Einstellungen des Servers, der Zustand der Verbindung und die Anmeldung über das Panel der Suite",
+            "fr": "les réglages du serveur, l'état du lien et la connexion, sur le panneau de la suite",
+            "it": "le impostazioni del server, lo stato del collegamento e l'accesso, sul pannello della suite",
+            "ja": "サーバーの設定、接続の状態、ログイン（スイート共通のパネル上）",
+            "zh": "服务器设置、连接状态和登录，基于套件的共用面板",
+            "pt": "as definições do servidor, o estado da ligação e o início de sessão, sobre o painel da suite"
+          }
+        },
+        {
+          "name": "shot.rs",
+          "desc": {
+            "en": "the picture mode of the window (--shot) and the PNG file it writes",
+            "es": "el modo de imagen de la ventana (--shot) y el fichero PNG que escribe",
+            "de": "der Bildmodus des Fensters (--shot) und die PNG-Datei, die er schreibt",
+            "fr": "le mode image de la fenêtre (--shot) et le fichier PNG qu'il écrit",
+            "it": "la modalità immagine della finestra (--shot) e il file PNG che scrive",
+            "ja": "ウィンドウの画像モード（--shot）と書き出す PNG ファイル",
+            "zh": "窗口的图片模式（--shot）及其写出的 PNG 文件",
+            "pt": "o modo de imagem da janela (--shot) e o ficheiro PNG que escreve"
           }
         },
         {

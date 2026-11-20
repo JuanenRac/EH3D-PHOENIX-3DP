@@ -4,7 +4,7 @@ This page lists what the program does not do, and what each missing part needs. 
 
 ## A small slicer
 
-The program turns a closed model into flat layers, perimeters, a rectilinear, grid or gyroid infill with solid skins, bridges, plain supports, seams, variable width of the perimeters and G-code, and shows the plan by layers as data. It has no tree supports, interface layers or painting of supports, no ironing, pressure advance, brim or skirt, adaptive layer height or multi-material; a bridge is laid across the gap but is not tuned (no flow test, no extra anchor); the supports are lines at a pitch, with no interface; the time it estimates has an acceleration and a speed at the corners from the settings, not the planner of the printer; and no print made from its G-code has been run on a printer. A model that is not closed, that faces inwards or that does not fit is refused, not repaired or scaled.
+The program turns a closed model into flat layers, perimeters, a rectilinear, grid or gyroid infill with solid skins, bridges, plain supports, seams, variable width of the perimeters and G-code, and shows the plan by layers as data. It has no tree supports, interface layers or painting of supports, no ironing, pressure advance, adaptive layer height or multi-material (it does lay a skirt, a brim or a raft, slow a short layer, shorten the retraction of a short travel and print a vase as one wall of separate layers, not as a spiral); a bridge is laid across the gap but is not tuned (no flow test, no extra anchor); the supports are lines at a pitch, with no interface; the time it estimates has an acceleration and a speed at the corners from the settings, not the planner of the printer; and no print made from its G-code has been run on a printer. A model that is not closed, that faces inwards or that does not fit is refused, not repaired or scaled.
 
 ## Nothing has run on a printer
 
@@ -38,7 +38,7 @@ The catalog has resin (mSLA) printers, with their volume and how they connect, b
 
 ## The window
 
-It has four tabs and its logic is tested, but it has not been built or looked at on a screen. The model of the 3D viewer is the crate `p3dp-viewer` (camera, picking, selection box, range of layers, lines of a plan); the drawing with wgpu is behind its feature `gui`, never built, and the window does not use it yet: today the preview is lines. The texts of the new panels and controls are in the eight languages, but the panels themselves are not in the window. The names of the fifteen printer states are translated in the eight languages.
+It has four tabs (lists with filters, the plan by layers with a slider, the queue of the server with a confirmed start and an emergency stop, shortcuts that can be changed) and a picture mode, and the logic is tested without a screen, but it has not been built or looked at on a screen. The model of the 3D viewer is the crate `p3dp-viewer` (camera, picking, selection box, range of layers, lines of a plan); the drawing with wgpu is behind its feature `gui`, never built, and the window does not use it yet: today the preview is lines. The texts of the panels and controls are in the eight languages. The names of the fifteen printer states are translated in the eight languages.
 
 ## The server
 

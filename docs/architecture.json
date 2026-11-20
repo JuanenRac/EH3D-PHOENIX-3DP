@@ -66,8 +66,8 @@
       "level": "tested",
       "title": "slicer and G-code",
       "lines": [
-        "infill, bridges, supports; four",
-        "dialects, limits that refuse"
+        "infill, bridges, supports, brim;",
+        "four dialects, limits that refuse"
       ],
       "code": [
         "crates/p3dp-gcode/src/writer.rs::pub struct Writer",
@@ -82,14 +82,15 @@
       "level": "tested",
       "title": "drivers",
       "lines": [
-        "Moonraker and OctoPrint over a",
-        "plain TCP transport, one state"
+        "Moonraker, OctoPrint over plain",
+        "TCP; Bambu as bytes; one state"
       ],
       "code": [
         "crates/p3dp-link/src/moonraker.rs::pub struct MoonrakerDriver",
         "crates/p3dp-link/src/octoprint.rs::pub struct OctoPrintDriver",
         "crates/p3dp-link/src/driver.rs::pub trait PrinterDriver",
-        "crates/p3dp-link/src/tcp.rs::pub struct TcpTransport"
+        "crates/p3dp-link/src/tcp.rs::pub struct TcpTransport",
+        "crates/p3dp-link/src/mqtt.rs::pub fn encode"
       ]
     },
     {
@@ -112,13 +113,15 @@
       "level": "untested",
       "title": "window (gui feature)",
       "lines": [
-        "state, words and the viewer",
-        "model tested; not seen yet"
+        "tabs, lists, queue, shortcuts;",
+        "logic tested, never seen yet"
       ],
       "code": [
         "src/app_state.rs::pub struct AppState",
         "src/i18n.rs::pub enum Lang",
         "src/view.rs::pub fn edges",
+        "src/device.rs::pub struct DevicePanel",
+        "src/preview.rs::pub struct PreviewState",
         "src/gui.rs::pub fn run",
         "crates/p3dp-viewer/src/camera.rs::pub struct OrbitCamera"
       ]

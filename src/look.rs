@@ -1,0 +1,353 @@
+//! How the window looks, as data and without the window: the colours, the mark of the program and the small drawings of the four tabs (all drawn here from a few points, not taken
+//! from anywhere), and the layout of the window by its size. The window draws these; the tests check them: that the text can be read on every background, that every drawing stays
+//! in its square, and that the parts of the layout fill the window without lying on one another.
+
+use crate::app_state::Tab;
+
+/// A colour, red green blue from 0 to 255.
+pub type Rgb = [u8; 3];
+
+/// The colours of the window.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Palette {
+    pub background: Rgb,
+    pub panel: Rgb,
+    pub text: Rgb,
+    pub dim: Rgb,
+    pub accent: Rgb,
+    pub good: Rgb,
+    pub danger: Rgb,
+    pub line: Rgb,
+    pub plate: Rgb,
+}
+
+impl Palette {
+    /// The look of the program: a dark warm ground with a flame-coloured accent.
+    pub const fn phoenix() -> Palette {
+        Palette {
+            background: [0x16, 0x14, 0x12],
+            panel: [0x20, 0x1d, 0x1a],
+            text: [0xee, 0xe6, 0xdc],
+            dim: [0xa8, 0x9a, 0x88],
+            accent: [0xff, 0x6a, 0x3d],
+            good: [0x9b, 0xe3, 0x4a],
+            danger: [0xff, 0x54, 0x70],
+            line: [0x4d, 0xd0, 0xe1],
+            plate: [0x6a, 0x76, 0x88],
+        }
+    }
+}
+
+fn channel(c: u8) -> f64 {
+    let s = f64::from(c) / 255.0;
+    if s <= 0.03928 {
+        s / 12.92
+    } else {
+        ((s + 0.055) / 1.055).powf(2.4)
+    }
+}
+
+/// The relative luminance of a colour (WCAG 2).
+pub fn luminance(c: Rgb) -> f64 {
+    0.2126 * channel(c[0]) + 0.7152 * channel(c[1]) + 0.0722 * channel(c[2])
+}
+
+/// The contrast between two colours, from 1 (the same) to 21 (black on white).
+pub fn contrast(a: Rgb, b: Rgb) -> f64 {
+    let (la, lb) = (luminance(a), luminance(b));
+    let (hi, lo) = if la >= lb { (la, lb) } else { (lb, la) };
+    (hi + 0.05) / (lo + 0.05)
+}
+
+/// A drawing: lines of points in a square of side 1, from the top left.
+pub type Drawing = Vec<Vec<[f32; 2]>>;
+
+fn bezier(p0: [f32; 2], p1: [f32; 2], p2: [f32; 2], steps: usize) -> Vec<[f32; 2]> {
+    (0..=steps)
+        .map(|i| {
+            let t = i as f32 / steps as f32;
+            let u = 1.0 - t;
+            [
+                u * u * p0[0] + 2.0 * u * t * p1[0] + t * t * p2[0],
+                u * u * p0[1] + 2.0 * u * t * p1[1] + t * t * p2[1],
+            ]
+        })
+        .collect()
+}
+
+/// The mark of the program: three flames that rise from one base, the middle one the tallest. It is the same figure at any size.
+pub fn logo() -> Drawing {
+    let flame = |x0: f32, x1: f32, top: f32, lean: f32| {
+        let mid = (x0 + x1) / 2.0;
+        let mut line = bezier([x0, 0.92], [x0 - 0.08, 0.55], [mid + lean, top], 12);
+        line.extend(
+            bezier([mid + lean, top], [x1 + 0.08, 0.55], [x1, 0.92], 12)
+                .into_iter()
+                .skip(1),
+        );
+        line
+    };
+    vec![
+        flame(0.10, 0.50, 0.40, -0.04),
+        flame(0.50, 0.90, 0.36, 0.04),
+        flame(0.28, 0.72, 0.06, 0.0),
+    ]
+}
+
+/// The small drawing of a tab, in the same square.
+pub fn glyph(tab: Tab) -> Drawing {
+    match tab {
+        // a cube seen from a corner
+        Tab::Prepare => vec![
+            vec![
+                [0.5, 0.08],
+                [0.9, 0.3],
+                [0.9, 0.72],
+                [0.5, 0.94],
+                [0.1, 0.72],
+                [0.1, 0.3],
+                [0.5, 0.08],
+            ],
+            vec![[0.1, 0.3], [0.5, 0.52], [0.9, 0.3]],
+            vec![[0.5, 0.52], [0.5, 0.94]],
+        ],
+        // layers: stacked lines
+        Tab::Preview => (0..4)
+            .map(|i| {
+                let y = 0.2 + 0.2 * i as f32;
+                vec![[0.1, y], [0.9, y]]
+            })
+            .collect(),
+        // a printer: a frame, a gantry and a bed
+        Tab::Device => vec![
+            vec![
+                [0.12, 0.1],
+                [0.88, 0.1],
+                [0.88, 0.9],
+                [0.12, 0.9],
+                [0.12, 0.1],
+            ],
+            vec![[0.12, 0.34], [0.88, 0.34]],
+            vec![[0.5, 0.34], [0.5, 0.52]],
+            vec![[0.25, 0.8], [0.75, 0.8]],
+        ],
+        // a folder
+        Tab::Project => vec![vec![
+            [0.08, 0.2],
+            [0.38, 0.2],
+            [0.46, 0.32],
+            [0.92, 0.32],
+            [0.92, 0.84],
+            [0.08, 0.84],
+            [0.08, 0.2],
+        ]],
+    }
+}
+
+/// A rectangle of the window, in points from the top left.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Rect {
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+}
+
+impl Rect {
+    pub fn area(&self) -> f32 {
+        self.w * self.h
+    }
+
+    /// Whether two rectangles share some area (touching edges do not).
+    pub fn overlaps(&self, o: &Rect) -> bool {
+        self.x < o.x + o.w - 1e-3
+            && o.x < self.x + self.w - 1e-3
+            && self.y < o.y + o.h - 1e-3
+            && o.y < self.y + self.h - 1e-3
+    }
+}
+
+/// The height of the bar at the top (the tabs and the language) and of the bar at the bottom (the status).
+pub const TOP_BAR: f32 = 44.0;
+pub const STATUS_BAR: f32 = 28.0;
+/// A window narrower than this folds the list at the side into the tab.
+pub const WIDE: f32 = 1000.0;
+/// A window wider than this also shows the server and the queue at the right.
+pub const VERY_WIDE: f32 = 1500.0;
+
+/// The parts of the window for its size: the same arrangement in every program of the family (the bars on top and at the bottom, a list at the left, the work in the middle and, on a
+/// wide screen, the server at the right).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Layout {
+    pub top: Rect,
+    pub status: Rect,
+    pub side: Option<Rect>,
+    pub centre: Rect,
+    pub right: Option<Rect>,
+}
+
+impl Layout {
+    pub fn for_size(width: f32, height: f32) -> Layout {
+        let (w, h) = (width.max(1.0), height.max(1.0));
+        let top_h = TOP_BAR.min(h / 4.0);
+        let status_h = STATUS_BAR.min(h / 4.0);
+        let body_h = (h - top_h - status_h).max(0.0);
+        let side_w = (w * 0.24).clamp(260.0, 380.0);
+        let right_w = (w * 0.20).clamp(300.0, 420.0);
+        let has_side = w >= WIDE;
+        let has_right = w >= VERY_WIDE;
+        let side_used = if has_side { side_w } else { 0.0 };
+        let right_used = if has_right { right_w } else { 0.0 };
+        let rect = |x, y, w, h| Rect { x, y, w, h };
+        Layout {
+            top: rect(0.0, 0.0, w, top_h),
+            status: rect(0.0, h - status_h, w, status_h),
+            side: has_side.then(|| rect(0.0, top_h, side_w, body_h)),
+            centre: rect(side_used, top_h, w - side_used - right_used, body_h),
+            right: has_right.then(|| rect(w - right_w, top_h, right_w, body_h)),
+        }
+    }
+
+    /// All the parts that are there, for the window to place and for the tests to add up.
+    pub fn parts(&self) -> Vec<Rect> {
+        let mut v = vec![self.top, self.status, self.centre];
+        v.extend(self.side);
+        v.extend(self.right);
+        v
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_text_can_be_read_on_every_background_it_is_put_on() {
+        let p = Palette::phoenix();
+        for bg in [p.background, p.panel] {
+            assert!(contrast(p.text, bg) >= 7.0, "text on {bg:?}");
+            assert!(contrast(p.dim, bg) >= 4.5, "dim text on {bg:?}");
+            for (name, c) in [
+                ("accent", p.accent),
+                ("good", p.good),
+                ("danger", p.danger),
+                ("line", p.line),
+            ] {
+                assert!(
+                    contrast(c, bg) >= 4.5,
+                    "{name} on {bg:?}: {:.2}",
+                    contrast(c, bg)
+                );
+            }
+        }
+        // the plate and the lines of the model can be told apart from the ground
+        assert!(contrast(p.plate, p.background) >= 3.0);
+        assert!(contrast(p.line, p.plate) >= 1.5);
+    }
+
+    #[test]
+    fn contrast_is_one_for_equal_colours_and_twenty_one_for_black_on_white() {
+        assert!((contrast([9, 9, 9], [9, 9, 9]) - 1.0).abs() < 1e-12);
+        assert!((contrast([0, 0, 0], [255, 255, 255]) - 21.0).abs() < 1e-9);
+        assert_eq!(
+            contrast([10, 20, 30], [200, 210, 220]),
+            contrast([200, 210, 220], [10, 20, 30])
+        );
+    }
+
+    #[test]
+    fn every_drawing_stays_in_its_square_and_is_made_of_real_lines() {
+        let mut all = vec![("logo".to_string(), logo())];
+        for t in Tab::ALL {
+            all.push((t.key().to_string(), glyph(t)));
+        }
+        for (name, d) in &all {
+            assert!(!d.is_empty(), "{name}");
+            for line in d {
+                assert!(line.len() >= 2, "{name}");
+                for p in line {
+                    assert!(
+                        p.iter().all(|v| v.is_finite() && (0.0..=1.0).contains(v)),
+                        "{name}: {p:?}"
+                    );
+                }
+                assert!(
+                    line.windows(2).any(|w| w[0] != w[1]),
+                    "{name}: a line that goes nowhere"
+                );
+            }
+        }
+        // the four glyphs are four different drawings, and the logo is the three flames
+        for i in 0..4 {
+            for j in i + 1..4 {
+                assert_ne!(glyph(Tab::ALL[i]), glyph(Tab::ALL[j]));
+            }
+        }
+        assert_eq!(logo().len(), 3);
+        assert_eq!(logo(), logo(), "the mark is the same every time");
+    }
+
+    #[test]
+    fn the_flames_close_on_their_base_and_the_middle_one_is_the_tallest() {
+        let flames = logo();
+        for f in &flames {
+            let (a, b) = (f.first().unwrap(), f.last().unwrap());
+            assert!((a[1] - 0.92).abs() < 1e-6 && (b[1] - 0.92).abs() < 1e-6);
+        }
+        let top = |f: &Vec<[f32; 2]>| f.iter().map(|p| p[1]).fold(f32::MAX, f32::min);
+        assert!(top(&flames[2]) < top(&flames[0]) && top(&flames[2]) < top(&flames[1]));
+    }
+
+    #[test]
+    fn the_parts_of_the_layout_fill_the_window_and_never_lie_on_one_another() {
+        for (w, h) in [
+            (320.0, 240.0),
+            (760.0, 480.0),
+            (999.0, 700.0),
+            (1000.0, 700.0),
+            (1280.0, 800.0),
+            (1499.0, 900.0),
+            (1500.0, 900.0),
+            (1920.0, 1080.0),
+            (3840.0, 2160.0),
+            (5000.0, 400.0),
+        ] {
+            let l = Layout::for_size(w, h);
+            let parts = l.parts();
+            let total: f32 = parts.iter().map(Rect::area).sum();
+            assert!((total - w * h).abs() < 1.0, "{w}x{h}: {total}");
+            for (i, a) in parts.iter().enumerate() {
+                assert!(
+                    a.x >= -1e-3 && a.y >= -1e-3 && a.x + a.w <= w + 1e-3 && a.y + a.h <= h + 1e-3,
+                    "{w}x{h}: {a:?}"
+                );
+                assert!(a.w > 0.0 && a.h >= 0.0);
+                for b in &parts[i + 1..] {
+                    assert!(!a.overlaps(b), "{w}x{h}: {a:?} and {b:?}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn the_list_at_the_side_and_the_server_at_the_right_come_with_the_width() {
+        let narrow = Layout::for_size(WIDE - 1.0, 800.0);
+        assert!(narrow.side.is_none() && narrow.right.is_none());
+        let wide = Layout::for_size(WIDE, 800.0);
+        assert!(wide.side.is_some() && wide.right.is_none());
+        let very = Layout::for_size(VERY_WIDE, 800.0);
+        assert!(very.side.is_some() && very.right.is_some());
+        for l in [wide, very] {
+            let s = l.side.unwrap();
+            assert!((260.0..=380.0).contains(&s.w));
+            assert!(l.centre.w >= 600.0, "{}", l.centre.w);
+        }
+        let r = very.right.unwrap();
+        assert!((300.0..=420.0).contains(&r.w));
+        // the bars keep their height in a normal window and give way in a very low one
+        assert_eq!((wide.top.h, wide.status.h), (TOP_BAR, STATUS_BAR));
+        let low = Layout::for_size(1200.0, 100.0);
+        assert!(low.top.h + low.status.h <= 50.0 + 1e-3 && low.centre.h >= 50.0 - 1e-3);
+        assert_eq!(wide.status.y + wide.status.h, 800.0);
+    }
+}

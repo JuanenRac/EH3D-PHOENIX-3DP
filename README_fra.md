@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.3-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-429-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-479-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Contrôle d'honnêteté - ce qui fonctionne vraiment aujourd'hui :** un espace de travail Rust de huit bibliothèques et un programme en ligne de commande (`phoenix-3dp`) avec 429 tests qui s'exécutent sur un ordinateur. Il lit et vérifie des modèles STL, OBJ et 3MF, contient un catalogue de 120 profils d'imprimante construits à partir de données publiques (aucun essayé sur une machine), écrit du G-code pour les dialectes Marlin, Klipper, RepRapFirmware et Bambu avec des limites de température qui refusent une valeur au lieu de la rogner, et pilote des imprimantes Moonraker et OctoPrint et le serveur EH3D, mais seulement contre des simulateurs (en mémoire et sur un socket de cet ordinateur). Il découpe un modèle fermé en couches planes avec des périmètres, un remplissage rectiligne et des peaux pleines (un petit trancheur avec remplissage en grille et en gyroïde, ponts, supports simples, coutures, largeur variable, levée en déplacement et une estimation du temps avec accélération ; encore rien pour plusieurs matériaux) ; la fenêtre n'a pas été compilée ni vue sur un écran ; rien n'a tourné sur une vraie imprimante.
+**Contrôle d'honnêteté - ce qui fonctionne vraiment aujourd'hui :** un espace de travail Rust de huit bibliothèques et un programme en ligne de commande (`phoenix-3dp`) avec 479 tests qui s'exécutent sur un ordinateur. Il lit et vérifie des modèles STL, OBJ et 3MF, contient un catalogue de 120 profils d'imprimante construits à partir de données publiques (aucun essayé sur une machine), écrit du G-code pour les dialectes Marlin, Klipper, RepRapFirmware et Bambu avec des limites de température qui refusent une valeur au lieu de la rogner, et pilote des imprimantes Moonraker et OctoPrint et le serveur EH3D, mais seulement contre des simulateurs (en mémoire et sur un socket de cet ordinateur). Il découpe un modèle fermé en couches planes avec des périmètres, un remplissage rectiligne et des peaux pleines (un petit trancheur avec remplissage en grille et en gyroïde, ponts, supports simples, coutures, largeur variable, levée en déplacement, jupe, bordure ou radeau, mode vase, couches courtes ralenties, rétraction qui suit le déplacement et une estimation du temps avec accélération ; encore rien pour plusieurs matériaux) ; la fenêtre n'a pas été compilée ni vue sur un écran ; rien n'a tourné sur une vraie imprimante.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Version | `0.0.3` |
 | Maturité | Échafaudage |
-| Tests | 429 |
+| Tests | 479 |
 | Pile technique | Rust |
 | Sur du matériel réel | Pas essayé : rien de tout cela n'a tourné sur une imprimante, pas même sur une Bambu Lab A1 ou une P1S. |
 
@@ -55,9 +55,9 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 | Liaison avec le serveur | 🟠 | les réglages de la liaison et un client du greffon d'imprimantes du serveur au-dessus du client commun de la suite (connexion, renouvellement, nouvelles tentatives, erreurs en huit langues), essayé contre un serveur en mémoire ; jamais contre le vrai serveur. |
 | Trancheur | 🟡 | couches planes d'un maillage fermé, périmètres, remplissage rectiligne, en grille ou en gyroïde, peaux pleines, ponts, supports simples, coutures, largeur variable, G-code par dialecte, un aperçu par couches sous forme de données et une estimation du temps avec accélération ; vérifié par des propriétés sur des formes à graine fixe (le plastique déposé est le volume de la pièce, rien ne sort du plateau, aucune température ne dépasse une limite) ; aucune impression n'en est sortie sur une imprimante. |
 | Ligne de commande | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `slice`, `project`, `version`) exécute les fonctions des bibliothèques et affiche le résultat ; chaque erreur revient sous forme de message et d'un code de sortie non nul. |
-| Tests | 🟡 | 429 tests réussissent (`cargo test --workspace`), avec des cas normaux, des cas limites, des entrées abîmées et une graine fixe là où il y a du hasard. |
+| Tests | 🟡 | 479 tests réussissent (`cargo test --workspace`), avec des cas normaux, des cas limites, des entrées abîmées et une graine fixe là où il y a du hasard. |
 | Sécurité | 🟡 | Rust sûr et simple (`forbid(unsafe_code)`) : une limite est un refus et jamais une coupe ; le jeton ne s'affiche jamais ; rien ne panique sur les fichiers reçus ; pas de revue indépendante. |
-| Fenêtre | 🔴 | Une première version des quatre onglets (Préparer, Aperçu, Appareil, Projet) est écrite avec `--features gui` ; sa logique est testée, mais elle n'a pas encore été compilée ni vue sur un écran. |
+| Fenêtre | 🔴 | Les quatre onglets (Préparer, Aperçu, Appareil, Projet) sont écrits avec `--features gui` : listes d'imprimantes et de filaments avec filtres, le plan par couches avec un curseur, la file du serveur avec un démarrage qui demande une confirmation, un arrêt d'urgence, des raccourcis modifiables et un mode image (`--shot`) ; la logique est testée sans écran, mais la fenêtre n'a pas encore été compilée ni vue sur un écran. |
 | Matériel réel | 🔴 | Pas essayé : rien de tout cela n'a tourné sur une imprimante, pas même sur une Bambu Lab A1 ou une P1S. |
 | Documentation | 🟡 | README en huit langues, le journal des modifications, le dossier `docs/` (architecture, feuille de route, ce qui n'est pas encore fait, le serveur) et les deux images dessinées depuis `docs/`. |
 
@@ -125,9 +125,9 @@ phoenix-3dp check-profile --file PROFILE [--gcode FILE]
 phoenix-3dp convert IN OUT [--printer ID] [--force]
 phoenix-3dp filaments [--printer ID] [--nozzle MM] [--hardened]
 phoenix-3dp slice MODEL --printer ID [--settings FILE] [--filament ID] [--nozzle MM] [--hardened] [--out FILE.gcode] [--force]
-phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.sl1 [--bottom-layers N] [--lift MM]
+phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.sl1 [--bottom-layers N] [--lift MM] [--light-power MW]
 phoenix-3dp version
-phoenix-3dp gui [SETTINGS]                       the window (a build with --features gui)
+phoenix-3dp gui [SETTINGS] [--shot FILE.png]                       the window (a build with --features gui)
 ```
 
 ## ⚙️ Configuration
@@ -150,7 +150,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Tests
 
-La suite compte 429 tests (`cargo test --workspace`, exécutés sous Windows et Linux dans la CI), avec une graine fixe là où il y a du hasard. Ils vérifient les cas normaux, les cas limites et les entrées abîmées : des fichiers coupés, du bruit et des en-têtes hostiles ne font jamais paniquer, et aucune température d'aucune imprimante du catalogue ne dépasse sa limite. La CI exécute aussi `cargo fmt --all --check`, `cargo clippy` avec les avertissements en erreurs et `python -I tools/ci_validate.py`.
+La suite compte 479 tests (`cargo test --workspace`, exécutés sous Windows et Linux dans la CI), avec une graine fixe là où il y a du hasard. Ils vérifient les cas normaux, les cas limites et les entrées abîmées : des fichiers coupés, du bruit et des en-têtes hostiles ne font jamais paniquer, et aucune température d'aucune imprimante du catalogue ne dépasse sa limite. La CI exécute aussi `cargo fmt --all --check`, `cargo clippy` avec les avertissements en erreurs et `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilation et publication
 
@@ -169,12 +169,12 @@ La version vit dans `Cargo.toml` et dans `eh3d.project.json` ; chaque version a 
 EH3D-PHOENIX-3DP/
 ├── crates/
 │   ├── p3dp-core/                               unités, maillage et vérifications, limites, JSON, réglages
-│   ├── p3dp-formats/                            lecteurs de STL, OBJ, 3MF, projets, bgcode et résine ; écrivains, ZIP
+│   ├── p3dp-formats/                            lecteurs de STL, OBJ, 3MF, projets, bgcode et résine ; écrivains, ZIP, PNG, contrôle de la résine
 │   ├── p3dp-profiles/                           imprimantes à partir de faits publics, filaments, le fichier de profil
 │   ├── p3dp-gcode/                              écrivains de G-code pour quatre dialectes, le vérificateur
-│   ├── p3dp-link/                               pilotes, état normalisé, TCP, simulateurs, Bambu LAN (conception)
+│   ├── p3dp-link/                               pilotes, état normalisé, TCP, simulateurs, Bambu LAN (octets du protocole, pas de connexion)
 │   ├── p3dp-server-bridge/                      réglages de la liaison au serveur, client du greffon
-│   ├── p3dp-slicer/                             le trancheur : couches, périmètres, remplissage, ponts, supports, G-code
+│   ├── p3dp-slicer/                             le trancheur : couches, périmètres, remplissage, ponts, supports, jupe, bordure, radeau, G-code
 │   └── p3dp-viewer/                             le modèle du visualiseur 3D : caméra, sélection, couches
 ├── src/
 │   ├── lib.rs                                   la bibliothèque du programme : ce qu'utilisent la ligne de commande et la fenêtre
@@ -182,8 +182,15 @@ EH3D-PHOENIX-3DP/
 │   ├── cli.rs                                   les commandes : printers, info, check-profile, convert, filaments, slice, project, version
 │   ├── app_state.rs                             l'état de la fenêtre sans fenêtre : onglets, imprimante, modèle, rapports, appareil simulé
 │   ├── config.rs                                le fichier de réglages : limites, liaison serveur, langue et imprimante par défaut
+│   ├── device.rs                                les imprimantes du serveur, la file, un démarrage avec confirmation, l'arrêt d'urgence
 │   ├── i18n.rs                                  les textes du programme dans les huit langues
+│   ├── keys.rs                                  les raccourcis clavier : le schéma de la famille, un schéma propre et les changements
+│   ├── lists.rs                                 les listes d'imprimantes et de filaments avec leurs filtres
+│   ├── look.rs                                  les couleurs, la marque et les dessins de la fenêtre et sa disposition selon la taille
+│   ├── preview.rs                               découper depuis la fenêtre, le curseur de couches et les lignes du plan à l'écran
 │   ├── project.rs                               le projet : un modèle et son imprimante dans le paquet 3MF propre
+│   ├── server_ui.rs                             les réglages du serveur, l'état du lien et la connexion, sur le panneau de la suite
+│   ├── shot.rs                                  le mode image de la fenêtre (--shot) et le fichier PNG qu'il écrit
 │   ├── view.rs                                  la caméra orbitale qui transforme un maillage en lignes pour l'aperçu
 │   └── gui.rs                                   la fenêtre (egui, avec la fonctionnalité gui) : dessine l'état et transmet ce que fait la personne
 ├── tests/

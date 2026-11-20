@@ -15,7 +15,7 @@ resolver = "2"
 [workspace.package]
 version = "0.0.3"
 edition = "2021"
-rust-version = "1.88"
+rust-version = "1.89"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/JuanenRac/EH3D-PHOENIX-3DP"
 
@@ -40,7 +40,7 @@ path = "src/main.rs"
 [features]
 default = []
 # the window (egui): `cargo run --release --features gui`
-gui = ["dep:eframe"]
+gui = ["dep:eframe", "eh3d-view/gui"]
 
 [dependencies]
 p3dp-core = { path = "crates/p3dp-core" }
@@ -50,6 +50,11 @@ p3dp-gcode = { path = "crates/p3dp-gcode" }
 p3dp-link = { path = "crates/p3dp-link" }
 p3dp-server-bridge = { path = "crates/p3dp-server-bridge" }
 p3dp-slicer = { path = "crates/p3dp-slicer" }
+p3dp-viewer = { path = "crates/p3dp-viewer" }
+
+# the client of the suite for the EH3D server and the panel of its settings, the state of the link and the login that the other programs of the suite show (the sibling folder EH3D-COMMON is needed)
+eh3d-serverclient = { version = ">=0.0.1", path = "../EH3D-COMMON/crates/serverclient" }
+eh3d-view = { version = ">=0.0.1", path = "../EH3D-COMMON/crates/view", default-features = false }
 
 # the window
 eframe = { version = "0.37.0", default-features = false, features = ["glow", "default_fonts"], optional = true }

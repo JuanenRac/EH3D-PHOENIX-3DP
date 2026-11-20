@@ -147,10 +147,46 @@ pub enum Msg {
     ViewLayerRange,
     ViewReset,
     ViewFit,
+    FilterSearch,
+    FilterTechnology,
+    TechFdm,
+    TechResin,
+    FilterAll,
+    FilamentMaterial,
+    FilamentCompatible,
+    PrintersShown,
+    SliceNow,
+    SliceSummary,
+    KindPerimeters,
+    KindInfill,
+    KindSolid,
+    KindAdhesion,
+    LayerOnlyOne,
+    LayerAll,
+    ServerPanelTitle,
+    QueueTitle,
+    QueueEmpty,
+    JobStart,
+    JobConfirmStart,
+    Confirm,
+    CancelAction,
+    JobPause,
+    JobResume,
+    JobCancel,
+    EmergencyStop,
+    Refresh,
+    NoServerSet,
+    MachinesTitle,
+    ProjectObjects,
+    ProjectPlates,
+    ProjectMadeBy,
+    ShortcutsTitle,
+    SchemeFamily,
+    SchemeOwn,
 }
 
 impl Msg {
-    pub const ALL: [Msg; 73] = [
+    pub const ALL: [Msg; 109] = [
         Msg::TabPrepare,
         Msg::TabPreview,
         Msg::TabDevice,
@@ -224,6 +260,42 @@ impl Msg {
         Msg::ViewLayerRange,
         Msg::ViewReset,
         Msg::ViewFit,
+        Msg::FilterSearch,
+        Msg::FilterTechnology,
+        Msg::TechFdm,
+        Msg::TechResin,
+        Msg::FilterAll,
+        Msg::FilamentMaterial,
+        Msg::FilamentCompatible,
+        Msg::PrintersShown,
+        Msg::SliceNow,
+        Msg::SliceSummary,
+        Msg::KindPerimeters,
+        Msg::KindInfill,
+        Msg::KindSolid,
+        Msg::KindAdhesion,
+        Msg::LayerOnlyOne,
+        Msg::LayerAll,
+        Msg::ServerPanelTitle,
+        Msg::QueueTitle,
+        Msg::QueueEmpty,
+        Msg::JobStart,
+        Msg::JobConfirmStart,
+        Msg::Confirm,
+        Msg::CancelAction,
+        Msg::JobPause,
+        Msg::JobResume,
+        Msg::JobCancel,
+        Msg::EmergencyStop,
+        Msg::Refresh,
+        Msg::NoServerSet,
+        Msg::MachinesTitle,
+        Msg::ProjectObjects,
+        Msg::ProjectPlates,
+        Msg::ProjectMadeBy,
+        Msg::ShortcutsTitle,
+        Msg::SchemeFamily,
+        Msg::SchemeOwn,
     ];
 
     /// The texts in the order English, Spanish, German, French, Italian, Japanese, Chinese, Portuguese (Portugal).
@@ -311,6 +383,42 @@ impl Msg {
             Msg::ViewLayerRange => ["Layers {} to {} of {}", "Capas {} a {} de {}", "Schichten {} bis {} von {}", "Couches {} à {} sur {}", "Strati da {} a {} di {}", "レイヤー {}〜{}（全 {}）", "第 {} 至 {} 层，共 {} 层", "Camadas {} a {} de {}"],
             Msg::ViewReset => ["Reset view", "Restablecer vista", "Ansicht zurücksetzen", "Réinitialiser la vue", "Ripristina vista", "表示をリセット", "重置视图", "Repor vista"],
             Msg::ViewFit => ["Fit to bed", "Ajustar a la cama", "An Druckbett anpassen", "Ajuster au plateau", "Adatta al piano", "ベッドに合わせる", "适合热床", "Ajustar à base"],
+            Msg::FilterSearch => ["Search", "Buscar", "Suchen", "Rechercher", "Cerca", "検索", "搜索", "Pesquisar"],
+            Msg::FilterTechnology => ["Technology", "Tecnología", "Technik", "Technologie", "Tecnologia", "方式", "技术", "Tecnologia"],
+            Msg::TechFdm => ["Filament (FDM)", "Filamento (FDM)", "Filament (FDM)", "Filament (FDM)", "Filamento (FDM)", "フィラメント（FDM）", "熔丝（FDM）", "Filamento (FDM)"],
+            Msg::TechResin => ["Resin (mSLA)", "Resina (mSLA)", "Harz (mSLA)", "Résine (mSLA)", "Resina (mSLA)", "レジン（mSLA）", "树脂（mSLA）", "Resina (mSLA)"],
+            Msg::FilterAll => ["Show all", "Mostrar todo", "Alle anzeigen", "Tout afficher", "Mostra tutto", "すべて表示", "显示全部", "Mostrar tudo"],
+            Msg::FilamentMaterial => ["Material", "Material", "Material", "Matériau", "Materiale", "素材", "材料", "Material"],
+            Msg::FilamentCompatible => ["Only those the printer can use", "Solo los que la impresora puede usar", "Nur die, die der Drucker verwenden kann", "Seulement ceux que l'imprimante peut utiliser", "Solo quelli che la stampante può usare", "プリンターで使えるものだけ", "仅显示打印机可用的", "Só os que a impressora pode usar"],
+            Msg::PrintersShown => ["{} of {} printers", "{} de {} impresoras", "{} von {} Druckern", "{} imprimantes sur {}", "{} stampanti su {}", "プリンター {} / {} 台", "打印机 {} / {} 台", "{} de {} impressoras"],
+            Msg::SliceNow => ["Slice", "Laminar", "Slicen", "Découper", "Elabora", "スライス", "切片", "Fatiar"],
+            Msg::SliceSummary => ["{} layers, about {}", "{} capas, aprox. {}", "{} Schichten, etwa {}", "{} couches, environ {}", "{} strati, circa {}", "{} 層、約 {}", "{} 层，约 {}", "{} camadas, cerca de {}"],
+            Msg::KindPerimeters => ["Perimeters", "Perímetros", "Umfänge", "Périmètres", "Perimetri", "外周", "外壁", "Perímetros"],
+            Msg::KindInfill => ["Sparse infill", "Relleno parcial", "Teilfüllung", "Remplissage partiel", "Riempimento parziale", "まばらな充填", "稀疏填充", "Preenchimento parcial"],
+            Msg::KindSolid => ["Solid skins", "Pieles sólidas", "Feste Deckflächen", "Peaux pleines", "Pelli piene", "ソリッド面", "实心表层", "Peles sólidas"],
+            Msg::KindAdhesion => ["Skirt, brim and raft", "Falda, borde y balsa", "Skirt, Brim und Raft", "Jupe, bordure et radeau", "Skirt, brim e raft", "スカート・ブリム・ラフト", "裙边、帽檐和筏板", "Skirt, brim e raft"],
+            Msg::LayerOnlyOne => ["Only this layer", "Solo esta capa", "Nur diese Schicht", "Seulement cette couche", "Solo questo strato", "このレイヤーのみ", "仅此层", "Só esta camada"],
+            Msg::LayerAll => ["All layers", "Todas las capas", "Alle Schichten", "Toutes les couches", "Tutti gli strati", "すべてのレイヤー", "所有层", "Todas as camadas"],
+            Msg::ServerPanelTitle => ["EH3D server", "Servidor EH3D", "EH3D-Server", "Serveur EH3D", "Server EH3D", "EH3D サーバー", "EH3D 服务器", "Servidor EH3D"],
+            Msg::QueueTitle => ["Queue", "Cola", "Warteschlange", "File d'attente", "Coda", "キュー", "队列", "Fila"],
+            Msg::QueueEmpty => ["No jobs in the queue", "No hay trabajos en la cola", "Keine Aufträge in der Warteschlange", "Aucun travail dans la file", "Nessun lavoro in coda", "キューにジョブはありません", "队列中没有任务", "Não há trabalhos na fila"],
+            Msg::JobStart => ["Start", "Iniciar", "Starten", "Démarrer", "Avvia", "開始", "开始", "Iniciar"],
+            Msg::JobConfirmStart => ["Start \"{}\" on {}? Nothing starts without this confirmation", "¿Iniciar «{}» en {}? Nada empieza sin esta confirmación", "»{}« auf {} starten? Ohne diese Bestätigung startet nichts", "Démarrer « {} » sur {} ? Rien ne démarre sans cette confirmation", "Avviare «{}» su {}? Nulla parte senza questa conferma", "「{}」を {} で開始しますか？この確認なしには何も始まりません", "开始任务“{}”（打印机 {}）吗？没有此确认不会开始任何任务", "Iniciar «{}» em {}? Nenhum trabalho arranca sem esta confirmação"],
+            Msg::Confirm => ["Confirm", "Confirmar", "Bestätigen", "Confirmer", "Conferma", "確認", "确认", "Confirmar"],
+            Msg::CancelAction => ["Cancel", "Cancelar", "Abbrechen", "Annuler", "Annulla", "キャンセル", "取消", "Cancelar"],
+            Msg::JobPause => ["Pause", "Pausar", "Pausieren", "Pause", "Pausa", "一時停止", "暂停", "Pausar"],
+            Msg::JobResume => ["Resume", "Reanudar", "Fortsetzen", "Reprendre", "Riprendi", "再開", "继续", "Retomar"],
+            Msg::JobCancel => ["Cancel job", "Cancelar trabajo", "Auftrag abbrechen", "Annuler le travail", "Annulla lavoro", "ジョブを取り消す", "取消任务", "Cancelar trabalho"],
+            Msg::EmergencyStop => ["EMERGENCY STOP", "PARADA DE EMERGENCIA", "NOT-HALT", "ARRÊT D'URGENCE", "ARRESTO DI EMERGENZA", "非常停止", "紧急停止", "PARAGEM DE EMERGÊNCIA"],
+            Msg::Refresh => ["Refresh", "Actualizar", "Aktualisieren", "Actualiser", "Aggiorna", "更新", "刷新", "Atualizar"],
+            Msg::NoServerSet => ["No server is set: the queue and the machines are not available", "No hay servidor configurado: la cola y las máquinas no están disponibles", "Kein Server eingestellt: Warteschlange und Maschinen sind nicht verfügbar", "Aucun serveur configuré : la file et les machines ne sont pas disponibles", "Nessun server impostato: coda e macchine non sono disponibili", "サーバー未設定：キューとマシンは利用できません", "未设置服务器：队列和设备不可用", "Sem servidor definido: a fila e as máquinas não estão disponíveis"],
+            Msg::MachinesTitle => ["Machines on the server", "Máquinas del servidor", "Maschinen am Server", "Machines du serveur", "Macchine sul server", "サーバー上のマシン", "服务器上的设备", "Máquinas no servidor"],
+            Msg::ProjectObjects => ["Objects: {}", "Objetos: {}", "Objekte: {}", "Objets : {}", "Oggetti: {}", "オブジェクト: {}", "对象: {}", "Objetos: {}"],
+            Msg::ProjectPlates => ["Plates: {}", "Placas: {}", "Platten: {}", "Plateaux : {}", "Piatti: {}", "プレート: {}", "构建板: {}", "Placas: {}"],
+            Msg::ProjectMadeBy => ["Made by: {}", "Creado con: {}", "Erstellt mit: {}", "Créé avec : {}", "Creato con: {}", "作成元: {}", "创建自: {}", "Criado com: {}"],
+            Msg::ShortcutsTitle => ["Keyboard shortcuts", "Atajos de teclado", "Tastenkürzel", "Raccourcis clavier", "Scorciatoie da tastiera", "キーボードショートカット", "键盘快捷键", "Atalhos de teclado"],
+            Msg::SchemeFamily => ["Family scheme", "Esquema de la familia", "Schema der Familie", "Schéma de la famille", "Schema della famiglia", "ファミリー共通の割り当て", "系列通用方案", "Esquema da família"],
+            Msg::SchemeOwn => ["Own scheme", "Esquema propio", "Eigenes Schema", "Schéma propre", "Schema proprio", "独自の割り当て", "自定义方案", "Esquema próprio"],
         }
     }
 
@@ -531,7 +639,7 @@ mod tests {
         seen.sort_by_key(|m| format!("{m:?}"));
         seen.dedup();
         assert_eq!(seen.len(), Msg::ALL.len());
-        assert_eq!(Msg::ALL.len(), 73);
+        assert_eq!(Msg::ALL.len(), 109);
     }
 
     #[test]
@@ -550,7 +658,13 @@ mod tests {
         for m in Msg::ALL {
             if matches!(
                 m,
-                Msg::Save | Msg::Path | Msg::Volume | Msg::ViewZoom | Msg::PanelFilament
+                Msg::Save
+                    | Msg::Path
+                    | Msg::Volume
+                    | Msg::ViewZoom
+                    | Msg::PanelFilament
+                    | Msg::TechFdm
+                    | Msg::FilamentMaterial
             ) {
                 continue;
             }
@@ -563,7 +677,7 @@ mod tests {
     #[test]
     fn the_panels_and_the_controls_of_the_new_parts_have_their_eight_values_and_the_words_of_portugal(
     ) {
-        let new = &Msg::ALL[37..];
+        let new = &Msg::ALL[37..73];
         assert_eq!(new.len(), 36);
         let mut values = 0;
         for m in new {
@@ -591,6 +705,36 @@ mod tests {
                     .count(),
                 2
             );
+        }
+    }
+
+    #[test]
+    fn the_texts_of_the_tabs_and_the_lists_have_their_eight_values_and_keep_the_order_of_their_places(
+    ) {
+        let new = &Msg::ALL[73..];
+        assert_eq!(new.len(), 36);
+        let mut values = 0;
+        for m in new {
+            for l in Lang::ALL {
+                assert!(!m.tr(l).trim().is_empty(), "{m:?} in {}", l.code());
+                values += 1;
+            }
+        }
+        assert_eq!(values, 36 * 8);
+        // the question about a job holds the job first and the machine second in every language, so that the values go to their places
+        for l in Lang::ALL {
+            let q = fill(Msg::JobConfirmStart.tr(l), &["JOB", "MACHINE"]);
+            let (j, m) = (q.find("JOB"), q.find("MACHINE"));
+            assert!(j.is_some() && m.is_some() && j < m, "{}: {q}", l.code());
+        }
+        assert_eq!(Msg::EmergencyStop.tr(Lang::Pt), "PARAGEM DE EMERGÊNCIA");
+        assert_eq!(Msg::SliceNow.tr(Lang::Pt), "Fatiar");
+        assert_eq!(Msg::Refresh.tr(Lang::Pt), "Atualizar");
+        assert!(Msg::NoServerSet.tr(Lang::Pt).contains("definido"));
+        // the emergency stop is shouted in the languages that write capitals
+        for l in [Lang::En, Lang::Es, Lang::De, Lang::Fr, Lang::It, Lang::Pt] {
+            let s = Msg::EmergencyStop.tr(l);
+            assert_eq!(s, s.to_uppercase(), "{}", l.code());
         }
     }
 

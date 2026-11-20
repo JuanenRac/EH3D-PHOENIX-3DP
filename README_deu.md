@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.3-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-429-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-479-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** ein Rust-Workspace mit acht Bibliotheken und einem Kommandozeilenprogramm (`phoenix-3dp`) mit 429 Tests, die auf einem Computer laufen. Es liest und prüft STL-, OBJ- und 3MF-Modelle, enthält einen Katalog von 120 Druckerprofilen aus öffentlichen Daten (keines an einer Maschine getestet), schreibt G-Code für die Dialekte Marlin, Klipper, RepRapFirmware und Bambu mit Temperaturgrenzen, die einen Wert ablehnen, statt ihn zu kappen, und steuert Moonraker- und OctoPrint-Drucker sowie den EH3D-Server, aber nur gegen Simulatoren (im Speicher und an einem Socket dieses Computers). Es zerlegt ein geschlossenes Modell in ebene Schichten mit Perimetern, geradliniger Füllung und massiven Außenhäuten (ein kleiner Slicer mit Gitter- und Gyroid-Füllung, Brücken, einfachen Stützen, Nähten, variabler Breite, Anheben beim Verfahren und einer Zeitschätzung mit Beschleunigung; für mehrere Materialien noch nichts); das Fenster wurde weder gebaut noch auf einem Bildschirm angesehen; nichts lief an einem echten Drucker.
+**Ehrlichkeitscheck - was heute wirklich läuft:** ein Rust-Workspace mit acht Bibliotheken und einem Kommandozeilenprogramm (`phoenix-3dp`) mit 479 Tests, die auf einem Computer laufen. Es liest und prüft STL-, OBJ- und 3MF-Modelle, enthält einen Katalog von 120 Druckerprofilen aus öffentlichen Daten (keines an einer Maschine getestet), schreibt G-Code für die Dialekte Marlin, Klipper, RepRapFirmware und Bambu mit Temperaturgrenzen, die einen Wert ablehnen, statt ihn zu kappen, und steuert Moonraker- und OctoPrint-Drucker sowie den EH3D-Server, aber nur gegen Simulatoren (im Speicher und an einem Socket dieses Computers). Es zerlegt ein geschlossenes Modell in ebene Schichten mit Perimetern, geradliniger Füllung und massiven Außenhäuten (ein kleiner Slicer mit Gitter- und Gyroid-Füllung, Brücken, einfachen Stützen, Nähten, variabler Breite, Anheben beim Verfahren, Skirt, Brim oder Raft, einem Vasenmodus, langsameren kurzen Schichten, einem Rückzug nach der Länge der Fahrt und einer Zeitschätzung mit Beschleunigung; für mehrere Materialien noch nichts); das Fenster wurde weder gebaut noch auf einem Bildschirm angesehen; nichts lief an einem echten Drucker.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Version | `0.0.3` |
 | Reifegrad | Gerüst |
-| Tests | 429 |
+| Tests | 479 |
 | Technologie-Stack | Rust |
 | Auf echter Hardware | Nicht getestet: nichts davon lief an einem Drucker, nicht einmal an einem Bambu Lab A1 oder P1S. |
 
@@ -55,9 +55,9 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 | Serververbindung | 🟠 | die Einstellungen der Verbindung und ein Client des Druckerplugins des Servers über den gemeinsamen Client der Suite (Anmeldung, Erneuerung, Wiederholungen, Fehler in acht Sprachen), gegen einen Server im Speicher getestet; nie gegen den echten Server. |
 | Slicer | 🟡 | ebene Schichten eines geschlossenen Netzes, Perimeter, geradlinige, Gitter- oder Gyroid-Füllung, massive Außenhäute, Brücken, einfache Stützen, Nähte, variable Breite, G-Code je Dialekt, eine Vorschau nach Schichten als Daten und eine Zeitschätzung mit Beschleunigung; mit Eigenschaftstests an Formen aus festem Seed geprüft (das abgelegte Material entspricht dem Volumen des Teils, nichts verlässt das Bett, keine Temperatur überschreitet eine Grenze); noch kein Druck daraus auf einem Drucker. |
 | Kommandozeile | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `slice`, `project`, `version`) führt die Funktionen der Bibliotheken aus und gibt das Ergebnis aus; jeder Fehler kommt als Meldung und mit einem Exit-Code ungleich null zurück. |
-| Tests | 🟡 | 429 Tests bestehen (`cargo test --workspace`), mit Normalfällen, Grenzfällen, beschädigten Eingaben und festem Seed, wo Zufall im Spiel ist. |
+| Tests | 🟡 | 479 Tests bestehen (`cargo test --workspace`), mit Normalfällen, Grenzfällen, beschädigten Eingaben und festem Seed, wo Zufall im Spiel ist. |
 | Sicherheit | 🟡 | Schlichtes sicheres Rust (`forbid(unsafe_code)`): eine Grenze ist eine Ablehnung und nie eine Kappung; das Token wird nie ausgegeben; nichts gerät bei den Dateien in Panik; keine unabhängige Prüfung. |
-| Fenster | 🔴 | Eine erste Version der vier Reiter (Vorbereiten, Vorschau, Gerät, Projekt) ist mit `--features gui` geschrieben; ihre Logik ist getestet, aber sie wurde noch nicht gebaut oder auf einem Bildschirm angesehen. |
+| Fenster | 🔴 | Die vier Reiter (Vorbereiten, Vorschau, Gerät, Projekt) sind mit `--features gui` geschrieben: Listen von Druckern und Filamenten mit Filtern, der Plan nach Schichten mit Schieberegler, die Warteschlange des Servers mit einem Start, der eine Bestätigung braucht, ein Not-Halt, änderbare Tastenkürzel und ein Bildmodus (`--shot`); die Logik wird ohne Bildschirm getestet, aber das Fenster wurde noch nicht gebaut oder auf einem Bildschirm angesehen. |
 | Echte Hardware | 🔴 | Nicht getestet: nichts davon lief an einem Drucker, nicht einmal an einem Bambu Lab A1 oder P1S. |
 | Dokumentation | 🟡 | README in acht Sprachen, das Änderungsprotokoll, der Ordner `docs/` (Architektur, Roadmap, was noch nicht fertig ist, der Server) und die zwei aus `docs/` gezeichneten Bilder. |
 
@@ -125,9 +125,9 @@ phoenix-3dp check-profile --file PROFILE [--gcode FILE]
 phoenix-3dp convert IN OUT [--printer ID] [--force]
 phoenix-3dp filaments [--printer ID] [--nozzle MM] [--hardened]
 phoenix-3dp slice MODEL --printer ID [--settings FILE] [--filament ID] [--nozzle MM] [--hardened] [--out FILE.gcode] [--force]
-phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.sl1 [--bottom-layers N] [--lift MM]
+phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.sl1 [--bottom-layers N] [--lift MM] [--light-power MW]
 phoenix-3dp version
-phoenix-3dp gui [SETTINGS]                       the window (a build with --features gui)
+phoenix-3dp gui [SETTINGS] [--shot FILE.png]                       the window (a build with --features gui)
 ```
 
 ## ⚙️ Konfiguration
@@ -150,7 +150,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Tests
 
-Die Suite hat 429 Tests (`cargo test --workspace`, in der CI unter Windows und Linux ausgeführt), mit festem Seed, wo Zufall im Spiel ist. Sie prüfen die Normalfälle, die Grenzfälle und beschädigte Eingaben: abgeschnittene Dateien, Müll und feindliche Header lösen nie eine Panik aus, und keine Temperatur eines Druckers des Katalogs überschreitet ihre Grenze. Die CI führt außerdem `cargo fmt --all --check`, `cargo clippy` mit Warnungen als Fehler und `python -I tools/ci_validate.py` aus.
+Die Suite hat 479 Tests (`cargo test --workspace`, in der CI unter Windows und Linux ausgeführt), mit festem Seed, wo Zufall im Spiel ist. Sie prüfen die Normalfälle, die Grenzfälle und beschädigte Eingaben: abgeschnittene Dateien, Müll und feindliche Header lösen nie eine Panik aus, und keine Temperatur eines Druckers des Katalogs überschreitet ihre Grenze. Die CI führt außerdem `cargo fmt --all --check`, `cargo clippy` mit Warnungen als Fehler und `python -I tools/ci_validate.py` aus.
 
 ## 🏗️ Build und Veröffentlichung
 
@@ -169,12 +169,12 @@ Die Version steht in `Cargo.toml` und in `eh3d.project.json`; jede Version hat i
 EH3D-PHOENIX-3DP/
 ├── crates/
 │   ├── p3dp-core/                               Einheiten, Netz und Prüfungen, Grenzen, JSON, Einstellungen
-│   ├── p3dp-formats/                            Leser für STL, OBJ, 3MF, Projekte, bgcode und Harz; Schreiber, ZIP
+│   ├── p3dp-formats/                            Leser für STL, OBJ, 3MF, Projekte, bgcode und Harz; Schreiber, ZIP, PNG, Harzsteuerung
 │   ├── p3dp-profiles/                           Drucker aus öffentlichen Fakten, Filamente, die Profildatei
 │   ├── p3dp-gcode/                              G-Code-Schreiber für vier Dialekte, die Programmprüfung
-│   ├── p3dp-link/                               Treiber, normalisierter Zustand, TCP, Simulatoren, Bambu LAN
+│   ├── p3dp-link/                               Treiber, normierter Zustand, TCP, Simulatoren, Bambu LAN (Protokollbytes, keine Verbindung)
 │   ├── p3dp-server-bridge/                      Einstellungen der Serververbindung, Client des Plugins
-│   ├── p3dp-slicer/                             der Slicer: Schichten, Perimeter, Füllung, Brücken, Stützen, G-Code
+│   ├── p3dp-slicer/                             der Slicer: Schichten, Umfänge, Füllung, Brücken, Stützen, Skirt, Brim, Raft, G-Code
 │   └── p3dp-viewer/                             das Modell des 3D-Betrachters: Kamera, Auswahl, Schichten
 ├── src/
 │   ├── lib.rs                                   die Bibliothek des Programms: was Kommandozeile und Fenster nutzen
@@ -182,8 +182,15 @@ EH3D-PHOENIX-3DP/
 │   ├── cli.rs                                   die Befehle: printers, info, check-profile, convert, filaments, slice, project, version
 │   ├── app_state.rs                             der Zustand des Fensters ohne Fenster: Reiter, Drucker, Modell, Berichte, simuliertes Gerät
 │   ├── config.rs                                die Einstellungsdatei: Grenzen, Serververbindung, Sprache und Standarddrucker
+│   ├── device.rs                                die Drucker des Servers, die Warteschlange, ein Start mit Bestätigung, der Not-Halt
 │   ├── i18n.rs                                  die Texte des Programms in den acht Sprachen
+│   ├── keys.rs                                  die Tastenkürzel: das Schema der Familie, ein eigenes und die Änderungen
+│   ├── lists.rs                                 die Listen der Drucker und der Filamente mit ihren Filtern
+│   ├── look.rs                                  die Farben, das Zeichen und die Zeichnungen des Fensters und seine Anordnung nach Größe
+│   ├── preview.rs                               Slicen im Fenster, der Schichtenregler und die Linien des Plans auf dem Bildschirm
 │   ├── project.rs                               das Projekt: ein Modell und sein Drucker im eigenen 3MF-Paket
+│   ├── server_ui.rs                             die Einstellungen des Servers, der Zustand der Verbindung und die Anmeldung über das Panel der Suite
+│   ├── shot.rs                                  der Bildmodus des Fensters (--shot) und die PNG-Datei, die er schreibt
 │   ├── view.rs                                  die Orbit-Kamera, die ein Netz in Linien für die Vorschau umwandelt
 │   └── gui.rs                                   das Fenster (egui, mit dem Feature gui): zeichnet den Zustand und gibt weiter, was die Person tut
 ├── tests/

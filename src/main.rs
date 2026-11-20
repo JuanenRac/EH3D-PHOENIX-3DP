@@ -28,31 +28,47 @@ fn main() -> ExitCode {
 fn window(args: &[String], lang: Option<&str>) -> ExitCode {
     use eh3d_phoenix_3dp::config::AppConfig;
     use eh3d_phoenix_3dp::i18n::Lang;
-    let config = match args.first() {
+    use eh3d_phoenix_3dp::shot;
+    let parsed = match shot::parse_window_args(args) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("error: {e}");
+            return ExitCode::from(2);
+        }
+    };
+    let config = match &parsed.config {
         Some(path) => match std::fs::read_to_string(path)
             .map_err(|e| e.to_string())
             .and_then(|t| AppConfig::from_text(&t))
         {
             Ok(c) => c,
             Err(e) => {
-                eprintln!("{path}: {e}");
+                eprintln!("{}: {e}", path.display());
                 return ExitCode::from(1);
             }
         },
         None => AppConfig::default(),
     };
-    let language = config.lang.unwrap_or_else(|| Lang::detect(None, lang));
-    match eh3d_phoenix_3dp::gui::run(config, language) {
+    let language = parsed
+        .lang
+        .or(config.lang)
+        .unwrap_or_else(|| Lang::detect(None, lang));
+    match eh3d_phoenix_3dp::gui::run(config, language, &parsed) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            eprintln!("the window could not start: {e}");
+            eprintln!("error: the window could not run: {e}");
             ExitCode::from(1)
         }
     }
 }
 
 #[cfg(not(feature = "gui"))]
-fn window(_args: &[String], _lang: Option<&str>) -> ExitCode {
+fn window(args: &[String], _lang: Option<&str>) -> ExitCode {
+    // the arguments are still read, so that a mistake in them is told the same with or without a window
+    if let Err(e) = eh3d_phoenix_3dp::shot::parse_window_args(args) {
+        eprintln!("error: {e}");
+        return ExitCode::from(2);
+    }
     eprintln!("this build has no window: build it with `cargo build --release --features gui`");
     ExitCode::from(2)
 }
