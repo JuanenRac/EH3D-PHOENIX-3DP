@@ -8,6 +8,7 @@ pub mod error;
 pub mod gcode_file;
 pub mod inflate;
 pub mod obj;
+pub mod project3mf;
 pub mod stl;
 pub mod threemf;
 pub mod xml;
