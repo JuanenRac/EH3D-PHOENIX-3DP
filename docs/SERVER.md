@@ -4,7 +4,7 @@ The EH3D server (`eh3d-server`) and the programs around it are the centre of the
 
 ## The settings of the link
 
-They are the same keys, with the same ranges and defaults, as the common client of the suite (`eh3d-serverclient`). They are read from the settings file (`--config FILE`, see `examples/phoenix-3dp.cfg`).
+They are the same keys, with the same ranges and defaults, as the common client of the suite (`eh3d-serverclient`, which this program uses: `p3dp-server-bridge` hands every key to it, so a value the suite refuses is refused here too). They are read from the settings file (`--config FILE`, see `examples/phoenix-3dp.cfg`).
 
 | Key | Range | Default | Meaning |
 |---|---|---|---|
@@ -21,24 +21,30 @@ A value out of its range is an error that names the key and the line, and change
 
 ## The retry rules
 
-A connection that could not be made is tried again for any request, because nothing was sent. A time-out, a broken connection or a 502, 503 or 504 is tried again only for GET, PUT and DELETE; a POST (a job) is never sent twice by the client. The pauses double up to two seconds with a jitter. The rules are in `p3dp-link/src/retry.rs` and tested with a fixed seed.
+A connection that could not be made is tried again for any request, because nothing was sent. A time-out, a broken connection or a 502, 503 or 504 is tried again only for GET, PUT and DELETE; a POST (a job) is never sent twice by the client. The pauses double up to two seconds. For the server they are the rules of the common client; for a printer reached straight (Moonraker, OctoPrint) they are in `p3dp-link/src/retry.rs`, over `TcpTransport` (plain HTTP/1.1, no TLS, a limit of time to connect and to each read, a limit on the head and the body of an answer, and no byte that could start another request), and tested with a fixed seed against a socket of the same computer.
 
-## The printer plugin: a draft
+## The printer plugin
 
-The server is to have a plugin for printers (`printer3d`). The routes below are the draft the thin client of `p3dp-server-bridge` follows; they are served by the server in memory of the tests and not by the real server yet.
+The server serves a plugin for 3D printers (`printer3d`) under the generic routes of its machines and jobs. The client of `p3dp-server-bridge` speaks these routes; it has been tried against a double of them in memory, never against a running server.
 
 | Route | Use |
 |---|---|
 | `GET /api/v1/health` | is the server there (no token is sent) |
-| `GET /api/v1/printer3d/printers` | the printers and a summary of their state |
-| `GET /api/v1/printer3d/printers/{id}/state` | the normalized state of one printer |
-| `GET /api/v1/printer3d/queue` | the queue |
-| `POST /api/v1/printer3d/queue` | put a job in the queue |
+| `POST /api/v1/auth/login`, `refresh`, `logout` | the login of the program, with the application `phoenix-3dp` (the server needs that name in `auth_extra_apps`, or a token of a program) |
+| `GET /api/v1/work/machines` | the machines of every plugin; the client keeps the ones whose plugin is `printer3d`, with their model, connection, limits of temperature and whether they are latched |
+| `GET /api/v1/work/machines/{id}/temperatures`, `.../layer` | the heaters with their limits, and the layer a print is at |
+| `POST /api/v1/work/machines` | an administrator makes a machine for a profile of the catalog (the model that the server knows, or `generic`, the conservative limits) |
+| `POST /api/v1/work/jobs` | puts a program in the queue; the program is read first and a temperature over the limit is refused with its line and nothing is sent |
+| `GET /api/v1/work/jobs`, `GET /api/v1/work/jobs/{id}` | the queue and one job |
+| `POST /api/v1/work/jobs/{id}/start`, `pause`, `resume`, `cancel` | what a person does to a job |
+| `POST /api/v1/work/machines/{id}/emergency-stop` | heaters off and motors released at once; the machine stays latched until an administrator calls `.../release` |
+
+The limits of temperature are checked twice: by the program with the stricter of its own profile and the limits the server reports for the machine, and by the server, which refuses a program over its limits whoever sends it (`422 program_over_limit`).
 
 ## The queue never starts a job by itself
 
-Every request to the queue says `auto_start: false` and `confirm_before_start: true`. Whether the server may start jobs without a person is the policy of the server, off by default; a server whose policy is off answers 403 to a request that asks for it, and the program never asks.
+The program only ever *queues* a job. Starting it is a separate call that needs a `Confirmation`, a value that only the call standing for a person's click can make, so code that has the id of a job cannot move a printer. Whether the server starts queued jobs by itself (`auto_start_queue` of the machine) is the policy of the server, off by default, and the program never asks for it.
 
 ## What the server will own
 
-The connection to each printer (one owner per printer, so the clients never open their own), the credentials of the printers (encrypted at rest; the clients only see identifiers), the queue, the history, the camera relay and the permissions per user and per printer. Slicing may also run in the server, as an option. None of this exists in the server yet; the roadmap says when.
+The connection to each printer (one owner per printer, so the clients never open their own), the credentials of the printers (encrypted at rest; the clients only see identifiers), the queue, the history, the camera relay and the permissions per user and per printer. Slicing may also run in the server, as an option. The queue, the plugin and the limits are in the server; the credentials of the printers and the camera relay are still to come.

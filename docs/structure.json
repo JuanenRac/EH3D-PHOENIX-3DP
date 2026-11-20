@@ -42,14 +42,14 @@
         {
           "name": "p3dp-formats/",
           "desc": {
-            "en": "STL, OBJ and 3MF readers, writers, ZIP and inflate",
-            "es": "lectores STL, OBJ y 3MF, escritores, ZIP e inflate",
-            "de": "STL-, OBJ- und 3MF-Leser, Schreiber, ZIP und Inflate",
-            "fr": "lecteurs STL, OBJ et 3MF, écrivains, ZIP et inflate",
-            "it": "lettori STL, OBJ e 3MF, scrittori, ZIP e inflate",
-            "ja": "STL・OBJ・3MF の読み込み、書き出し、ZIP",
-            "zh": "STL、OBJ、3MF 读取与写出、ZIP",
-            "pt": "leitores STL, OBJ e 3MF, escritores, ZIP e inflate"
+            "en": "STL, OBJ, 3MF and project readers, writers, ZIP",
+            "es": "lectores STL, OBJ, 3MF y proyectos, escritores, ZIP",
+            "de": "STL-, OBJ-, 3MF- und Projekt-Leser, Schreiber, ZIP",
+            "fr": "lecteurs STL, OBJ, 3MF et projets, écrivains, ZIP",
+            "it": "lettori STL, OBJ, 3MF e progetti, scrittori, ZIP",
+            "ja": "STL・OBJ・3MF・プロジェクトの読み込み、書き出し、ZIP",
+            "zh": "STL、OBJ、3MF 与项目读取、写出、ZIP",
+            "pt": "leitores STL, OBJ, 3MF e projetos, escritores, ZIP"
           }
         },
         {
@@ -81,27 +81,40 @@
         {
           "name": "p3dp-link/",
           "desc": {
-            "en": "drivers, normalized state, simulators, Bambu LAN (design)",
-            "es": "controladores, estado normalizado, simuladores, Bambu LAN",
-            "de": "Treiber, normalisierter Zustand, Simulatoren, Bambu LAN",
-            "fr": "pilotes, état normalisé, simulateurs, Bambu LAN (conception)",
-            "it": "driver, stato normalizzato, simulatori, Bambu LAN",
-            "ja": "ドライバー、正規化状態、シミュレーター、Bambu LAN",
-            "zh": "驱动、规范化状态、模拟器、Bambu LAN",
-            "pt": "controladores, estado normalizado, simuladores, Bambu LAN"
+            "en": "drivers, normalized state, TCP, simulators, Bambu LAN (design)",
+            "es": "controladores, estado normalizado, TCP, simuladores, Bambu LAN",
+            "de": "Treiber, normalisierter Zustand, TCP, Simulatoren, Bambu LAN",
+            "fr": "pilotes, état normalisé, TCP, simulateurs, Bambu LAN (conception)",
+            "it": "driver, stato normalizzato, TCP, simulatori, Bambu LAN",
+            "ja": "ドライバー、正規化状態、TCP、シミュレーター、Bambu LAN",
+            "zh": "驱动、规范化状态、TCP、模拟器、Bambu LAN",
+            "pt": "controladores, estado normalizado, TCP, simuladores, Bambu LAN"
           }
         },
         {
           "name": "p3dp-server-bridge/",
           "desc": {
-            "en": "settings of the server link, thin client of its routes",
-            "es": "ajustes del enlace con el servidor, cliente fino",
-            "de": "Einstellungen der Serververbindung, dünner Client",
-            "fr": "réglages de la liaison au serveur, client léger",
-            "it": "impostazioni del collegamento al server, client leggero",
-            "ja": "サーバー接続の設定と薄いクライアント",
-            "zh": "服务器连接设置和轻量客户端",
-            "pt": "definições da ligação ao servidor, cliente leve"
+            "en": "settings of the server link, client of the printer plugin",
+            "es": "ajustes del enlace con el servidor, cliente del complemento",
+            "de": "Einstellungen der Serververbindung, Client des Plugins",
+            "fr": "réglages de la liaison au serveur, client du greffon",
+            "it": "impostazioni del collegamento al server, client del plugin",
+            "ja": "サーバー接続の設定とプラグインのクライアント",
+            "zh": "服务器连接设置和插件客户端",
+            "pt": "definições da ligação ao servidor, cliente do plugin"
+          }
+        },
+        {
+          "name": "p3dp-slicer/",
+          "desc": {
+            "en": "the minimal slicer: layers, perimeters, infill, G-code",
+            "es": "el laminador mínimo: capas, perímetros, relleno, G-code",
+            "de": "der minimale Slicer: Schichten, Perimeter, Füllung, G-Code",
+            "fr": "le trancheur minimal : couches, périmètres, remplissage, G-code",
+            "it": "lo slicer minimo: strati, perimetri, riempimento, G-code",
+            "ja": "最小限のスライサー：層、外周、インフィル、G コード",
+            "zh": "最简切片器：分层、外壁、填充、G 代码",
+            "pt": "o fatiador mínimo: camadas, perímetros, preenchimento, G-code"
           }
         }
       ]
@@ -140,14 +153,14 @@
         {
           "name": "cli.rs",
           "desc": {
-            "en": "the commands: printers, info, check-profile, convert and version",
-            "es": "las órdenes: printers, info, check-profile, convert y version",
-            "de": "die Befehle: printers, info, check-profile, convert und version",
-            "fr": "les commandes : printers, info, check-profile, convert et version",
-            "it": "i comandi: printers, info, check-profile, convert e version",
-            "ja": "コマンド：printers、info、check-profile、convert、version",
-            "zh": "命令：printers、info、check-profile、convert 和 version",
-            "pt": "os comandos: printers, info, check-profile, convert e version"
+            "en": "the commands: printers, info, check-profile, convert, slice, project, version",
+            "es": "las órdenes: printers, info, check-profile, convert, slice, project, version",
+            "de": "die Befehle: printers, info, check-profile, convert, slice, project, version",
+            "fr": "les commandes : printers, info, check-profile, convert, slice, project, version",
+            "it": "i comandi: printers, info, check-profile, convert, slice, project, version",
+            "ja": "コマンド：printers、info、check-profile、convert、slice、project、version",
+            "zh": "命令：printers、info、check-profile、convert、slice、project、version",
+            "pt": "os comandos: printers, info, check-profile, convert, slice, project, version"
           }
         },
         {

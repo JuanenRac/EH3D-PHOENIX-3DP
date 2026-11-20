@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.1-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-237-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-307-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Honesty check - what actually runs today:** a Rust workspace of six libraries and a command line program (`phoenix-3dp`) with 237 tests that run on a computer. It reads STL, OBJ and 3MF models and checks them, holds a catalog of 46 printer profiles built from public data (none of them tried on a machine), writes G-code for the Marlin, Klipper, RepRapFirmware and Bambu dialects with temperature limits that refuse a value instead of cutting it down, and drives Moonraker and OctoPrint printers and the EH3D server, but only against simulators in memory. It is not a slicer yet (it does not turn a model into layers); the window has not been built or looked at on a screen; nothing has run on a real printer.
+**Honesty check - what actually runs today:** a Rust workspace of seven libraries and a command line program (`phoenix-3dp`) with 307 tests that run on a computer. It reads STL, OBJ and 3MF models and checks them, holds a catalog of 46 printer profiles built from public data (none of them tried on a machine), writes G-code for the Marlin, Klipper, RepRapFirmware and Bambu dialects with temperature limits that refuse a value instead of cutting it down, and drives Moonraker and OctoPrint printers and the EH3D server, but only against simulators (in memory, and on a socket of this computer). It slices a closed model into flat layers with perimeters, a rectilinear infill and solid skins (a first minimal slicer, with no supports, variable width or bridges yet); the window has not been built or looked at on a screen; nothing has run on a real printer.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Version | `0.0.1` |
 | Maturity | Scaffolding |
-| Tests | 237 |
+| Tests | 307 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a printer, not even on a Bambu Lab A1 or a P1S. |
 
@@ -48,13 +48,14 @@ Each line is one part of this repository and the light says how far it is today.
 | Area | State | What it means here |
 |---|---|---|
 | Core | 🟡 | units in nanometres, the mesh and its checks, the limits of the readers, a small JSON reader and a secret that never prints itself; tested on a computer with normal and damaged input. |
-| Models and files | 🟡 | STL (text and binary), OBJ and basic 3MF are read with size limits and refusals that name what they found; the own 3MF package, binary STL, OBJ and the G-code file are written; checked with fuzz tests, not with a collection of real files from other programs. |
+| Models and files | 🟡 | STL (text and binary), OBJ and basic 3MF are read with size limits and refusals that name what they found; the own 3MF package, binary STL, OBJ and the G-code file are written; the objects, plates and a few settings of the 3MF projects of other programs are read (read only); checked with fuzz tests, not with a collection of real files from other programs. |
 | Printer profiles | 🟠 | 46 models from public data (volume, nozzles, dialect, ways of connecting, limits of the maker, including the Bambu Lab A1 and P1S); every one says `verified = false`, because none has been tried on a machine. |
 | G-code | 🟡 | writers for the four dialects with a safe start and end; a temperature over the limit is refused and nothing is written; a checker finds the lines of a program that go past a limit; never run on a printer. |
 | Printer drivers | 🟠 | Moonraker and OctoPrint over a transport, tried only against simulators of their protocols; Bambu LAN is a design marked experimental that does not connect. |
-| Server link | 🟠 | the settings of the link and a thin client of the draft routes of the printer plugin, tried against a server in memory; the server does not serve those routes yet. |
-| Command line | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `version`) runs the functions of the libraries and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 237 tests pass (`cargo test --workspace`), with normal cases, edge cases, damaged input and a fixed seed wherever they are random. |
+| Server link | 🟠 | the settings of the link and a client of the printer plugin of the server over the common client of the suite (login, renewal, retries, errors in eight languages), tried against a server in memory; never against the real server. |
+| Slicer | 🟡 | flat layers of a closed mesh, perimeters, rectilinear infill, solid skins, G-code per dialect and a preview by layers as data; checked with properties on shapes from a fixed seed (the plastic laid down is the volume of the part, nothing leaves the bed, no temperature goes past a limit); no print has come out of it on a printer. |
+| Command line | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `slice`, `project`, `version`) runs the functions of the libraries and prints the result; every error comes back as a message and a non-zero exit code. |
+| Tests | 🟡 | 307 tests pass (`cargo test --workspace`), with normal cases, edge cases, damaged input and a fixed seed wherever they are random. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): a limit is a refusal and never a trim; the token never prints; nothing panics on the files it is given; no independent review. |
 | Window | 🔴 | A first version of the four tabs (Prepare, Preview, Device, Project) is written with `--features gui`; its logic is tested, but it has not been built or looked at on a screen yet. |
 | Real hardware | 🔴 | Not tried: nothing here has run on a printer, not even on a Bambu Lab A1 or a P1S. |
@@ -63,16 +64,17 @@ Each line is one part of this repository and the light says how far it is today.
 ## 🎯 Overview
 
 * **The idea:** PHOENIX-3DP is the 3D printing program of the PHOENIX family. The EH3D server and its clients are the centre of the suite: this program is one more client of the server, and the stand-alone mode that talks straight to a printer is an option that is off by default.
-* **The models** (`p3dp-formats`): STL (text and binary), OBJ and basic 3MF are read with limits on the size, the number of triangles and the contents of a ZIP package; what cannot be read is refused with the name of what was found. It writes binary STL, OBJ, its own 3MF package and G-code files.
+* **The models** (`p3dp-formats`): STL (text and binary), OBJ and basic 3MF are read with limits on the size, the number of triangles and the contents of a ZIP package; what cannot be read is refused with the name of what was found. It writes binary STL, OBJ, its own 3MF package and G-code files. The projects saved as 3MF by other programs are read for their objects, plates and a few settings (read only, with limits against packages made to hurt).
 * **The profiles** (`p3dp-profiles`): a catalog of 46 printer models, FDM and resin, written from public facts: volume, nozzles, dialect, ways of connecting, multi-material system and the highest temperatures that the maker states. Every profile says whether it has been tried on a machine; none has.
 * **The G-code** (`p3dp-gcode`): writers for Marlin, Klipper, RepRapFirmware and Bambu, each with a header, a start and an end that are safe; a temperature or a move that is not allowed is refused, never cut down. A checker reads any program and finds the lines that go past the limits of a model.
-* **The link** (`p3dp-link`): one driver trait, one normalized state (fifteen states, temperatures, job, alerts) and one list of commands; Moonraker and OctoPrint are implemented over a transport and tested against an in-memory simulator of each protocol; Bambu LAN is the design of its topics and messages, marked experimental.
-* **The server** (`p3dp-server-bridge`): the settings `server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries` and `server_mdns`, the retry rules of the suite and a thin client of the draft routes of the printer plugin of the server, tested against a server in memory.
-* **Not done yet:** turning a model into layers (the slicer), the 3D viewer, the network transports and the plugin of the server. The roadmap is in `docs/ROADMAP.md` and what is missing in `docs/NOT_YET.md`.
+* **The link** (`p3dp-link`): one driver trait, one normalized state (fifteen states, temperatures, job, alerts) and one list of commands; Moonraker and OctoPrint are implemented over a transport (a plain HTTP one written with the standard library, with limits of time and size, tried against a socket of this computer) and tested against an in-memory simulator of each protocol; Bambu LAN is the design of its topics and messages, marked experimental.
+* **The server** (`p3dp-server-bridge`): the settings `server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries` and `server_mdns`, and a client of the `printer3d` plugin of the server over the common client of the suite (`eh3d-serverclient`): jobs join the queue and wait for a person to start them, the limits of temperature are checked before anything is sent, and there is the stop; tested against a server in memory.
+* **The slicer** (`p3dp-slicer`): flat layers of a closed mesh, perimeters, rectilinear infill with solid skins, G-code for the dialects of the program through its writer and the preview by layers as data; it refuses, never cuts down, what does not fit the bed, goes past a limit of temperature or is not a closed mesh.
+* **Not done yet:** the 3D viewer, a slicer with variable width, seams, bridges and supports, the Bambu LAN link and the other transports. The roadmap is in `docs/ROADMAP.md` and what is missing in `docs/NOT_YET.md`.
 
 ## 🧩 Role in EH3D
 
-EH3D-PHOENIX-3DP is the 3D printing program of the PHOENIX family of the EH3D Fabrication Suite. Today it is a set of libraries and a command line; the window is built with `--features gui`. The server `eh3d-server` and its clients are the centre of the suite: the printers, the queue and the permissions are meant to live in the server (a `printer3d` plugin is planned there), and this program talks to it with the common settings of the suite. See [docs/SERVER.md](docs/SERVER.md).
+EH3D-PHOENIX-3DP is the 3D printing program of the PHOENIX family of the EH3D Fabrication Suite. Today it is a set of libraries and a command line; the window is built with `--features gui`. The server `eh3d-server` and its clients are the centre of the suite: the printers, the queue and the permissions are meant to live in the server (the `printer3d` plugin of the server handles them), and this program talks to it with the common settings of the suite. See [docs/SERVER.md](docs/SERVER.md).
 
 ## 🏛️ Architecture
 
@@ -111,7 +113,7 @@ How the parts of this repository fit together: who uses it, what it holds and wh
 
 ## 🔌 Interfaces
 
-The libraries are `p3dp_core`, `p3dp_formats`, `p3dp_profiles`, `p3dp_gcode`, `p3dp_link` and `p3dp_server_bridge`; the program is the library `eh3d_phoenix_3dp` and the command line `phoenix-3dp`. Each command prints its result on the standard output and reports an error on the standard error with a non-zero exit code (1 for a failure of what was asked, 2 for a mistake in the command). There is no network access in this version.
+The libraries are `p3dp_core`, `p3dp_formats`, `p3dp_profiles`, `p3dp_gcode`, `p3dp_link`, `p3dp_server_bridge` and `p3dp_slicer`; the program is the library `eh3d_phoenix_3dp` and the command line `phoenix-3dp`. Each command prints its result on the standard output and reports an error on the standard error with a non-zero exit code (1 for a failure of what was asked, 2 for a mistake in the command). The only network access is the transport of the drivers and of the link to the server, and only to an address that is given.
 
 ```text
 phoenix-3dp printers [--vendor NAME] [--tech fdm|msla] [--search TEXT]
@@ -119,6 +121,8 @@ phoenix-3dp info MODEL [--printer ID]
 phoenix-3dp check-profile ID [--gcode FILE]
 phoenix-3dp check-profile --file PROFILE [--gcode FILE]
 phoenix-3dp convert IN OUT [--printer ID] [--force]
+phoenix-3dp slice MODEL --printer ID [--settings FILE] [--out FILE.gcode] [--force]
+phoenix-3dp project FILE.3mf
 phoenix-3dp version
 phoenix-3dp gui [SETTINGS]                       the window (a build with --features gui)
 ```
@@ -129,7 +133,7 @@ The settings are one file of `key = value` lines (`--config FILE`): the limits o
 
 ## 🚀 Quick start
 
-You need a stable Rust toolchain (1.88 or newer). Nothing else has to be cloned beside this repository.
+You need a stable Rust toolchain (1.88 or newer). Clone EH3D-COMMON beside this repository first: the common client of the server is taken from there.
 
 ```bash
 cargo build --release
@@ -143,7 +147,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Testing
 
-The suite has 237 tests (`cargo test --workspace`, run on Windows and Linux in the CI), with a fixed seed wherever they are random. They check the normal cases, the edge cases and damaged input: cut files, garbage and hostile headers never panic, and no temperature of any printer of the catalog goes past its limit. The CI also runs `cargo fmt --all --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 307 tests (`cargo test --workspace`, run on Windows and Linux in the CI), with a fixed seed wherever they are random. They check the normal cases, the edge cases and damaged input: cut files, garbage and hostile headers never panic, and no temperature of any printer of the catalog goes past its limit. The CI also runs `cargo fmt --all --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 
@@ -162,15 +166,16 @@ The version lives in `Cargo.toml` and in `eh3d.project.json`; each version has i
 EH3D-PHOENIX-3DP/
 ├── crates/
 │   ├── p3dp-core/                               units, mesh and its checks, limits, JSON, settings
-│   ├── p3dp-formats/                            STL, OBJ and 3MF readers, writers, ZIP and inflate
+│   ├── p3dp-formats/                            STL, OBJ, 3MF and project readers, writers, ZIP
 │   ├── p3dp-profiles/                           the catalog of printers from public facts, the profile file
 │   ├── p3dp-gcode/                              G-code writers for four dialects, the program checker
-│   ├── p3dp-link/                               drivers, normalized state, simulators, Bambu LAN (design)
-│   └── p3dp-server-bridge/                      settings of the server link, thin client of its routes
+│   ├── p3dp-link/                               drivers, normalized state, TCP, simulators, Bambu LAN (design)
+│   ├── p3dp-server-bridge/                      settings of the server link, client of the printer plugin
+│   └── p3dp-slicer/                             the minimal slicer: layers, perimeters, infill, G-code
 ├── src/
 │   ├── lib.rs                                   the library of the program: what the command line and the window use
 │   ├── main.rs                                  the command line and the start of the window
-│   ├── cli.rs                                   the commands: printers, info, check-profile, convert and version
+│   ├── cli.rs                                   the commands: printers, info, check-profile, convert, slice, project, version
 │   ├── app_state.rs                             the state of the window without a window: tabs, printer, model, reports, simulated device
 │   ├── config.rs                                the settings file: limits, server link, language and default printer
 │   ├── i18n.rs                                  the texts of the program in the eight languages
@@ -214,18 +219,18 @@ EH3D-PHOENIX-3DP/
 
 **Known limits today**
 
-* It is not a slicer yet: it does not turn a model into layers or into a program for a printer.
+* The slicer is minimal: flat layers, perimeters, rectilinear infill and solid skins; no supports, bridges, seams, variable width or multi-material, and no print has come out of it on a printer.
 * No printer has been connected, not even the Bambu Lab A1 or P1S; every profile says `verified = false`.
-* The 3MF reader takes the mesh only: components, the production extension, plates and the settings of other programs are refused or ignored.
-* The drivers have no network transport of their own yet (only the simulators); Bambu LAN is a design that does not connect, and the cloud of Bambu is not part of it.
-* The window has not been built or looked at on a screen; the names of the states are not translated yet.
+* The 3MF reader takes the mesh only (components and the production extension are refused); the projects of other programs are read for their objects, plates and settings and never changed.
+* The drivers have a plain HTTP transport, tried only against a socket of this computer and the simulators; no TLS and no WebSocket push; Bambu LAN is a design that does not connect, and the cloud of Bambu is not part of it.
+* The window has not been built or looked at on a screen.
 
 **Next**
 
 * H1: mesh geometry and a 3D viewer of its own.
-* H2: a first slicer (perimeters, infill and G-code for Marlin and Klipper).
+* H2: more of the slicer (grid infill, seams, variable width) and a calibration cube printed on a real machine.
 * H3: the editor of profiles and the base window.
-* H7: the network transports, the printer plugin of the server and the Bambu LAN link.
+* H7: the other transports (WebSocket push, PrusaLink, Duet) and the Bambu LAN link.
 * H8: try it on a Bambu Lab A1 and P1S and mark the profiles that work as verified. The whole plan is in `docs/ROADMAP.md`.
 
 ## 🌍 Languages

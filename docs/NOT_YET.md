@@ -2,9 +2,9 @@
 
 This page lists what the program does not do, and what each missing part needs. Nothing on it is hidden in the README: the table "Project status" says the same with lights.
 
-## No slicer
+## A minimal slicer
 
-The program reads a model and checks it, but it does not turn it into layers or into a program for a printer. The G-code writers write the start, the end, the temperatures and the moves that someone asks for, and the checker reads a program; the toolpaths are step H2 of the roadmap.
+The program turns a closed model into flat layers, perimeters, a rectilinear infill with solid skins and G-code, and shows the plan by layers as data. It has no supports, bridges, seam control, variable width of the lines, ironing, retraction tuned by distance, pressure advance, brim or skirt, grid or gyroid infill, adaptive layer height or multi-material; the time it estimates ignores the slowing at corners; and no print made from its G-code has been run on a printer. A model that is not closed, that faces inwards or that does not fit is refused, not repaired or scaled.
 
 ## Nothing has run on a printer
 
@@ -14,7 +14,7 @@ The program reads a model and checks it, but it does not turn it into layers or 
 
 ## Network
 
-The drivers talk to an `HttpTransport` and this version has none that opens a socket. A transport for plain HTTP, the WebSocket push of Moonraker and the push of OctoPrint are step H7. The retry rules (a refused connection is tried again for any request; a time-out only for requests that can be sent twice; never a POST) are tested against the simulators.
+The drivers talk to an `HttpTransport`; `TcpTransport` is a plain HTTP/1.1 one written with the standard library, tried only against a socket of the same computer. It has no TLS (an `https://` address is refused), follows no redirect and keeps no connection open. The WebSocket push of Moonraker and the push of OctoPrint are step H7. The retry rules (a refused connection is tried again for any request; a time-out only for requests that can be sent twice; never a POST) are tested against the simulators.
 
 ## Bambu Lab
 
@@ -22,7 +22,7 @@ The drivers talk to an `HttpTransport` and this version has none that opens a so
 
 ## Models
 
-The 3MF reader takes the mesh objects of the core specification, with units and the transform of the build items. It refuses components, objects in other files (the production extension), and it ignores colours, materials, plates and the settings that other programs store in a package. Writing a 3MF that carries the G-code for a Bambu printer is step H6.
+The projects that other programs save as 3MF are read for their metadata only (which program made them, the objects, the plates and a few settings), from the layout of their files as it looks in a package, and nothing is written back; the settings that are not in that short list are not read. The 3MF reader of the mesh takes the mesh objects of the core specification, with units and the transform of the build items. It refuses components, objects in other files (the production extension), and it ignores colours, materials, plates and the settings that other programs store in a package. Writing a 3MF that carries the G-code for a Bambu printer is step H6.
 
 ## Resin printers
 
@@ -30,8 +30,8 @@ The catalog has resin (mSLA) printers, with their volume and how they connect, b
 
 ## The window
 
-It has four tabs and its logic is tested, but it has not been built or looked at on a screen. The 3D viewer with a graphics card (wgpu) is step H1; today the preview is lines. The names of the printer states are not translated yet (the keys are shown).
+It has four tabs and its logic is tested, but it has not been built or looked at on a screen. The 3D viewer with a graphics card (wgpu) is step H1; today the preview is lines. The names of the fifteen printer states are translated in the eight languages.
 
 ## The server
 
-The routes under `/api/v1/printer3d/` that the thin client uses are a draft: the server does not serve them yet, and the client has only met the server in memory of this repository. When the common client of the suite is taken in, the thin client becomes a call to it.
+The client speaks the routes of the `printer3d` plugin of the server through the common client of the suite, but has only met a double of them in memory: it has never talked to a running `eh3d-server`. The name `phoenix-3dp` is not among the applications the server knows by default, so a login needs it in `auth_extra_apps` (or a token of a program).

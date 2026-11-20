@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.1-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-237-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-307-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Contrôle d'honnêteté - ce qui fonctionne vraiment aujourd'hui :** un espace de travail Rust de six bibliothèques et un programme en ligne de commande (`phoenix-3dp`) avec 237 tests qui s'exécutent sur un ordinateur. Il lit et vérifie des modèles STL, OBJ et 3MF, contient un catalogue de 46 profils d'imprimante construits à partir de données publiques (aucun essayé sur une machine), écrit du G-code pour les dialectes Marlin, Klipper, RepRapFirmware et Bambu avec des limites de température qui refusent une valeur au lieu de la rogner, et pilote des imprimantes Moonraker et OctoPrint et le serveur EH3D, mais seulement contre des simulateurs en mémoire. Ce n'est pas encore un trancheur (il ne transforme pas un modèle en couches) ; la fenêtre n'a pas été compilée ni vue sur un écran ; rien n'a tourné sur une vraie imprimante.
+**Contrôle d'honnêteté - ce qui fonctionne vraiment aujourd'hui :** un espace de travail Rust de sept bibliothèques et un programme en ligne de commande (`phoenix-3dp`) avec 307 tests qui s'exécutent sur un ordinateur. Il lit et vérifie des modèles STL, OBJ et 3MF, contient un catalogue de 46 profils d'imprimante construits à partir de données publiques (aucun essayé sur une machine), écrit du G-code pour les dialectes Marlin, Klipper, RepRapFirmware et Bambu avec des limites de température qui refusent une valeur au lieu de la rogner, et pilote des imprimantes Moonraker et OctoPrint et le serveur EH3D, mais seulement contre des simulateurs (en mémoire et sur un socket de cet ordinateur). Il découpe un modèle fermé en couches planes avec des périmètres, un remplissage rectiligne et des peaux pleines (un premier trancheur minimal, encore sans supports, largeur variable ni ponts) ; la fenêtre n'a pas été compilée ni vue sur un écran ; rien n'a tourné sur une vraie imprimante.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Version | `0.0.1` |
 | Maturité | Échafaudage |
-| Tests | 237 |
+| Tests | 307 |
 | Pile technique | Rust |
 | Sur du matériel réel | Pas essayé : rien de tout cela n'a tourné sur une imprimante, pas même sur une Bambu Lab A1 ou une P1S. |
 
@@ -48,13 +48,14 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 | Domaine | État | Ce que cela veut dire ici |
 |---|---|---|
 | Cœur | 🟡 | unités en nanomètres, le maillage et ses vérifications, les limites des lecteurs, un petit lecteur JSON et un secret qui ne s'affiche jamais ; testé sur ordinateur avec des entrées normales et abîmées. |
-| Modèles et fichiers | 🟡 | STL (texte et binaire), OBJ et 3MF de base sont lus avec des limites de taille et des refus qui disent ce qu'ils ont trouvé ; le paquet 3MF propre, le STL binaire, l'OBJ et le fichier de G-code sont écrits ; vérifié avec des tests de fuzzing, pas avec une collection de vrais fichiers d'autres programmes. |
+| Modèles et fichiers | 🟡 | STL (texte et binaire), OBJ et 3MF de base sont lus avec des limites de taille et des refus qui disent ce qu'ils ont trouvé ; le paquet 3MF propre, le STL binaire, l'OBJ et le fichier de G-code sont écrits ; des projets 3MF d'autres programmes on lit les objets, les plateaux et quelques réglages (lecture seule) ; vérifié avec des tests de fuzzing, pas avec une collection de vrais fichiers d'autres programmes. |
 | Profils d'imprimante | 🟠 | 46 modèles à partir de données publiques (volume, buses, dialecte, modes de connexion, limites du fabricant, dont les Bambu Lab A1 et P1S) ; tous disent `verified = false`, car aucun n'a été essayé sur une machine. |
 | G-code | 🟡 | écrivains pour les quatre dialectes avec un début et une fin sûrs ; une température au-dessus de la limite est refusée et rien n'est écrit ; un vérificateur trouve les lignes d'un programme qui dépassent une limite ; jamais exécuté sur une imprimante. |
 | Pilotes d'imprimante | 🟠 | Moonraker et OctoPrint sur un transport, essayés seulement contre des simulateurs de leurs protocoles ; Bambu LAN est une conception marquée expérimentale qui ne se connecte pas. |
-| Liaison avec le serveur | 🟠 | les réglages de la liaison et un client léger des routes provisoires du greffon d'imprimantes, essayé contre un serveur en mémoire ; le serveur ne sert pas encore ces routes. |
-| Ligne de commande | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `version`) exécute les fonctions des bibliothèques et affiche le résultat ; chaque erreur revient sous forme de message et d'un code de sortie non nul. |
-| Tests | 🟡 | 237 tests réussissent (`cargo test --workspace`), avec des cas normaux, des cas limites, des entrées abîmées et une graine fixe là où il y a du hasard. |
+| Liaison avec le serveur | 🟠 | les réglages de la liaison et un client du greffon d'imprimantes du serveur au-dessus du client commun de la suite (connexion, renouvellement, nouvelles tentatives, erreurs en huit langues), essayé contre un serveur en mémoire ; jamais contre le vrai serveur. |
+| Trancheur | 🟡 | couches planes d'un maillage fermé, périmètres, remplissage rectiligne, peaux pleines, G-code par dialecte et un aperçu par couches sous forme de données ; vérifié par des propriétés sur des formes à graine fixe (le plastique déposé est le volume de la pièce, rien ne sort du plateau, aucune température ne dépasse une limite) ; aucune impression n'en est sortie sur une imprimante. |
+| Ligne de commande | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `slice`, `project`, `version`) exécute les fonctions des bibliothèques et affiche le résultat ; chaque erreur revient sous forme de message et d'un code de sortie non nul. |
+| Tests | 🟡 | 307 tests réussissent (`cargo test --workspace`), avec des cas normaux, des cas limites, des entrées abîmées et une graine fixe là où il y a du hasard. |
 | Sécurité | 🟡 | Rust sûr et simple (`forbid(unsafe_code)`) : une limite est un refus et jamais une coupe ; le jeton ne s'affiche jamais ; rien ne panique sur les fichiers reçus ; pas de revue indépendante. |
 | Fenêtre | 🔴 | Une première version des quatre onglets (Préparer, Aperçu, Appareil, Projet) est écrite avec `--features gui` ; sa logique est testée, mais elle n'a pas encore été compilée ni vue sur un écran. |
 | Matériel réel | 🔴 | Pas essayé : rien de tout cela n'a tourné sur une imprimante, pas même sur une Bambu Lab A1 ou une P1S. |
@@ -63,16 +64,17 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 ## 🎯 Présentation
 
 * **L'idée :** PHOENIX-3DP est le programme d'impression 3D de la famille PHOENIX. Le serveur EH3D et ses clients sont le centre de la suite : ce programme est un client de plus du serveur, et le mode autonome qui parle directement à une imprimante est une option désactivée par défaut.
-* **Les modèles** (`p3dp-formats`) : STL (texte et binaire), OBJ et 3MF de base sont lus avec des limites de taille, de nombre de triangles et de contenu d'un paquet ZIP ; ce qui ne peut pas être lu est refusé avec le nom de ce qui a été trouvé. Il écrit du STL binaire, de l'OBJ, son propre paquet 3MF et des fichiers de G-code.
+* **Les modèles** (`p3dp-formats`) : STL (texte et binaire), OBJ et 3MF de base sont lus avec des limites de taille, de nombre de triangles et de contenu d'un paquet ZIP ; ce qui ne peut pas être lu est refusé avec le nom de ce qui a été trouvé. Il écrit du STL binaire, de l'OBJ, son propre paquet 3MF et des fichiers de G-code. Les projets enregistrés en 3MF par d'autres programmes sont lus pour leurs objets, plateaux et quelques réglages (lecture seule, avec des limites contre les paquets conçus pour nuire).
 * **Les profils** (`p3dp-profiles`) : un catalogue de 46 modèles d'imprimante, FDM et résine, écrit à partir de faits publics : volume, buses, dialecte, modes de connexion, système multi-matériaux et températures maximales annoncées par le fabricant. Chaque profil dit s'il a été essayé sur une machine ; aucun ne l'a été.
 * **Le G-code** (`p3dp-gcode`) : des écrivains pour Marlin, Klipper, RepRapFirmware et Bambu, chacun avec un en-tête, un début et une fin sûrs ; une température ou un mouvement non permis est refusé, jamais rogné. Un vérificateur lit n'importe quel programme et trouve les lignes qui dépassent les limites d'un modèle.
-* **La liaison** (`p3dp-link`) : un trait de pilote, un état normalisé (quinze états, températures, travail, alertes) et une liste de commandes ; Moonraker et OctoPrint sont implémentés sur un transport et testés contre un simulateur en mémoire de chaque protocole ; Bambu LAN est la conception de ses sujets et messages, marquée expérimentale.
-* **Le serveur** (`p3dp-server-bridge`) : les réglages `server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries` et `server_mdns`, les règles de nouvelle tentative de la suite et un client léger des routes provisoires du greffon d'imprimantes du serveur, testé contre un serveur en mémoire.
-* **Pas encore fait :** transformer un modèle en couches (le trancheur), le visualiseur 3D, les transports réseau et le greffon du serveur. La feuille de route est dans `docs/ROADMAP.md` et ce qui manque dans `docs/NOT_YET.md`.
+* **La liaison** (`p3dp-link`) : un trait de pilote, un état normalisé (quinze états, températures, travail, alertes) et une liste de commandes ; Moonraker et OctoPrint sont implémentés sur un transport (un HTTP simple écrit avec la bibliothèque standard, avec des limites de temps et de taille, essayé sur un socket de cet ordinateur) et testés contre un simulateur en mémoire de chaque protocole ; Bambu LAN est la conception de ses sujets et messages, marquée expérimentale.
+* **Le serveur** (`p3dp-server-bridge`) : les réglages `server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries` et `server_mdns`, et un client du greffon `printer3d` du serveur au-dessus du client commun de la suite (`eh3d-serverclient`) : les travaux entrent dans la file et attendent qu'une personne les lance, les limites de température sont vérifiées avant tout envoi, et il y a l'arrêt ; testé contre un serveur en mémoire.
+* **Le trancheur** (`p3dp-slicer`) : couches planes d'un maillage fermé, périmètres, remplissage rectiligne avec peaux pleines, G-code pour les dialectes du programme via son écrivain et l'aperçu par couches sous forme de données ; il refuse, sans jamais rogner, ce qui ne tient pas sur le plateau, dépasse une limite de température ou n'est pas un maillage fermé.
+* **Pas encore fait :** le visualiseur 3D, un trancheur à largeur variable, avec coutures, ponts et supports, la liaison Bambu LAN et les autres transports. La feuille de route est dans `docs/ROADMAP.md` et ce qui manque dans `docs/NOT_YET.md`.
 
 ## 🧩 Rôle dans EH3D
 
-EH3D-PHOENIX-3DP est le programme d'impression 3D de la famille PHOENIX de la EH3D Fabrication Suite. Aujourd'hui c'est un ensemble de bibliothèques et une ligne de commande ; la fenêtre se compile avec `--features gui`. Le serveur `eh3d-server` et ses clients sont le centre de la suite : les imprimantes, la file et les permissions sont destinées à vivre dans le serveur (un greffon `printer3d` y est prévu), et ce programme lui parle avec les réglages communs de la suite. Voir [docs/SERVER.md](docs/SERVER.md).
+EH3D-PHOENIX-3DP est le programme d'impression 3D de la famille PHOENIX de la EH3D Fabrication Suite. Aujourd'hui c'est un ensemble de bibliothèques et une ligne de commande ; la fenêtre se compile avec `--features gui`. Le serveur `eh3d-server` et ses clients sont le centre de la suite : les imprimantes, la file et les permissions sont destinées à vivre dans le serveur (le greffon `printer3d` l'y sert), et ce programme lui parle avec les réglages communs de la suite. Voir [docs/SERVER.md](docs/SERVER.md).
 
 ## 🏛️ Architecture
 
@@ -111,7 +113,7 @@ Comment les parties de ce dépôt s'articulent : qui l'utilise, ce qu'il contien
 
 ## 🔌 Interfaces
 
-Les bibliothèques sont `p3dp_core`, `p3dp_formats`, `p3dp_profiles`, `p3dp_gcode`, `p3dp_link` et `p3dp_server_bridge` ; le programme est la bibliothèque `eh3d_phoenix_3dp` et la ligne de commande `phoenix-3dp`. Chaque commande affiche son résultat sur la sortie standard et signale une erreur sur la sortie d'erreur avec un code de sortie non nul (1 pour un échec de ce qui était demandé, 2 pour une faute dans la commande). Cette version n'accède pas au réseau.
+Les bibliothèques sont `p3dp_core`, `p3dp_formats`, `p3dp_profiles`, `p3dp_gcode`, `p3dp_link`, `p3dp_server_bridge` et `p3dp_slicer` ; le programme est la bibliothèque `eh3d_phoenix_3dp` et la ligne de commande `phoenix-3dp`. Chaque commande affiche son résultat sur la sortie standard et signale une erreur sur la sortie d'erreur avec un code de sortie non nul (1 pour un échec de ce qui était demandé, 2 pour une faute dans la commande). Le seul accès au réseau est le transport des pilotes et de la liaison avec le serveur, et seulement vers une adresse donnée.
 
 ```text
 phoenix-3dp printers [--vendor NAME] [--tech fdm|msla] [--search TEXT]
@@ -119,6 +121,8 @@ phoenix-3dp info MODEL [--printer ID]
 phoenix-3dp check-profile ID [--gcode FILE]
 phoenix-3dp check-profile --file PROFILE [--gcode FILE]
 phoenix-3dp convert IN OUT [--printer ID] [--force]
+phoenix-3dp slice MODEL --printer ID [--settings FILE] [--out FILE.gcode] [--force]
+phoenix-3dp project FILE.3mf
 phoenix-3dp version
 phoenix-3dp gui [SETTINGS]                       the window (a build with --features gui)
 ```
@@ -129,7 +133,7 @@ Les réglages sont un fichier de lignes `clé = valeur` (`--config FICHIER`) : l
 
 ## 🚀 Démarrage rapide
 
-Il vous faut une chaîne d'outils Rust stable (1.88 ou plus récente). Rien d'autre n'est à cloner à côté de ce dépôt.
+Il vous faut une chaîne d'outils Rust stable (1.88 ou plus récente). Clonez d'abord EH3D-COMMON à côté de ce dépôt : le client commun du serveur en vient.
 
 ```bash
 cargo build --release
@@ -143,7 +147,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Tests
 
-La suite compte 237 tests (`cargo test --workspace`, exécutés sous Windows et Linux dans la CI), avec une graine fixe là où il y a du hasard. Ils vérifient les cas normaux, les cas limites et les entrées abîmées : des fichiers coupés, du bruit et des en-têtes hostiles ne font jamais paniquer, et aucune température d'aucune imprimante du catalogue ne dépasse sa limite. La CI exécute aussi `cargo fmt --all --check`, `cargo clippy` avec les avertissements en erreurs et `python -I tools/ci_validate.py`.
+La suite compte 307 tests (`cargo test --workspace`, exécutés sous Windows et Linux dans la CI), avec une graine fixe là où il y a du hasard. Ils vérifient les cas normaux, les cas limites et les entrées abîmées : des fichiers coupés, du bruit et des en-têtes hostiles ne font jamais paniquer, et aucune température d'aucune imprimante du catalogue ne dépasse sa limite. La CI exécute aussi `cargo fmt --all --check`, `cargo clippy` avec les avertissements en erreurs et `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilation et publication
 
@@ -162,15 +166,16 @@ La version vit dans `Cargo.toml` et dans `eh3d.project.json` ; chaque version a 
 EH3D-PHOENIX-3DP/
 ├── crates/
 │   ├── p3dp-core/                               unités, maillage et vérifications, limites, JSON, réglages
-│   ├── p3dp-formats/                            lecteurs STL, OBJ et 3MF, écrivains, ZIP et inflate
+│   ├── p3dp-formats/                            lecteurs STL, OBJ, 3MF et projets, écrivains, ZIP
 │   ├── p3dp-profiles/                           le catalogue d'imprimantes (faits publics), le profil
 │   ├── p3dp-gcode/                              écrivains de G-code pour quatre dialectes, le vérificateur
-│   ├── p3dp-link/                               pilotes, état normalisé, simulateurs, Bambu LAN (conception)
-│   └── p3dp-server-bridge/                      réglages de la liaison au serveur, client léger
+│   ├── p3dp-link/                               pilotes, état normalisé, TCP, simulateurs, Bambu LAN (conception)
+│   ├── p3dp-server-bridge/                      réglages de la liaison au serveur, client du greffon
+│   └── p3dp-slicer/                             le trancheur minimal : couches, périmètres, remplissage, G-code
 ├── src/
 │   ├── lib.rs                                   la bibliothèque du programme : ce qu'utilisent la ligne de commande et la fenêtre
 │   ├── main.rs                                  la ligne de commande et le démarrage de la fenêtre
-│   ├── cli.rs                                   les commandes : printers, info, check-profile, convert et version
+│   ├── cli.rs                                   les commandes : printers, info, check-profile, convert, slice, project, version
 │   ├── app_state.rs                             l'état de la fenêtre sans fenêtre : onglets, imprimante, modèle, rapports, appareil simulé
 │   ├── config.rs                                le fichier de réglages : limites, liaison serveur, langue et imprimante par défaut
 │   ├── i18n.rs                                  les textes du programme dans les huit langues
@@ -214,18 +219,18 @@ EH3D-PHOENIX-3DP/
 
 **Limites connues aujourd'hui**
 
-* Ce n'est pas encore un trancheur : il ne transforme pas un modèle en couches ni en programme pour une imprimante.
+* Le trancheur est minimal : couches planes, périmètres, remplissage rectiligne et peaux pleines ; ni supports, ni ponts, ni coutures, ni largeur variable, ni multi-matériaux, et aucune impression n'en est sortie sur une imprimante.
 * Aucune imprimante n'a été connectée, pas même la Bambu Lab A1 ou la P1S ; chaque profil dit `verified = false`.
-* Le lecteur 3MF ne prend que le maillage : les composants, l'extension de production, les plateaux et les réglages d'autres programmes sont refusés ou ignorés.
-* Les pilotes n'ont pas encore de transport réseau propre (seulement les simulateurs) ; Bambu LAN est une conception qui ne se connecte pas, et le cloud de Bambu n'en fait pas partie.
-* La fenêtre n'a pas été compilée ni vue sur un écran ; les noms des états ne sont pas encore traduits.
+* Le lecteur 3MF ne prend que le maillage (les composants et l'extension de production sont refusés) ; les projets d'autres programmes sont lus pour leurs objets, plateaux et réglages et jamais modifiés.
+* Les pilotes ont un transport HTTP simple, essayé seulement sur un socket de cet ordinateur et contre les simulateurs ; ni TLS ni push WebSocket ; Bambu LAN est une conception qui ne se connecte pas, et le cloud de Bambu n'en fait pas partie.
+* La fenêtre n'a pas été compilée ni vue sur un écran.
 
 **Ensuite**
 
 * H1 : géométrie des maillages et un visualiseur 3D propre.
-* H2 : un premier trancheur (périmètres, remplissage et G-code pour Marlin et Klipper).
+* H2 : davantage de trancheur (remplissage en grille, coutures, largeur variable) et un cube d'étalonnage imprimé sur une vraie machine.
 * H3 : l'éditeur de profils et la fenêtre de base.
-* H7 : les transports réseau, le greffon d'imprimantes du serveur et la liaison Bambu LAN.
+* H7 : les autres transports (push WebSocket, PrusaLink, Duet) et la liaison Bambu LAN.
 * H8 : l'essayer sur une Bambu Lab A1 et une P1S et marquer comme vérifiés les profils qui fonctionnent. Tout le plan est dans `docs/ROADMAP.md`.
 
 ## 🌍 Langues

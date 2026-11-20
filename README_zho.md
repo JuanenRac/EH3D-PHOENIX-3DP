@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.1-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-237-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-307-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**诚实检查 - 今天真正能运行的内容：** 一个由六个库和一个命令行程序（`phoenix-3dp`）组成的 Rust 工作区，带有 237 个可在电脑上运行的测试。它读取并检查 STL、OBJ 和 3MF 模型，包含一个由公开数据建立的 46 个打印机配置的目录（没有一个在机器上试过），为 Marlin、Klipper、RepRapFirmware 和 Bambu 方言写出 G 代码，温度上限会拒绝超限的值而不是截断它，并能操作 Moonraker 和 OctoPrint 打印机以及 EH3D 服务器，但仅限内存中的模拟器。它还不是切片软件（不会把模型变成层）；窗口尚未构建，也没有在屏幕上看过；没有任何内容在真实打印机上运行过。
+**诚实检查 - 今天真正能运行的内容：** 一个由七个库和一个命令行程序（`phoenix-3dp`）组成的 Rust 工作区，带有 307 个可在电脑上运行的测试。它读取并检查 STL、OBJ 和 3MF 模型，包含一个由公开数据建立的 46 个打印机配置的目录（没有一个在机器上试过），为 Marlin、Klipper、RepRapFirmware 和 Bambu 方言写出 G 代码，温度上限会拒绝超限的值而不是截断它，并能操作 Moonraker 和 OctoPrint 打印机以及 EH3D 服务器，但仅限模拟器（内存中的，以及本机的套接字）。它能把封闭模型切成平整的层，生成外壁、直线填充和实心表层（第一个最简切片器，尚无支撑、可变线宽和桥接）；窗口尚未构建，也没有在屏幕上看过；没有任何内容在真实打印机上运行过。
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | 版本 | `0.0.1` |
 | 成熟度 | 脚手架 |
-| 测试 | 237 |
+| 测试 | 307 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试验：这里的任何内容都没有在打印机上运行过，包括 Bambu Lab A1 和 P1S。 |
 
@@ -48,13 +48,14 @@
 | 领域 | 状态 | 在这里的含义 |
 |---|---|---|
 | 核心 | 🟡 | 以纳米为单位的长度、网格及其检查、读取器的上限、一个小型 JSON 读取器和一个绝不会打印出来的机密值；已在电脑上用正常和损坏的输入测试。 |
-| 模型和文件 | 🟡 | 读取 STL（文本和二进制）、OBJ 和基础 3MF，带有大小限制，遇到不支持的内容会指明并拒绝；写出自有的 3MF 包、二进制 STL、OBJ 和 G 代码文件；已用模糊测试检查，没有用其他程序的真实文件集合检查。 |
+| 模型和文件 | 🟡 | 读取 STL（文本和二进制）、OBJ 和基础 3MF，带有大小限制，遇到不支持的内容会指明并拒绝；写出自有的 3MF 包、二进制 STL、OBJ 和 G 代码文件；其他程序的 3MF 项目会读取其中的对象、构建板和部分设置（只读）；已用模糊测试检查，没有用其他程序的真实文件集合检查。 |
 | 打印机配置 | 🟠 | 由公开数据建立的 46 个型号（打印空间、喷嘴、方言、连接方式、厂商标称的上限，包括 Bambu Lab A1 和 P1S）；没有一个在机器上试过，所以全部标为 `verified = false`。 |
 | G 代码 | 🟡 | 四种方言的写出器，带有安全的开头和结尾；超过上限的温度会被拒绝且不写入任何内容；检查器能找出程序中超限的行；从未在打印机上运行过。 |
 | 打印机驱动 | 🟠 | Moonraker 和 OctoPrint 通过传输层工作，只用它们协议的模拟器试过；Bambu LAN 是标为实验性的设计，不会连接。 |
-| 服务器连接 | 🟠 | 连接的设置，以及针对打印机插件草案路由的轻量客户端，已针对内存中的服务器试过；服务器目前还不提供这些路由。 |
-| 命令行 | 🟡 | `phoenix-3dp`（`printers`、`info`、`check-profile`、`convert`、`version`）运行库中的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 237 个测试通过（`cargo test --workspace`），包含正常情况、边界情况、损坏的输入，涉及随机的地方使用固定种子。 |
+| 服务器连接 | 🟠 | 连接的设置，以及建立在套件通用客户端（登录、续期、重试、八种语言的错误信息）之上的服务器打印机插件客户端，已针对内存中的服务器试过；从未对真实服务器试过。 |
+| 切片器 | 🟡 | 封闭网格的平整层、外壁、直线填充、实心表层、按方言生成的 G 代码，以及以数据形式提供的逐层预览；已用固定种子形状上的性质测试检查（挤出的塑料量等于零件体积，没有任何内容超出热床，没有温度超过上限）；还没有用它在打印机上打印过。 |
+| 命令行 | 🟡 | `phoenix-3dp`（`printers`、`info`、`check-profile`、`slice``project`）运行库中的函数并打印结果；每个错误都以消息和非零退出码返回。 |
+| 测试 | 🟡 | 307 个测试通过（`cargo test --workspace`），包含正常情况、边界情况、损坏的输入，涉及随机的地方使用固定种子。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：上限是拒绝而不是截断；令牌绝不打印；收到的文件不会引发 panic；没有独立审查。 |
 | 窗口 | 🔴 | 四个标签页（准备、预览、设备、项目）的第一版已用 `--features gui` 写好；其逻辑已测试，但尚未构建，也没有在屏幕上看过。 |
 | 真实硬件 | 🔴 | 未试验：这里的任何内容都没有在打印机上运行过，包括 Bambu Lab A1 和 P1S。 |
@@ -63,16 +64,17 @@
 ## 🎯 概述
 
 * **理念：** PHOENIX-3DP 是 PHOENIX 家族中的 3D 打印程序。EH3D 服务器及其客户端是整个套件的中心：本程序只是服务器的又一个客户端，直接与打印机通信的独立模式是默认关闭的选项。
-* **模型**（`p3dp-formats`）：读取 STL（文本和二进制）、OBJ 和基础 3MF，对大小、三角形数量和 ZIP 包内容设有限制；读不了的内容会带着所发现内容的名称被拒绝。可写出二进制 STL、OBJ、自有的 3MF 包和 G 代码文件。
+* **模型**（`p3dp-formats`）：读取 STL（文本和二进制）、OBJ 和基础 3MF，对大小、三角形数量和 ZIP 包内容设有限制；读不了的内容会带着所发现内容的名称被拒绝。可写出二进制 STL、OBJ、自有的 3MF 包和 G 代码文件。其他程序保存为 3MF 的项目，会读取其中的对象、构建板和部分设置（只读，并设有防范恶意包的限制）。
 * **配置**（`p3dp-profiles`）：一个包含 46 款打印机（FDM 和树脂）的目录，依据公开事实编写：打印空间、喷嘴、方言、连接方式、多材料系统，以及厂商标称的最高温度。每个配置都会说明是否在机器上试过；目前没有一个试过。
 * **G 代码**（`p3dp-gcode`）：Marlin、Klipper、RepRapFirmware 和 Bambu 的写出器，各自带有安全的文件头、开头和结尾；不允许的温度或移动会被拒绝，绝不截断。检查器可读取任何程序，找出超过型号上限的行。
-* **连接**（`p3dp-link`）：一个驱动 trait、一套规范化状态（十五种状态、温度、作业、警报）和一份命令列表；Moonraker 和 OctoPrint 基于传输层实现，并针对各协议的内存模拟器测试；Bambu LAN 是其主题和消息的设计，标为实验性。
-* **服务器**（`p3dp-server-bridge`）：设置项 `server_address`、`server_token`、`server_machine`、`server_timeout_s`、`server_retries` 和 `server_mdns`，套件统一的重试规则，以及针对服务器打印机插件草案路由的轻量客户端，已用内存中的服务器测试。
-* **尚未完成：** 把模型变成层（切片器）、3D 查看器、网络传输层和服务器插件。路线图在 `docs/ROADMAP.md`，缺少的内容在 `docs/NOT_YET.md`。
+* **连接**（`p3dp-link`）：一个驱动 trait、一套规范化状态（十五种状态、温度、作业、警报）和一份命令列表；Moonraker 和 OctoPrint 基于传输层实现（仅用标准库编写的普通 HTTP，带时间和大小限制，已在本机套接字上试过），并针对各协议的内存模拟器测试；Bambu LAN 是其主题和消息的设计，标为实验性。
+* **服务器**（`p3dp-server-bridge`）：设置项 `server_address`、`server_token`、`server_machine`、`server_timeout_s`、`server_retries` 和 `server_mdns`，以及建立在套件通用客户端（`eh3d-serverclient`）之上的服务器 `printer3d` 插件客户端：作业进入队列并等待有人启动，温度上限在发送任何内容之前检查，并提供停止；已用内存中的服务器测试。
+* **切片器**（`p3dp-slicer`）：封闭网格的平整层、外壁、带实心表层的直线填充、通过程序的写出器生成各方言的 G 代码，以及以数据形式提供的逐层预览；放不进热床、超过温度上限或不是封闭网格的内容会被拒绝，绝不截断。
+* **尚未完成：** 3D 查看器、具备可变线宽、接缝、桥接和支撑的切片器、Bambu LAN 连接以及其他传输层。路线图在 `docs/ROADMAP.md`，缺少的内容在 `docs/NOT_YET.md`。
 
 ## 🧩 在 EH3D 中的角色
 
-EH3D-PHOENIX-3DP 是 EH3D Fabrication Suite 中 PHOENIX 家族的 3D 打印程序。目前它是一组库加一个命令行；窗口用 `--features gui` 构建。服务器 `eh3d-server` 及其客户端是套件的中心：打印机、队列和权限预计放在服务器里（计划在那里加入 `printer3d` 插件），本程序通过套件通用的设置与它通信。参见 [docs/SERVER.md](docs/SERVER.md)。
+EH3D-PHOENIX-3DP 是 EH3D Fabrication Suite 中 PHOENIX 家族的 3D 打印程序。目前它是一组库加一个命令行；窗口用 `--features gui` 构建。服务器 `eh3d-server` 及其客户端是套件的中心：打印机、队列和权限预计放在服务器里（由那里的 `printer3d` 插件负责），本程序通过套件通用的设置与它通信。参见 [docs/SERVER.md](docs/SERVER.md)。
 
 ## 🏛️ 架构
 
@@ -111,7 +113,7 @@ EH3D-PHOENIX-3DP 是 EH3D Fabrication Suite 中 PHOENIX 家族的 3D 打印程�
 
 ## 🔌 接口
 
-库有 `p3dp_core`、`p3dp_formats`、`p3dp_profiles`、`p3dp_gcode`、`p3dp_link` 和 `p3dp_server_bridge`；程序是库 `eh3d_phoenix_3dp` 和命令行 `phoenix-3dp`。每个命令把结果打印到标准输出，并把错误连同非零退出码报告到标准错误（所请求的操作失败为 1，命令写错为 2）。此版本不访问网络。
+库有 `p3dp_core`、`p3dp_formats`、`p3dp_profiles`、`p3dp_gcode`、`p3dp_link`、`p3dp_server_bridge` 和 `p3dp_slicer`；程序是库 `eh3d_phoenix_3dp` 和命令行 `phoenix-3dp`。每个命令把结果打印到标准输出，并把错误连同非零退出码报告到标准错误（所请求的操作失败为 1，命令写错为 2）。唯一的网络访问是驱动和服务器连接的传输层，且只访问给定的地址。
 
 ```text
 phoenix-3dp printers [--vendor NAME] [--tech fdm|msla] [--search TEXT]
@@ -119,6 +121,8 @@ phoenix-3dp info MODEL [--printer ID]
 phoenix-3dp check-profile ID [--gcode FILE]
 phoenix-3dp check-profile --file PROFILE [--gcode FILE]
 phoenix-3dp convert IN OUT [--printer ID] [--force]
+phoenix-3dp slice MODEL --printer ID [--settings FILE] [--out FILE.gcode] [--force]
+phoenix-3dp project FILE.3mf
 phoenix-3dp version
 phoenix-3dp gui [SETTINGS]                       the window (a build with --features gui)
 ```
@@ -129,7 +133,7 @@ phoenix-3dp gui [SETTINGS]                       the window (a build with --feat
 
 ## 🚀 快速开始
 
-需要稳定版 Rust 工具链（1.88 或更新）。无需在本仓库旁边克隆其他仓库。
+需要稳定版 Rust 工具链（1.88 或更新）。请先在本仓库旁边克隆 EH3D-COMMON：服务器的通用客户端来自那里。
 
 ```bash
 cargo build --release
@@ -143,7 +147,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 测试
 
-测试套件有 237 个测试（`cargo test --workspace`，CI 中在 Windows 和 Linux 上运行），涉及随机的地方使用固定种子。它们检查正常情况、边界情况和损坏的输入：被截断的文件、乱码和恶意文件头绝不会 panic，目录中任何打印机的温度都不会超过其上限。CI 还会运行 `cargo fmt --all --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
+测试套件有 307 个测试（`cargo test --workspace`，CI 中在 Windows 和 Linux 上运行），涉及随机的地方使用固定种子。它们检查正常情况、边界情况和损坏的输入：被截断的文件、乱码和恶意文件头绝不会 panic，目录中任何打印机的温度都不会超过其上限。CI 还会运行 `cargo fmt --all --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 
@@ -162,15 +166,16 @@ cargo run --release --features gui -- gui   # the window
 EH3D-PHOENIX-3DP/
 ├── crates/
 │   ├── p3dp-core/                               单位、网格及检查、上限、JSON、设置
-│   ├── p3dp-formats/                            STL、OBJ、3MF 读取与写出、ZIP
+│   ├── p3dp-formats/                            STL、OBJ、3MF 与项目读取、写出、ZIP
 │   ├── p3dp-profiles/                           由公开事实建立的打印机目录和配置
 │   ├── p3dp-gcode/                              四种方言的 G 代码写出器和检查器
-│   ├── p3dp-link/                               驱动、规范化状态、模拟器、Bambu LAN
-│   └── p3dp-server-bridge/                      服务器连接设置和轻量客户端
+│   ├── p3dp-link/                               驱动、规范化状态、TCP、模拟器、Bambu LAN
+│   ├── p3dp-server-bridge/                      服务器连接设置和插件客户端
+│   └── p3dp-slicer/                             最简切片器：分层、外壁、填充、G 代码
 ├── src/
 │   ├── lib.rs                                   程序的库：命令行和窗口使用的部分
 │   ├── main.rs                                  命令行和窗口的启动
-│   ├── cli.rs                                   命令：printers、info、check-profile、convert 和 version
+│   ├── cli.rs                                   命令：printers、info、check-profile、convert、slice、project、version
 │   ├── app_state.rs                             无窗口的窗口状态：标签页、打印机、模型、报告、模拟设备
 │   ├── config.rs                                设置文件：上限、服务器连接、语言和默认打印机
 │   ├── i18n.rs                                  程序的八种语言文字
@@ -214,18 +219,18 @@ EH3D-PHOENIX-3DP/
 
 **目前已知的限制**
 
-* 它还不是切片软件：不会把模型变成层，也不会生成给打印机的程序。
+* 切片器很简单：只有平整层、外壁、直线填充和实心表层；没有支撑、桥接、接缝、可变线宽和多材料，也没有用它在打印机上打印过。
 * 还没有连接过任何打印机，包括 Bambu Lab A1 和 P1S；每个配置都标为 `verified = false`。
-* 3MF 读取器只取网格：组件、生产扩展、构建板和其他程序的设置会被拒绝或忽略。
-* 驱动还没有自己的网络传输层（只有模拟器）；Bambu LAN 是不会连接的设计，Bambu 云不在其范围内。
-* 窗口尚未构建，也没有在屏幕上看过；状态名称还没有翻译。
+* 3MF 读取器只取网格（组件和生产扩展会被拒绝）；其他程序的项目只读取其对象、构建板和设置，绝不修改。
+* 驱动有一个普通 HTTP 传输层，只在本机套接字和模拟器上试过；没有 TLS，也没有 WebSocket 推送；Bambu LAN 是不会连接的设计，Bambu 云不在其范围内。
+* 窗口尚未构建，也没有在屏幕上看过。
 
 **下一步**
 
 * H1：网格几何和自有的 3D 查看器。
-* H2：第一个切片器（外壁、填充，以及 Marlin 和 Klipper 的 G 代码）。
+* H2：更完善的切片器（网格填充、接缝、可变线宽）以及在真机上打印的校准立方体。
 * H3：配置编辑器和基础窗口。
-* H7：网络传输层、服务器的打印机插件和 Bambu LAN 连接。
+* H7：其他传输层（WebSocket 推送、PrusaLink、Duet）和 Bambu LAN 连接。
 * H8：在 Bambu Lab A1 和 P1S 上试用，并把可用的配置标为已验证。完整计划见 `docs/ROADMAP.md`。
 
 ## 🌍 语言

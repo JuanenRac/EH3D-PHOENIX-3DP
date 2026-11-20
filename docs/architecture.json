@@ -2,7 +2,7 @@
   "repo": "EH3D-PHOENIX-3DP",
   "ecosystem": "eh3d",
   "tagline": "A model, a printer profile, a safe G-code and a link to the printer or to the server.",
-  "description": "EH3D-PHOENIX-3DP is a set of Rust libraries and a command line program for 3D printing: it reads STL, OBJ and 3MF models, holds a catalog of printer profiles built from public data, writes G-code for four dialects with temperature limits that refuse a value instead of cutting it down, and drives Moonraker and OctoPrint printers and the EH3D server, so far only against simulators. A window with four tabs is written for the gui feature. It does not slice yet.",
+  "description": "EH3D-PHOENIX-3DP is a set of Rust libraries and a command line program for 3D printing: it reads STL, OBJ and 3MF models and the projects other programs save as 3MF, holds a catalog of printer profiles built from public data, slices a closed model into layers with perimeters and infill, writes G-code for four dialects with temperature limits that refuse a value instead of cutting it down, and drives Moonraker and OctoPrint printers and the EH3D server, so far only against simulators and a socket of the same computer. A window with four tabs is written for the gui feature.",
   "columns": [
     "WHO USES IT",
     "THIS REPOSITORY",
@@ -25,8 +25,8 @@
       "level": "config",
       "title": "The EH3D server",
       "lines": [
-        "planned: it holds the printers,",
-        "the queue and the permissions"
+        "holds the printers, the queue",
+        "and the permissions (not tried)"
       ]
     },
     {
@@ -36,13 +36,14 @@
       "title": "models and files",
       "lines": [
         "STL, OBJ and 3MF in, with limits;",
-        "STL, OBJ, 3MF and G-code out"
+        "projects read only; files out"
       ],
       "code": [
         "crates/p3dp-formats/src/stl.rs::pub fn read",
         "crates/p3dp-formats/src/obj.rs::pub fn read",
         "crates/p3dp-formats/src/threemf.rs::pub fn read",
-        "crates/p3dp-formats/src/zip.rs::pub struct Archive"
+        "crates/p3dp-formats/src/zip.rs::pub struct Archive",
+        "crates/p3dp-formats/src/project3mf.rs::pub fn read_project"
       ]
     },
     {
@@ -63,14 +64,16 @@
       "id": "gcode",
       "column": 1,
       "level": "tested",
-      "title": "G-code",
+      "title": "slicer and G-code",
       "lines": [
-        "four dialects, a safe start and",
-        "end, limits that refuse"
+        "layers, perimeters, infill; four",
+        "dialects, limits that refuse"
       ],
       "code": [
         "crates/p3dp-gcode/src/writer.rs::pub struct Writer",
-        "crates/p3dp-gcode/src/check.rs::pub fn check_program"
+        "crates/p3dp-gcode/src/check.rs::pub fn check_program",
+        "crates/p3dp-slicer/src/plan.rs::pub fn plan",
+        "crates/p3dp-slicer/src/emit.rs::pub fn gcode"
       ]
     },
     {
@@ -80,12 +83,13 @@
       "title": "drivers",
       "lines": [
         "Moonraker and OctoPrint over a",
-        "transport, one normalized state"
+        "plain TCP transport, one state"
       ],
       "code": [
         "crates/p3dp-link/src/moonraker.rs::pub struct MoonrakerDriver",
         "crates/p3dp-link/src/octoprint.rs::pub struct OctoPrintDriver",
-        "crates/p3dp-link/src/driver.rs::pub trait PrinterDriver"
+        "crates/p3dp-link/src/driver.rs::pub trait PrinterDriver",
+        "crates/p3dp-link/src/tcp.rs::pub struct TcpTransport"
       ]
     },
     {
@@ -94,8 +98,8 @@
       "level": "tested",
       "title": "server link",
       "lines": [
-        "the settings and a thin client",
-        "of the printer routes"
+        "the settings and a client of",
+        "the printer plugin routes"
       ],
       "code": [
         "crates/p3dp-server-bridge/src/settings.rs::pub struct Settings",
@@ -130,7 +134,7 @@
       "code": [
         "crates/p3dp-link/src/sim.rs::pub struct SimMoonraker",
         "crates/p3dp-link/src/sim.rs::pub struct SimOctoPrint",
-        "crates/p3dp-server-bridge/src/sim.rs::pub struct SimBridgeServer"
+        "crates/p3dp-server-bridge/src/sim.rs::pub struct SimPrinterServer"
       ]
     },
     {
@@ -149,8 +153,8 @@
       "level": "external",
       "title": "eh3d-server",
       "lines": [
-        "the plugin for printers is",
-        "planned, not served yet"
+        "serves the printer plugin;",
+        "this program never met it"
       ]
     }
   ],
@@ -170,7 +174,7 @@
     {
       "from": "person",
       "to": "gcode",
-      "label": "check",
+      "label": "slice, check",
       "level": "tested"
     },
     {
