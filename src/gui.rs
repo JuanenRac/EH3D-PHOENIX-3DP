@@ -3,7 +3,7 @@
 
 use crate::app_state::{demo_device, AppState, Tab};
 use crate::config::AppConfig;
-use crate::i18n::{fill, Lang, Msg};
+use crate::i18n::{fill, state_text, Lang, Msg};
 use crate::view;
 use eframe::egui::{self, Color32, FontData, FontDefinitions, FontFamily, Pos2, Stroke};
 use p3dp_link::PrinterState;
@@ -181,7 +181,7 @@ impl App {
         }
         match self.device.as_ref().map(|(_, r)| r) {
             Some(Ok(st)) => {
-                ui.label(fill(Msg::State.tr(lang), &[st.state.key()]));
+                ui.label(fill(Msg::State.tr(lang), &[state_text(st.state, lang)]));
                 for t in &st.temperatures {
                     ui.label(format!(
                         "{}: {:.0} / {:.0} C",

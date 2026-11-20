@@ -1,6 +1,8 @@
 //! The texts of the program in the eight languages (English, Spanish, German, French, Italian, Japanese, Chinese and European Portuguese). A text with `{}` has the
 //! value put in its place by `fill`. The codes of error and the keys of the settings are never translated.
 
+use p3dp_link::JobState;
+
 /// The languages.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Lang {
@@ -220,6 +222,174 @@ impl Msg {
     }
 }
 
+/// The name of a state of a printer in a language. The fifteen states are the ones every protocol is mapped onto (`p3dp_link::JobState`); the raw text a printer sends is never shown
+/// as a state, because it is in the language of its firmware.
+pub fn state_text(state: JobState, lang: Lang) -> &'static str {
+    let texts: [&'static str; 8] = match state {
+        JobState::Offline => [
+            "Offline",
+            "Sin conexión",
+            "Offline",
+            "Hors ligne",
+            "Non in linea",
+            "オフライン",
+            "离线",
+            "Sem ligação",
+        ],
+        JobState::Idle => [
+            "Idle",
+            "En reposo",
+            "Bereit",
+            "Au repos",
+            "Inattiva",
+            "待機中",
+            "空闲",
+            "Em repouso",
+        ],
+        JobState::Preparing => [
+            "Preparing",
+            "Preparando",
+            "Wird vorbereitet",
+            "Préparation",
+            "In preparazione",
+            "準備中",
+            "准备中",
+            "A preparar",
+        ],
+        JobState::Printing => [
+            "Printing",
+            "Imprimiendo",
+            "Druckt",
+            "Impression en cours",
+            "In stampa",
+            "印刷中",
+            "打印中",
+            "A imprimir",
+        ],
+        JobState::Pausing => [
+            "Pausing",
+            "Pausando",
+            "Wird pausiert",
+            "Mise en pause",
+            "Messa in pausa",
+            "一時停止しています",
+            "正在暂停",
+            "A pausar",
+        ],
+        JobState::Paused => [
+            "Paused",
+            "En pausa",
+            "Pausiert",
+            "En pause",
+            "In pausa",
+            "一時停止中",
+            "已暂停",
+            "Em pausa",
+        ],
+        JobState::Finishing => [
+            "Finishing",
+            "Terminando",
+            "Wird abgeschlossen",
+            "Finalisation",
+            "Completamento",
+            "終了処理中",
+            "正在完成",
+            "A concluir",
+        ],
+        JobState::Finished => [
+            "Finished",
+            "Terminado",
+            "Fertig",
+            "Terminé",
+            "Completato",
+            "完了",
+            "已完成",
+            "Concluída",
+        ],
+        JobState::Failed => [
+            "Failed",
+            "Fallido",
+            "Fehlgeschlagen",
+            "Échec",
+            "Non riuscito",
+            "失敗",
+            "失败",
+            "Falhou",
+        ],
+        JobState::Cancelling => [
+            "Cancelling",
+            "Cancelando",
+            "Wird abgebrochen",
+            "Annulation",
+            "Annullamento",
+            "キャンセルしています",
+            "正在取消",
+            "A cancelar",
+        ],
+        JobState::Cancelled => [
+            "Cancelled",
+            "Cancelado",
+            "Abgebrochen",
+            "Annulé",
+            "Annullato",
+            "キャンセル済み",
+            "已取消",
+            "Cancelado",
+        ],
+        JobState::Error => [
+            "Error",
+            "Error",
+            "Fehler",
+            "Erreur",
+            "Errore",
+            "エラー",
+            "错误",
+            "Erro",
+        ],
+        JobState::Emergency => [
+            "Emergency stop",
+            "Parada de emergencia",
+            "Not-Halt",
+            "Arrêt d'urgence",
+            "Arresto di emergenza",
+            "非常停止",
+            "紧急停止",
+            "Paragem de emergência",
+        ],
+        JobState::Updating => [
+            "Updating",
+            "Actualizando",
+            "Wird aktualisiert",
+            "Mise à jour",
+            "Aggiornamento",
+            "更新中",
+            "正在更新",
+            "A atualizar",
+        ],
+        JobState::Busy => [
+            "Busy",
+            "Ocupada",
+            "Beschäftigt",
+            "Occupée",
+            "Occupata",
+            "ビジー",
+            "忙碌",
+            "Ocupada",
+        ],
+    };
+    let i = match lang {
+        Lang::En => 0,
+        Lang::Es => 1,
+        Lang::De => 2,
+        Lang::Fr => 3,
+        Lang::It => 4,
+        Lang::Ja => 5,
+        Lang::Zh => 6,
+        Lang::Pt => 7,
+    };
+    texts[i]
+}
+
 /// Puts the values in place of the `{}` of a text, in order. A value with `{}` in it is not read again.
 pub fn fill(text: &str, values: &[&str]) -> String {
     let mut out = String::with_capacity(text.len() + 16);
@@ -309,5 +479,48 @@ mod tests {
         assert_eq!(fill("a {} b {}", &["{}"]), "a {} b ");
         assert_eq!(fill("none", &["x"]), "none");
         assert_eq!(fill("{}", &[]), "");
+    }
+    #[test]
+    fn every_state_of_a_printer_has_its_name_in_the_eight_languages() {
+        let mut values = 0;
+        for st in JobState::ALL {
+            for l in Lang::ALL {
+                assert!(
+                    !state_text(st, l).trim().is_empty(),
+                    "{st:?} in {}",
+                    l.code()
+                );
+                values += 1;
+            }
+        }
+        assert_eq!(values, 15 * 8);
+        // two states never share a name in a language
+        for l in Lang::ALL {
+            let mut names: Vec<&str> = JobState::ALL.iter().map(|s| state_text(*s, l)).collect();
+            names.sort_unstable();
+            let before = names.len();
+            names.dedup();
+            assert_eq!(
+                names.len(),
+                before,
+                "two states have the same name in {}",
+                l.code()
+            );
+        }
+        // a name left in English by mistake would be the same text in many languages
+        for st in JobState::ALL {
+            let en = state_text(st, Lang::En);
+            let same = Lang::ALL
+                .iter()
+                .filter(|l| state_text(st, **l) == en)
+                .count();
+            assert!(same <= 4, "{st:?} is the same text in {same} languages");
+        }
+        assert_eq!(state_text(JobState::Printing, Lang::Pt), "A imprimir");
+        assert_eq!(
+            state_text(JobState::Emergency, Lang::Pt),
+            "Paragem de emergência"
+        );
+        assert!(!state_text(JobState::Offline, Lang::Pt).contains("Desconectado"));
     }
 }
