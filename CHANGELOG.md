@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.0.3] - Richer slicer, 120 printer profiles and generic filaments, bgcode and resin package readers and the model of the 3D viewer
+
 - The README in the eight languages, the architecture, the roadmap, the list of what is not done, the manifest and the two pictures describe the new parts and no longer say that the slicer has no supports, bridges, seams or variable width; the tree of files lists the new crate.
 - A new crate, `p3dp-viewer`, with the model of the 3D viewer and no graphics code: an orbit camera with perspective (turn, zoom by proportion, slide, fit to a box, project a point to the screen, a ray through a pixel), the scene on the plate (objects as boxes, a click that picks the nearest object, a box dragged over the screen that picks what is inside it or touched by it, the selection), the range of layers with its two handles, and the lines of a plan as arrays of numbers (position and colour of each vertex) for a graphics card. The drawing with wgpu is behind the feature `gui` of that crate, off by default and not compiled in the tests.
 - The texts of the window in the eight languages for the new panels and controls: filament, infill and its patterns, supports, seam, bridges, layers, time estimate, resin, G-code file, the lift on travel, the fan ramp, the variable width, the controls of the viewer (orbit, pan, zoom, selection box, range of layers, reset, fit to the bed) and the three sources of the limits of a profile, which the report of a printer now names.
