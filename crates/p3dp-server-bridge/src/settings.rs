@@ -1,8 +1,8 @@
 //! The settings of the link to the server: the same keys, ranges and defaults as the common client of the suite, plus the switch of the stand-alone mode.
 
+use eh3d_serverclient::path_segment;
 use p3dp_core::kv;
 use p3dp_core::{CoreError, Secret};
-use p3dp_link::transport::percent_encode;
 
 /// The keys of the link.
 #[derive(Clone, PartialEq, Eq)]
@@ -245,7 +245,7 @@ impl Settings {
     pub fn machine_path(&self, rest: &str) -> String {
         format!(
             "/api/v1/machines/{}/{}",
-            percent_encode(&self.server_machine),
+            path_segment(&self.server_machine),
             rest.trim_start_matches('/')
         )
     }
