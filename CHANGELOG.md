@@ -4,6 +4,9 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- The CI is built against EH3D-COMMON v0.2.5 in the three workflows that name the tag of a sibling.
+- The client of the printer plugin sets the target of a heater (`hotend`, `bed` or `chamber`, checked here against the stricter limits before anything is sent, and again by the server) and reads the answers shaped like Moonraker's and OctoPrint's when the machine has them on; the server in memory gives the same refusals as the real one (`temperature_over_limit`, `bad_heater`, `not_supported`).
+
 ## [0.0.2] - Server client, TCP transport for printers, a minimal slicer and reading of projects from other programs
 
 - The client of the server is now the common client of the suite (`eh3d-serverclient` of EH3D-COMMON, taken by path from a sibling folder, with the tag it is built against in the workflows): login and renewal, retries that never send a POST twice, the state of the link and every refusal of the server in eight languages. It speaks the routes of the `printer3d` plugin of the server (machines, jobs, temperatures, layer, emergency stop, release, making a machine for a model), checks a program against the stricter of the limits of the profile and the limits the server reports before anything is sent, and only queues a job: starting it needs a confirmation that stands for a person.

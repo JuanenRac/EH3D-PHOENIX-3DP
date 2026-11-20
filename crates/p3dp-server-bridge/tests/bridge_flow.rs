@@ -5,8 +5,8 @@ use eh3d_serverclient::sim::Fault;
 use p3dp_core::TempLimits;
 use p3dp_server_bridge::sim::{SimPrinterServer, TOKEN};
 use p3dp_server_bridge::{
-    server_model_for, stricter, BridgeError, Confirmation, LinkState, MachineConnection,
-    ServerClient, Settings,
+    server_model_for, stricter, BridgeError, CompatShape, Confirmation, LinkState,
+    MachineConnection, ServerClient, Settings,
 };
 
 const SAFE: &str = "G28\nM140 S60\nM104 S210\nG1 X10 Y10 E1 F1200\nM104 S0\nM140 S0\n";
@@ -406,4 +406,58 @@ fn a_client_needs_an_address_and_values_the_suite_accepts() {
     assert_eq!(link.server_address, "10.0.0.2:18200");
     assert_eq!((link.server_timeout_s, link.server_retries), (15, 2));
     assert!(!link.server_mdns);
+}
+
+#[test]
+fn a_target_is_checked_here_first_and_again_by_the_server() {
+    let (mut c, sim) = client(TOKEN);
+    let limits = p1s_limits();
+    c.set_target("p1s-1", "hotend", 210.0, &limits).unwrap();
+    c.set_target("p1s-1", "bed", 0.0, &limits).unwrap();
+    assert_eq!(
+        sim.with_state(|s| s.targets.clone()),
+        vec![
+            ("p1s-1".to_string(), "hotend".to_string(), 210.0),
+            ("p1s-1".to_string(), "bed".to_string(), 0.0)
+        ]
+    );
+    let before = sim.with_state(|s| s.requests.len());
+    // over the limit here: nothing is sent
+    let e = c.set_target("p1s-1", "hotend", 301.0, &limits).unwrap_err();
+    assert!(matches!(e, BridgeError::Temp { .. }), "{e}");
+    // a chamber that the model does not have, a heater that does not exist, a number that is not one
+    assert!(c.set_target("p1s-1", "chamber", 40.0, &limits).is_err());
+    assert!(matches!(
+        c.set_target("p1s-1", "nozzle", 100.0, &limits),
+        Err(BridgeError::Invalid(_))
+    ));
+    assert!(c.set_target("p1s-1", "bed", f64::NAN, &limits).is_err());
+    assert!(c.set_target("../x", "bed", 50.0, &limits).is_err());
+    assert_eq!(sim.with_state(|s| s.requests.len()), before);
+    // the server refuses what the program would let pass when the program's limits are looser
+    let loose = TempLimits {
+        nozzle_c: 400.0,
+        bed_c: 150.0,
+        chamber_c: None,
+    };
+    let e = c.set_target("p1s-1", "hotend", 350.0, &loose).unwrap_err();
+    assert_eq!(e.code(), Some("temperature_over_limit"));
+    assert_eq!(sim.with_state(|s| s.targets.len()), 2);
+}
+
+#[test]
+fn the_shapes_of_other_programs_are_off_until_the_machine_says_so() {
+    let (mut c, sim) = client(TOKEN);
+    let e = c.compat_state("p1s-1", CompatShape::Moonraker).unwrap_err();
+    assert_eq!(e.code(), Some("not_supported"));
+    sim.with_state(|s| s.compat_on = true);
+    let m = c.compat_state("p1s-1", CompatShape::Moonraker).unwrap();
+    assert!(m.get("result").is_some());
+    let o = c.compat_state("p1s-1", CompatShape::OctoPrint).unwrap();
+    assert!(o.get("printer").is_some());
+    assert_eq!(CompatShape::OctoPrint.name(), "octoprint");
+    assert!(c.compat_state("nope", CompatShape::Moonraker).is_err());
+    assert!(sim.with_state(|s| s
+        .requests
+        .contains(&"GET /api/v1/work/machines/p1s-1/compat/moonraker".to_string())));
 }

@@ -9,7 +9,7 @@
 use crate::settings::Settings;
 use eh3d_serverclient as sc;
 use p3dp_core::json::{self, Value};
-use p3dp_core::machine::TempError;
+use p3dp_core::machine::{TempError, Zone};
 use p3dp_core::TempLimits;
 use p3dp_gcode::check_program;
 use std::fmt;
@@ -169,6 +169,23 @@ pub enum MachineConnection {
     Moonraker { url: String, api_key: String },
     /// OctoPrint: the address and the key.
     OctoPrint { url: String, api_key: String },
+}
+
+/// The shapes the server can answer in, besides its own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompatShape {
+    Moonraker,
+    OctoPrint,
+}
+
+impl CompatShape {
+    /// The word of the route.
+    pub fn name(self) -> &'static str {
+        match self {
+            CompatShape::Moonraker => "moonraker",
+            CompatShape::OctoPrint => "octoprint",
+        }
+    }
 }
 
 /// The model of the profile of the server that goes with a profile of the catalog of the program. The server keeps a short list of models with the limits of the maker; a printer it
@@ -367,6 +384,15 @@ impl ServerClient {
         parse(&r)
     }
 
+    fn put(&mut self, path: &str, body: Option<&Value>) -> Result<Value, BridgeError> {
+        let text = body.map(Value::to_json);
+        let r = self.inner.put(path, text.as_deref())?;
+        if r.body.trim().is_empty() {
+            return Ok(Value::Null);
+        }
+        parse(&r)
+    }
+
     /// The 3D printers of the server (the machines of the plugin `printer3d`; the others are not this program's).
     pub fn printers(&mut self) -> Result<Vec<PrinterInfo>, BridgeError> {
         let v = self.get("/api/v1/work/machines")?;
@@ -412,6 +438,54 @@ impl ServerClient {
                 })
             })
             .collect()
+    }
+
+    /// Asks a heater for a target (`PUT .../temperatures`). The heater is `hotend`, `bed` or `chamber` (the names of the server); the target is checked against `limits` first
+    /// and a value over the limit is refused and never lowered. Zero switches the heater off. The server checks it again against its own limits (`422 temperature_over_limit`).
+    pub fn set_target(
+        &mut self,
+        machine: &str,
+        heater: &str,
+        target_c: f64,
+        limits: &TempLimits,
+    ) -> Result<(), BridgeError> {
+        let id = path_id(machine)?;
+        let zone = match heater {
+            "hotend" => Zone::Nozzle,
+            "bed" => Zone::Bed,
+            "chamber" => Zone::Chamber,
+            other => {
+                return Err(BridgeError::Invalid(format!(
+                    "{other} is not a heater: use hotend, bed or chamber"
+                )))
+            }
+        };
+        limits
+            .check(zone, target_c)
+            .map_err(|error| BridgeError::Temp { line: 0, error })?;
+        let body = Value::object(vec![
+            ("heater", Value::Str(heater.to_string())),
+            ("target_c", Value::Num(target_c)),
+        ]);
+        self.put(
+            &format!("/api/v1/work/machines/{id}/temperatures"),
+            Some(&body),
+        )?;
+        Ok(())
+    }
+
+    /// The state of a printer in the shape of another program's answer (`GET .../compat/moonraker` or `.../compat/octoprint`), as the server gives it. It is off in the server unless
+    /// the machine has the setting `compat`; then the server answers `501` and the error says so.
+    pub fn compat_state(
+        &mut self,
+        machine: &str,
+        shape: CompatShape,
+    ) -> Result<Value, BridgeError> {
+        self.get(&format!(
+            "/api/v1/work/machines/{}/compat/{}",
+            path_id(machine)?,
+            shape.name()
+        ))
     }
 
     /// The layer a print is at.

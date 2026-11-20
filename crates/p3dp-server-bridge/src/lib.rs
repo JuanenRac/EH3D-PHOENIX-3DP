@@ -9,7 +9,7 @@ pub mod settings;
 pub mod sim;
 
 pub use client::{
-    server_model_for, stricter, BridgeError, Confirmation, HeaterInfo, JobInfo, LayerInfo,
-    LinkState, MachineConnection, PrinterInfo, ServerClient, APP,
+    server_model_for, stricter, BridgeError, CompatShape, Confirmation, HeaterInfo, JobInfo,
+    LayerInfo, LinkState, MachineConnection, PrinterInfo, ServerClient, APP,
 };
 pub use settings::{Connection, Settings};

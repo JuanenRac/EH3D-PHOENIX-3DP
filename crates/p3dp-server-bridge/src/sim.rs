@@ -47,6 +47,10 @@ pub struct State {
     pub requests: Vec<String>,
     /// The bodies of the requests that were posted.
     pub posted: Vec<String>,
+    /// The targets that were set: machine, heater, degrees.
+    pub targets: Vec<(String, String, f64)>,
+    /// Whether the answers shaped like another program's are on (the setting `compat` of the machines).
+    pub compat_on: bool,
 }
 
 /// A handle to the simulated server; clones share the state.
@@ -254,6 +258,25 @@ fn route(s: &mut State, req: &sc::Request) -> sc::Reply {
             ),
             None => error(404, "unknown_machine"),
         },
+        ("PUT", ["machines", id, "temperatures"]) => set_target(s, id, req),
+        ("GET", ["machines", id, "compat", shape]) => match printer(s, id) {
+            None => error(404, "unknown_machine"),
+            Some(_) if !s.compat_on => error(501, "not_supported"),
+            Some(m) => match *shape {
+                "moonraker" => reply(
+                    200,
+                    &Value::object(vec![(
+                        "result",
+                        Value::object(vec![("machine", Value::Str(m.id.clone()))]),
+                    )]),
+                ),
+                "octoprint" => reply(
+                    200,
+                    &Value::object(vec![("printer", Value::Str(m.id.clone()))]),
+                ),
+                _ => error(404, "not_found"),
+            },
+        },
         ("POST", ["machines", id, "emergency-stop"]) => {
             let Some(i) = s
                 .machines
@@ -331,6 +354,32 @@ fn printer<'a>(s: &'a State, id: &str) -> Option<&'a Machine> {
     s.machines
         .iter()
         .find(|m| m.id == id && m.plugin == "printer3d")
+}
+
+/// `PUT .../temperatures`: the heater must be hotend, bed or chamber, and the target no higher than its limit.
+fn set_target(s: &mut State, id: &str, req: &sc::Request) -> sc::Reply {
+    let Some(m) = printer(s, id) else {
+        return error(404, "unknown_machine");
+    };
+    let limits = m.limits;
+    let Ok(v) = json::parse(&req.body.clone().unwrap_or_default()) else {
+        return error(400, "bad_request");
+    };
+    let heater = v.get("heater").and_then(Value::as_str).unwrap_or("");
+    let Some(target) = v.get("target_c").and_then(Value::as_f64) else {
+        return error(400, "bad_request");
+    };
+    let limit = match heater {
+        "hotend" => limits.nozzle_c,
+        "bed" => limits.bed_c,
+        "chamber" => limits.chamber_c.unwrap_or(0.0),
+        _ => return error(422, "bad_heater"),
+    };
+    if !target.is_finite() || target < 0.0 || target > limit {
+        return error(422, "temperature_over_limit");
+    }
+    s.targets.push((id.to_string(), heater.to_string(), target));
+    reply(200, &Value::object(vec![("ok", Value::Bool(true))]))
 }
 
 fn create_machine(s: &mut State, req: &sc::Request) -> sc::Reply {

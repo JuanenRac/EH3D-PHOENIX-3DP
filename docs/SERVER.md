@@ -37,6 +37,8 @@ The server serves a plugin for 3D printers (`printer3d`) under the generic route
 | `POST /api/v1/work/jobs` | puts a program in the queue; the program is read first and a temperature over the limit is refused with its line and nothing is sent |
 | `GET /api/v1/work/jobs`, `GET /api/v1/work/jobs/{id}` | the queue and one job |
 | `POST /api/v1/work/jobs/{id}/start`, `pause`, `resume`, `cancel` | what a person does to a job |
+| `PUT /api/v1/work/machines/{id}/temperatures` | a target for one heater (`hotend`, `bed` or `chamber`); checked here against the stricter limits first, and again by the server (`422 temperature_over_limit`, `422 bad_heater`) |
+| `GET /api/v1/work/machines/{id}/compat/moonraker`, `.../compat/octoprint` | the state in the shape of another program's answer; the server gives it only when the machine has the setting `compat` (otherwise `501 not_supported`) |
 | `POST /api/v1/work/machines/{id}/emergency-stop` | heaters off and motors released at once; the machine stays latched until an administrator calls `.../release` |
 
 The limits of temperature are checked twice: by the program with the stricter of its own profile and the limits the server reports for the machine, and by the server, which refuses a program over its limits whoever sends it (`422 program_over_limit`).

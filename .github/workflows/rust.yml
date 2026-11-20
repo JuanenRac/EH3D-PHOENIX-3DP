@@ -24,6 +24,9 @@ jobs:
     name: Rust (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
+    env:
+      # The tag of each sibling repository this one is built against (name=tag, separated by spaces); a sibling that is not listed is taken at main.
+      SIBLING_REFS: "EH3D-COMMON=v0.2.5"
     strategy:
       fail-fast: false
       matrix:
