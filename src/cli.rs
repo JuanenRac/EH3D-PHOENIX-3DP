@@ -5,7 +5,7 @@ use crate::app_state::{profile_report, AppState};
 use crate::config::AppConfig;
 use crate::i18n::{Lang, Msg};
 use p3dp_formats::project3mf::read_project;
-use p3dp_formats::{bgcode, resin};
+use p3dp_formats::{bgcode, resin, resin_control};
 use p3dp_formats::{write_mesh, Format};
 use p3dp_gcode::check_program;
 use p3dp_profiles::filament::{FilamentCatalog, Nozzle};
@@ -57,7 +57,7 @@ pub const USAGE: &str = "phoenix-3dp: prepare and send 3D prints (simulators onl
   phoenix-3dp convert IN OUT [--printer ID] [--force]
   phoenix-3dp filaments [--printer ID] [--nozzle MM] [--hardened]
   phoenix-3dp slice MODEL --printer ID [--settings FILE] [--filament ID] [--nozzle MM] [--hardened] [--out FILE.gcode] [--force]
-  phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.sl1 [--bottom-layers N] [--lift MM]
+  phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.sl1 [--bottom-layers N] [--lift MM] [--light-power MW]
   phoenix-3dp version
 
 Every command also takes --config FILE (the settings) and --lang CODE (en, es, de, fr, it, ja, zh, pt).
@@ -671,6 +671,25 @@ fn resin_report(file: &str, bytes: &[u8], p: &Parsed, limits: &p3dp_core::Limits
         Ok(e) => e,
         Err(e) => return Outcome::fail(format!("{file}: {e}")),
     };
+    // with the power of the light the layers are checked one by one against the limits
+    let mut light = None;
+    if let Some(v) = p.flags.get("light-power") {
+        let power = match v.parse::<f64>() {
+            Ok(x) => x,
+            Err(_) => return Outcome::usage("--light-power takes a number of mW/cm2"),
+        };
+        match resin_control::control_layers(
+            &job,
+            &settings,
+            power,
+            &resin_control::SectionRule::default(),
+            &resin_control::ResinLimits::default(),
+            None,
+        ) {
+            Ok(r) => light = Some((power, r)),
+            Err(e) => return Outcome::fail(format!("{file}: {e}")),
+        }
+    }
     let mut out = format!(
         "{file}: a package of {} layers of {} mm{}\nexposure {} s ({} s for the bottom layers, {} layers of transition)\n",
         job.layers,
@@ -688,6 +707,13 @@ fn resin_report(file: &str, bytes: &[u8], p: &Parsed, limits: &p3dp_core::Limits
         "estimate: {:.0} s of light and {:.0} s of moving and waiting, {:.0} s in all, with {} bottom layers and a lift of {} mm (an estimate, not the planner of the printer)\n",
         est.exposure_s, est.movement_s, est.total_s, settings.bottom_layers, settings.lift_mm
     ));
+    if let Some((power, r)) = &light {
+        let most = r.layers.iter().map(|c| c.dose_mj_cm2).fold(0.0, f64::max);
+        out.push_str(&format!(
+            "light: {power} mW/cm2, {:.0} mJ/cm2 in all and {most:.1} at most on one layer; every layer is inside the limits of exposure, lift, speed, waiting and dose\n",
+            r.total_dose_mj_cm2
+        ));
+    }
     if let Some(s) = job.stated_seconds {
         out.push_str(&format!("the file says the print takes {s} s\n"));
     }
@@ -696,7 +722,11 @@ fn resin_report(file: &str, bytes: &[u8], p: &Parsed, limits: &p3dp_core::Limits
 }
 
 fn project(args: &[String], env_lang: Option<&str>) -> Outcome {
-    let p = match parse(args, &["config", "lang", "bottom-layers", "lift"], &[]) {
+    let p = match parse(
+        args,
+        &["config", "lang", "bottom-layers", "lift", "light-power"],
+        &[],
+    ) {
         Ok(p) => p,
         Err(e) => return Outcome::usage(&e),
     };
@@ -1368,6 +1398,21 @@ mod tests {
         );
         assert_eq!(
             run(&args(&format!("project {sl1} --bottom-layers x")), None).code,
+            2
+        );
+        // with the power of the light, the doses are told and the limits are checked
+        let r = run(&args(&format!("project {sl1} --light-power 3")), None);
+        assert_eq!(r.code, 0, "{}", r.out);
+        assert!(
+            r.out.contains("light: 3 mW/cm2") && r.out.contains("90.0 at most"),
+            "{}",
+            r.out
+        );
+        let r = run(&args(&format!("project {sl1} --light-power 100")), None);
+        assert_eq!(r.code, 1);
+        assert!(r.err.contains("dose_mj_cm2"), "{}", r.err);
+        assert_eq!(
+            run(&args(&format!("project {sl1} --light-power strong")), None).code,
             2
         );
         // the same bytes under a closed name are refused with the reason

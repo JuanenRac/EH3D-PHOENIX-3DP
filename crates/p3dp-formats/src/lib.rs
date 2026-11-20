@@ -11,6 +11,7 @@ pub mod inflate;
 pub mod obj;
 pub mod project3mf;
 pub mod resin;
+pub mod resin_control;
 pub mod stl;
 pub mod threemf;
 pub mod xml;
