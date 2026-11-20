@@ -11,10 +11,12 @@ pub mod octoprint;
 pub mod retry;
 pub mod sim;
 pub mod state_map;
+pub mod tcp;
 pub mod transport;
 pub mod types;
 
 pub use driver::PrinterDriver;
 pub use error::LinkError;
+pub use tcp::{TcpLimits, TcpTransport};
 pub use transport::{HttpRequest, HttpResponse, HttpTransport, Method};
 pub use types::{Caps, Command, Family, JobInfo, JobState, PrinterState, Temperature};
