@@ -120,6 +120,25 @@ pub fn merge_lines(text: &str, lines: &[(&str, String)]) -> String {
     text
 }
 
+/// Takes lines out of the text of a settings file: every line of one of the keys is dropped, and every other line, comments included, is left as it was.
+pub fn drop_keys(text: &str, keys: &[&str]) -> String {
+    let mut out: Vec<&str> = Vec::new();
+    for raw in text.lines() {
+        let key = raw
+            .split('#')
+            .next()
+            .and_then(|code| code.split_once('='))
+            .map(|(k, _)| k.trim());
+        if key.is_some_and(|k| keys.iter().any(|name| name.eq_ignore_ascii_case(k))) {
+            continue;
+        }
+        out.push(raw);
+    }
+    let mut text = out.join("\n");
+    text.push('\n');
+    text
+}
+
 /// What the person applied: the lines to keep in the settings file.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Applied {
@@ -339,5 +358,32 @@ mod tests {
         ui.panel.form.address = "http://wrong".to_string();
         assert!(ui.handle(Action::Apply, &mut cfg.server).is_none());
         assert!(cfg.server.server_address.is_empty());
+    }
+
+    #[test]
+    fn lines_are_taken_out_of_a_settings_file_and_the_rest_is_left_as_it_was() {
+        let text = "# my settings
+lang = es
+printer_limits_a = 1,2,none # mine
+PRINTER_LIMITS_B = 3,4,none
+grid_mm = 20
+";
+        let out = drop_keys(text, &["printer_limits_a", "printer_limits_b"]);
+        assert_eq!(
+            out,
+            "# my settings
+lang = es
+grid_mm = 20
+"
+        );
+        assert_eq!(drop_keys(text, &[]), text);
+        assert_eq!(
+            drop_keys("", &["x"]),
+            "
+"
+        );
+        // what is merged and then dropped leaves the file as it was
+        let merged = merge_lines(text, &[("theme", "light".to_string())]);
+        assert_eq!(drop_keys(&merged, &["theme"]), drop_keys(text, &[]));
     }
 }

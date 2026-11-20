@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.5-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-537-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-599-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Honesty check - what actually runs today:** a Rust workspace of eight libraries and a command line program (`phoenix-3dp`) with 537 tests that run on a computer. It reads STL, OBJ and 3MF models and checks them, holds a catalog of 120 printer profiles built from public data (none of them tried on a machine), writes G-code for the Marlin, Klipper, RepRapFirmware and Bambu dialects with temperature limits that refuse a value instead of cutting it down, and drives Moonraker and OctoPrint printers and the EH3D server, but only against simulators (in memory, and on a socket of this computer). It slices a closed model into flat layers with perimeters, a rectilinear infill and solid skins (a small slicer with grid and gyroid infill, bridges, plain supports, seams, variable width, a lift on travel, a skirt, a brim or a raft, a vase mode, slower short layers, retraction that follows the travel and an estimate of the time with acceleration; nothing for several materials yet); the window has not been built or looked at on a screen; nothing has run on a real printer.
+**Honesty check - what actually runs today:** a Rust workspace of eight libraries and a command line program (`phoenix-3dp`) with 599 tests that run on a computer. It reads STL, OBJ and 3MF models and checks them, holds a catalog of 120 printer profiles built from public data (none of them tried on a machine), writes G-code for the Marlin, Klipper, RepRapFirmware and Bambu dialects with temperature limits that refuse a value instead of cutting it down, and drives Moonraker and OctoPrint printers and the EH3D server, but only against simulators (in memory, and on a socket of this computer). It slices a closed model into flat layers with perimeters, a rectilinear infill and solid skins (a small slicer with grid and gyroid infill, bridges, plain supports, seams, variable width, a lift on travel, a skirt, a brim or a raft, a vase mode, slower short layers, retraction that follows the travel and an estimate of the time with acceleration; nothing for several materials yet); the window has not been built or looked at on a screen; nothing has run on a real printer.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Version | `0.0.5` |
 | Maturity | Scaffolding |
-| Tests | 537 |
+| Tests | 599 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a printer, not even on a Bambu Lab A1 or a P1S. |
 
@@ -55,9 +55,9 @@ Each line is one part of this repository and the light says how far it is today.
 | Server link | 🟠 | the settings of the link and a client of the printer plugin of the server over the common client of the suite (login, renewal, retries, errors in eight languages), tried against a server in memory; never against the real server. |
 | Slicer | 🟡 | flat layers of a closed mesh, perimeters, rectilinear, grid or gyroid infill, solid skins, bridges, plain supports, seams, variable width, G-code per dialect, a preview by layers as data and an estimate of the time with acceleration; checked with properties on shapes from a fixed seed (the plastic laid down is the volume of the part, nothing leaves the bed, no temperature goes past a limit); no print has come out of it on a printer. |
 | Command line | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) runs the functions of the libraries and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 537 tests pass (`cargo test --workspace`), with normal cases, edge cases, damaged input and a fixed seed wherever they are random. |
+| Tests | 🟡 | 599 tests pass (`cargo test --workspace`), with normal cases, edge cases, damaged input and a fixed seed wherever they are random. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): a limit is a refusal and never a trim; the token never prints; nothing panics on the files it is given; no independent review. |
-| Window | 🔴 | The four tabs (Prepare, Preview, Device, Project) are written with `--features gui`: lists of printers and filaments with filters, the plan by layers with a slider, the queue of the server with a start that needs a confirmation, an emergency stop, shortcuts that can be changed and a picture mode (`--shot`); the logic is tested without a screen, but the window has not been built or looked at on a screen yet. |
+| Window | 🔴 | The four tabs (Prepare, Preview, Device, Project) are written with `--features gui`: lists of printers and filaments with filters, the plan by layers with a slider, the queue of the server with a start that needs a confirmation, an emergency stop, shortcuts that can be changed, a picture mode (`--shot`), a 3D view of the bed with the parts as shaded solids, a panel of the parts with auto-orient and arrange, slicing in the background with the estimates, temperature limits that can be edited and a dark and a light look; the logic is tested without a screen, but the window has not been built or looked at on a screen yet. |
 | Real hardware | 🔴 | Not tried: nothing here has run on a printer, not even on a Bambu Lab A1 or a P1S. |
 | Documentation | 🟡 | README in eight languages, the changelog, the `docs/` folder (architecture, roadmap, what is not done yet, the server) and the two pictures drawn from `docs/`. |
 
@@ -93,6 +93,7 @@ How the parts of this repository fit together: who uses it, what it holds and wh
 * **Nothing starts by itself:** the requests to the queue of the server say `auto_start: false` and ask for confirmation; raw G-code is off by default and, when on, is one line at a time under the same limits.
 * **One state for every protocol:** fifteen normalized states, temperatures, job and alerts, with the raw text of the printer kept apart, so the rest of the program speaks one language.
 * **Simulators for the tests:** each protocol has an in-memory simulator with faults on demand (no connection, time-out, 503), so retries, refusals and shutdowns are tested without a network.
+* **A window like a slicer's:** tabs for Prepare, Preview, Device and Project; a 3D view of the bed with the parts as shaded solids; a panel for the printer, the filament and the process; the numbers of each part (place, turn, size), auto-orient and arrange; slicing in the background with the estimates at the bottom; a dark and a light look. The logic is tested without a screen; the window itself has not been looked at yet.
 * **Clean room and own art:** written from public protocols, manuals and facts; no code, texts, icons or profile files of another slicer; every profile says `verified = false` until it has been tried.
 * **Eight languages:** the texts of the program and the documentation exist in English, Spanish, German, French, Italian, Japanese, Chinese and European Portuguese.
 * **No unsafe code:** `#![forbid(unsafe_code)]` in every crate.
@@ -129,12 +130,12 @@ phoenix-3dp resins [--kind KIND] [--printer ID] [--part-ml ML]
 phoenix-3dp slice MODEL --printer ID [--settings FILE] [--filament ID] [--nozzle MM] [--hardened] [--report] [--out FILE.gcode] [--force]
 phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.gcode|FILE.sl1 [--thumbnail FILE] [--force] [--bottom-layers N] [--lift MM] [--light-power MW]
 phoenix-3dp version
-phoenix-3dp gui [SETTINGS] [--shot FILE.png]                       the window (a build with --features gui)
+phoenix-3dp gui [SETTINGS] [--open MODEL] [--printer ID] [--shot FILE.png [--window TAB] [--size WxH] [--slice] [--demo]]  the window (a build with --features gui)
 ```
 
 ## ⚙️ Configuration
 
-The settings are one file of `key = value` lines (`--config FILE`): the limits of the readers (`limit_*`), the link to the server (`server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries`, `server_mdns`, `server_max_answer_mib`), `direct_mode` (stand-alone, off by default), `lang` and `default_printer`, the prices (`price_filament_per_kg`, `price_resin_per_litre`, `resin_waste_percent`), the report (`report_slowest_layers`, `report_short_layer_s`), the queue (`queue_refuse_duplicates`, `queue_max_waiting`) and how far a plain G-code file is searched (`limit_gcode_head_kib`, `limit_gcode_tail_kib`, `limit_gcode_thumbnails`). A printer profile is another file of the same kind (`examples/my-printer.cfg`). A key that is not known or a value out of range is an error that names its line; every default is conservative. See `examples/phoenix-3dp.cfg`.
+The settings are one file of `key = value` lines (`--config FILE`): the limits of the readers (`limit_*`), the link to the server (`server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries`, `server_mdns`, `server_max_answer_mib`), `direct_mode` (stand-alone, off by default), `lang` and `default_printer`, the prices (`price_filament_per_kg`, `price_resin_per_litre`, `resin_waste_percent`), the report (`report_slowest_layers`, `report_short_layer_s`), the queue (`queue_refuse_duplicates`, `queue_max_waiting`) and how far a plain G-code file is searched (`limit_gcode_head_kib`, `limit_gcode_tail_kib`, `limit_gcode_thumbnails`). A printer profile is another file of the same kind (`examples/my-printer.cfg`). A key that is not known or a value out of range is an error that names its line; every default is conservative. See `examples/phoenix-3dp.cfg`. The window keeps its own choices in the same file: `theme` (`dark` or `light`), `grid_mm`, `arrange_gap_mm`, `arrange_on_add`, `ui_hints` and, for each printer whose temperature limits were changed, `printer_limits_<id>`.
 
 ## 🚀 Quick start
 
@@ -152,7 +153,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Testing
 
-The suite has 537 tests (`cargo test --workspace`, run on Windows and Linux in the CI), with a fixed seed wherever they are random. They check the normal cases, the edge cases and damaged input: cut files, garbage and hostile headers never panic, and no temperature of any printer of the catalog goes past its limit. The CI also runs `cargo fmt --all --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 599 tests (`cargo test --workspace`, run on Windows and Linux in the CI), with a fixed seed wherever they are random. They check the normal cases, the edge cases and damaged input: cut files, garbage and hostile headers never panic, and no temperature of any printer of the catalog goes past its limit. The CI also runs `cargo fmt --all --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 
@@ -184,18 +185,24 @@ EH3D-PHOENIX-3DP/
 │   ├── cli.rs                                   the commands: printers, info, check-profile, convert, filaments, resins, slice, project, version
 │   ├── app_state.rs                             the state of the window without a window: tabs, printer, model, reports, simulated device
 │   ├── config.rs                                the settings file: limits, server link, language, default printer, prices, report and queue
+│   ├── demo.rs                                  the demonstration model for the pictures: a goblet turned from a few radii
 │   ├── device.rs                                the printers of the server, the queue and its rules, a confirmed start, the emergency stop
 │   ├── i18n.rs                                  the texts of the program in the eight languages
 │   ├── keys.rs                                  the keyboard shortcuts: the scheme of the family, an own scheme and the changes
 │   ├── lists.rs                                 the lists of printers and of filaments with their filters
+│   ├── limits_ui.rs                             editing and keeping the temperature limits of a printer, with the warnings of an edit
 │   ├── look.rs                                  the colours, the mark and the drawings of the window and its layout by size
+│   ├── objects.rs                               the parts on the bed: place, turn, scale, auto-orient, arrange, overlaps
 │   ├── preview.rs                               slicing from the window, the slider of layers, the plan on screen, the report
 │   ├── project.rs                               the project: a model and its printer in the own 3MF package
 │   ├── report.rs                                the words of the reports: slice, resin, thumbnails and profile edits, in the eight languages
 │   ├── server_ui.rs                             the settings of the server, the state of the link and the login, over the panel of the suite
+│   ├── shade.rs                                 the solid look of the 3D view: shaded polygons, the bed, the standard views and picking
 │   ├── shot.rs                                  the picture mode of the window (--shot) and the PNG file it writes
+│   ├── slice_job.rs                             slicing in the background and the estimate of the progress bar
+│   ├── studio.rs                                the work table of the Prepare tab: parts, camera, background slice, estimates
 │   ├── view.rs                                  the orbit camera that turns a mesh into lines for the preview
-│   └── gui.rs                                   the window (egui, with the gui feature): draws the state and passes on what the person does
+│   └── gui.rs                                   the window (egui, gui feature): bars, panels and 3D view; passes on what the person does
 ├── tests/
 │   ├── end_to_end.rs                            tests from a model to a program to a simulated printer
 │   ├── examples.rs                              tests that the files of examples/ work with the commands

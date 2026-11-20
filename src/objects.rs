@@ -756,4 +756,52 @@ mod tests {
             let _ = auto_orient(&o);
         }
     }
+
+    #[test]
+    fn random_beds_are_arranged_without_overlaps_and_inside_the_edge_for_every_part_that_fits() {
+        let mut rng = p3dp_core::rng::Rng::new(2024);
+        for round in 0..40 {
+            let mut p = Plate::new();
+            let n = 1 + rng.below(12) as usize;
+            for i in 0..n {
+                let mut o = PlacedObject::new(1, "x", cube(1.0));
+                o.scale = [
+                    5.0 + rng.unit() * 70.0,
+                    5.0 + rng.unit() * 70.0,
+                    5.0 + rng.unit() * 40.0,
+                ];
+                let mesh = o.world_mesh().unwrap();
+                p.add(&format!("p{i}"), mesh, BED).unwrap();
+            }
+            let gap = rng.unit() * 10.0;
+            let r = p.arrange(BED, gap, 2.0);
+            assert_eq!(r.placed + r.left_out.len(), n, "round {round}");
+            // the parts that were placed lie inside the bed and apart from each other
+            let placed: Vec<&PlacedObject> = p
+                .objects
+                .iter()
+                .filter(|o| !r.left_out.contains(&o.id))
+                .collect();
+            for o in &placed {
+                let (lo, hi) = o.world_bounds().unwrap();
+                assert!(lo[0] >= 2.0 - 1e-6 && lo[1] >= 2.0 - 1e-6, "round {round}");
+                assert!(
+                    hi[0] <= BED[0] - 2.0 + 1e-6 && hi[1] <= BED[1] - 2.0 + 1e-6,
+                    "round {round}"
+                );
+            }
+            for (i, a) in placed.iter().enumerate() {
+                for b in &placed[i + 1..] {
+                    let (alo, ahi) = a.world_bounds().unwrap();
+                    let (blo, bhi) = b.world_bounds().unwrap();
+                    let dx = (alo[0] - bhi[0]).max(blo[0] - ahi[0]);
+                    let dy = (alo[1] - bhi[1]).max(blo[1] - ahi[1]);
+                    assert!(
+                        dx >= gap - 1e-6 || dy >= gap - 1e-6,
+                        "round {round}: {dx} {dy}"
+                    );
+                }
+            }
+        }
+    }
 }

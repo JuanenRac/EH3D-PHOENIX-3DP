@@ -120,6 +120,48 @@ pub fn scaled(c: Rgb, k: f32) -> Rgb {
     c.map(|v| (f32::from(v) * k).round().clamp(0.0, 255.0) as u8)
 }
 
+/// A text cut into lines of at most `max_chars` letters: at a space when there is one in reach, in the middle of a word when there is none (a language with no spaces). Lines
+/// are never empty, and no letter is lost or repeated.
+pub fn wrap_lines(text: &str, max_chars: usize) -> Vec<String> {
+    let max = max_chars.max(1);
+    let mut lines = Vec::new();
+    let mut line = String::new();
+    let mut len = 0usize;
+    for word in text.split_whitespace() {
+        let wlen = word.chars().count();
+        if len > 0 && len + 1 + wlen <= max {
+            line.push(' ');
+            line.push_str(word);
+            len += 1 + wlen;
+            continue;
+        }
+        if len > 0 {
+            lines.push(std::mem::take(&mut line));
+        }
+        let mut rest = word;
+        while rest.chars().count() > max {
+            let cut = rest.char_indices().nth(max).map_or(rest.len(), |(i, _)| i);
+            lines.push(rest[..cut].to_string());
+            rest = &rest[cut..];
+        }
+        line.push_str(rest);
+        len = rest.chars().count();
+    }
+    if len > 0 {
+        lines.push(line);
+    }
+    lines
+}
+
+/// Of two colours for a text, the one that reads better on a ground.
+pub fn readable_on(ground: Rgb, a: Rgb, b: Rgb) -> Rgb {
+    if contrast(a, ground) >= contrast(b, ground) {
+        a
+    } else {
+        b
+    }
+}
+
 fn channel(c: u8) -> f64 {
     let s = f64::from(c) / 255.0;
     if s <= 0.03928 {
@@ -363,6 +405,59 @@ mod tests {
             assert_ne!(p.model, p.selected);
         }
         assert_ne!(Palette::phoenix(), Palette::daylight());
+    }
+
+    #[test]
+    fn a_text_is_cut_into_lines_that_fit_and_lose_nothing() {
+        assert_eq!(wrap_lines("", 10), Vec::<String>::new());
+        assert_eq!(wrap_lines("   ", 10), Vec::<String>::new());
+        assert_eq!(wrap_lines("one two three", 7), vec!["one two", "three"]);
+        assert_eq!(wrap_lines("abcdefghij", 4), vec!["abcd", "efgh", "ij"]);
+        assert_eq!(
+            wrap_lines("a b", 0),
+            vec!["a", "b"],
+            "a width of nothing is one letter"
+        );
+        // a language with no spaces is cut by letters
+        let ja = "モデルのパスを入力して開くを押すか、デモを読み込みます";
+        let lines = wrap_lines(ja, 10);
+        assert!(lines
+            .iter()
+            .all(|l| !l.is_empty() && l.chars().count() <= 10));
+        assert_eq!(lines.concat(), ja);
+        // the words of every text of the empty bed keep all their letters, in every language
+        for l in crate::i18n::Lang::ALL {
+            let t = crate::i18n::Msg::EmptyBedHint.tr(l);
+            let lines = wrap_lines(t, 40);
+            assert!(
+                lines.iter().all(|x| x.chars().count() <= 40),
+                "{}",
+                l.code()
+            );
+            let squeezed: String = t.split_whitespace().collect();
+            assert_eq!(
+                lines.concat().split_whitespace().collect::<String>(),
+                squeezed
+            );
+        }
+    }
+
+    #[test]
+    fn the_text_of_a_button_is_the_one_that_reads_better_on_its_colour() {
+        for theme in Theme::ALL {
+            let p = theme.palette();
+            let t = readable_on(p.accent, p.text, p.background);
+            assert!(contrast(t, p.accent) >= 3.0, "{}: {t:?}", theme.name());
+            assert!(contrast(t, p.accent) >= contrast(p.dim, p.accent));
+        }
+        assert_eq!(
+            readable_on([0, 0, 0], [255, 255, 255], [10, 10, 10]),
+            [255, 255, 255]
+        );
+        assert_eq!(
+            readable_on([255, 255, 255], [250, 250, 250], [5, 5, 5]),
+            [5, 5, 5]
+        );
     }
 
     #[test]

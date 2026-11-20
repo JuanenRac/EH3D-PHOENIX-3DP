@@ -216,6 +216,22 @@ impl Studio {
         gone
     }
 
+    /// Makes a copy of the selected part and selects it; the bed is arranged when the settings ask for it. `false` when nothing is selected or the bed holds all it can.
+    pub fn duplicate_selected(&mut self, volume_mm: [f64; 3], config: &AppConfig) -> bool {
+        let Some(id) = self.plate.selected else {
+            return false;
+        };
+        let copies = self.plate.duplicate(id, 1);
+        if copies.is_empty() {
+            return false;
+        }
+        if config.arrange_on_add {
+            self.arrange(volume_mm, config);
+        }
+        self.touched();
+        true
+    }
+
     /// Notes that a part was changed by the window (a number typed in the right panel).
     pub fn mark_edited(&mut self) {
         self.touched();
@@ -588,6 +604,19 @@ mod tests {
     }
 
     #[test]
+    fn a_copy_of_the_selected_part_is_made_and_selected_and_the_bed_arranged() {
+        let mut s = Studio::new();
+        let c = config();
+        assert!(!s.duplicate_selected(VOL, &c), "nothing is selected");
+        s.add_model("a", cube(30.0), VOL, &c).unwrap();
+        assert!(s.duplicate_selected(VOL, &c));
+        assert_eq!(s.plate.len(), 2);
+        assert!(s.plate.overlaps().is_empty());
+        assert_eq!(s.plate.selected, Some(s.plate.objects[1].id));
+        assert!(s.stale);
+    }
+
+    #[test]
     fn a_blocking_slice_gives_the_plan_or_says_no() {
         let mut s = Studio::new();
         let mut preview = PreviewState::default();
@@ -614,5 +643,35 @@ mod tests {
         assert!((s.plate.get(id).unwrap().world_size().unwrap()[2] - 40.0).abs() < 1e-3);
         assert!(s.auto_orient_selected());
         assert!((s.plate.get(id).unwrap().world_size().unwrap()[2] - 2.0).abs() < 1e-3);
+    }
+
+    #[test]
+    fn the_goblet_of_the_demonstration_gives_sensible_estimates_and_a_bed_without_warnings() {
+        let mut s = Studio::new();
+        let mut preview = PreviewState::default();
+        let c = config();
+        let id = s
+            .add_model(crate::demo::DEMO_NAME, crate::demo::goblet(), VOL, &c)
+            .unwrap();
+        assert_eq!(s.plate.get(id).unwrap().name, "goblet.stl");
+        assert!(s.warnings(VOL).is_empty());
+        assert!(s.slice_blocking(&mut preview, &printer(), None));
+        let e = Estimates::of(&preview, &c).unwrap();
+        assert!((e.height_mm - 50.0).abs() < 0.5, "{}", e.height_mm);
+        assert!(e.layers >= 200 && e.layers <= 300, "{}", e.layers);
+        assert!(
+            e.seconds > 600.0 && e.seconds < 6.0 * 3600.0,
+            "{}",
+            e.seconds
+        );
+        assert!(e.mass_g > 5.0 && e.mass_g < 120.0, "{}", e.mass_g);
+        // the same model sliced twice gives the same plan
+        let mut again = PreviewState::default();
+        assert!(s.slice_blocking(&mut again, &printer(), None));
+        assert_eq!(
+            Estimates::of(&again, &c).unwrap().layers,
+            e.layers,
+            "slicing is deterministic"
+        );
     }
 }

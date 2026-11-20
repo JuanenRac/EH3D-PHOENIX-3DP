@@ -9,18 +9,18 @@ pub mod demo;
 pub mod device;
 pub mod i18n;
 pub mod keys;
+pub mod limits_ui;
 pub mod lists;
-pub mod objects;
 pub mod look;
+pub mod objects;
 pub mod preview;
-pub mod profile_edit;
 pub mod project;
-pub mod shade;
-pub mod slice_job;
-pub mod studio;
 pub mod report;
 pub mod server_ui;
+pub mod shade;
 pub mod shot;
+pub mod slice_job;
+pub mod studio;
 pub mod view;
 
 #[cfg(feature = "gui")]

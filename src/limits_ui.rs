@@ -4,6 +4,7 @@
 
 use crate::app_state::{AppState, Status};
 use crate::config::{AppConfig, LimitOverride};
+use crate::i18n::{fill, Lang, Msg};
 use p3dp_profiles::{Catalog, LimitSource, Notice, PrinterProfile, Technology};
 
 /// What a person types: the three limits, in degrees Celsius. A chamber of `None` is a printer with no heated chamber.
@@ -38,6 +39,27 @@ pub enum EditWarning {
 pub struct Checked {
     pub profile: PrinterProfile,
     pub warnings: Vec<EditWarning>,
+}
+
+impl EditWarning {
+    /// The warning in a language: the key that changed, and what it means.
+    pub fn text(self, lang: Lang) -> String {
+        match self {
+            EditWarning::PastMaker { key, from, to } => format!(
+                "{} {}",
+                fill(
+                    Msg::NoticeLimitRaised.tr(lang),
+                    &[key, &from.to_string(), &to.to_string()]
+                ),
+                Msg::NoticeAboveMaker.tr(lang)
+            ),
+            EditWarning::Raised { key, from, to } => fill(
+                Msg::NoticeLimitRaised.tr(lang),
+                &[key, &from.to_string(), &to.to_string()],
+            ),
+            EditWarning::NoLongerTried => Msg::NoticeVerificationCleared.tr(lang).to_string(),
+        }
+    }
 }
 
 impl LimitsDraft {
@@ -231,6 +253,34 @@ mod tests {
         };
         let c = warm.check(&p).unwrap();
         assert_eq!(c.profile.limits.unwrap().chamber_c, Some(45.0));
+    }
+
+    #[test]
+    fn the_warnings_are_told_in_every_language_with_the_key_and_the_figures() {
+        let past = EditWarning::PastMaker {
+            key: "nozzle_max_c",
+            from: 260.0,
+            to: 290.0,
+        };
+        let raised = EditWarning::Raised {
+            key: "bed_max_c",
+            from: 100.0,
+            to: 110.0,
+        };
+        for l in Lang::ALL {
+            let t = past.text(l);
+            assert!(
+                t.contains("nozzle_max_c") && t.contains("260") && t.contains("290"),
+                "{t}"
+            );
+            assert!(
+                t.len() > raised.text(l).len(),
+                "the one past the maker says more"
+            );
+            assert!(raised.text(l).contains("110") && !raised.text(l).contains("{}"));
+            assert!(EditWarning::NoLongerTried.text(l).contains("verified"));
+        }
+        assert!(past.text(Lang::Es).contains("fabricante"));
     }
 
     #[test]

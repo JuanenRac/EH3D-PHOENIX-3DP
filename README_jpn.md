@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.5-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-537-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-599-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**正直さの確認 - 現在実際に動くもの：** 8 つのライブラリと、コマンドライン プログラム（`phoenix-3dp`）からなる Rust ワークスペースで、コンピューター上で動くテストが 537 本あります。STL・OBJ・3MF のモデルを読み込んで検査し、公開情報から作った 120 件のプリンター プロファイル（実機で試したものはありません）を持ち、Marlin・Klipper・RepRapFirmware・Bambu の方言の G コードを、値を切り詰めずに拒否する温度上限付きで書き出し、Moonraker と OctoPrint のプリンターおよび EH3D サーバーを操作しますが、相手はシミュレーター（メモリ上と、このコンピューターのソケット）だけです。閉じたモデルを平らな層に切り、外周・直線インフィル・ソリッド スキンを作る最初の最小限のスライサーがあります（グリッドとジャイロイドのインフィル、ブリッジ、簡易サポート、シーム、可変幅、移動時の持ち上げ、スカート・ブリム・ラフト、花瓶モード、短い層の減速、移動量に応じたリトラクト、加速度を考慮した時間の見積もりがあり、複数素材向けの機能はまだありません）。ウィンドウはビルドも画面での確認もされておらず、実際のプリンターでは何も動かしていません。
+**正直さの確認 - 現在実際に動くもの：** 8 つのライブラリと、コマンドライン プログラム（`phoenix-3dp`）からなる Rust ワークスペースで、コンピューター上で動くテストが 599 本あります。STL・OBJ・3MF のモデルを読み込んで検査し、公開情報から作った 120 件のプリンター プロファイル（実機で試したものはありません）を持ち、Marlin・Klipper・RepRapFirmware・Bambu の方言の G コードを、値を切り詰めずに拒否する温度上限付きで書き出し、Moonraker と OctoPrint のプリンターおよび EH3D サーバーを操作しますが、相手はシミュレーター（メモリ上と、このコンピューターのソケット）だけです。閉じたモデルを平らな層に切り、外周・直線インフィル・ソリッド スキンを作る最初の最小限のスライサーがあります（グリッドとジャイロイドのインフィル、ブリッジ、簡易サポート、シーム、可変幅、移動時の持ち上げ、スカート・ブリム・ラフト、花瓶モード、短い層の減速、移動量に応じたリトラクト、加速度を考慮した時間の見積もりがあり、複数素材向けの機能はまだありません）。ウィンドウはビルドも画面での確認もされておらず、実際のプリンターでは何も動かしていません。
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | バージョン | `0.0.5` |
 | 成熟度 | 足場 |
-| テスト | 537 |
+| テスト | 599 |
 | 技術スタック | Rust |
 | 実機での動作 | 未試験：ここにあるものはプリンターでは一度も動かしておらず、Bambu Lab A1 や P1S でも試していません。 |
 
@@ -55,9 +55,9 @@
 | サーバー接続 | 🟠 | 接続の設定と、スイート共通のクライアント（ログイン、更新、再試行、8 言語のエラー）の上に載せたサーバーのプリンター プラグイン用クライアント。メモリ上のサーバーに対して試しました。実際のサーバーに対しては試していません。 |
 | スライサー | 🟡 | 閉じたメッシュの平らな層、外周、直線・グリッド・ジャイロイドのインフィル、ソリッド スキン、ブリッジ、簡易サポート、シーム、可変幅、方言ごとの G コード、データとしての層ごとのプレビューと、加速度を考慮した時間の見積もり。固定シードの形状に対する性質テストで確認済み（積層される樹脂量は部品の体積に等しく、ベッドの外に出ず、どの温度も上限を超えません）。実際のプリンターで印刷したことはありません。 |
 | コマンドライン | 🟡 | `phoenix-3dp`（`printers`、`info`、`check-profile`、`convert`、`filaments`、`resins`、`slice`、`project`、`version`）はライブラリの関数を実行して結果を表示します。エラーはすべてメッセージと 0 以外の終了コードで返ります。 |
-| テスト | 🟡 | 537 本のテストが通ります（`cargo test --workspace`）。通常のケース、境界ケース、壊れた入力を含み、乱数を使う箇所は固定シードです。 |
+| テスト | 🟡 | 599 本のテストが通ります（`cargo test --workspace`）。通常のケース、境界ケース、壊れた入力を含み、乱数を使う箇所は固定シードです。 |
 | セキュリティ | 🟡 | 安全な Rust のみ（`forbid(unsafe_code)`）。上限は拒否であり切り詰めではありません。トークンは決して表示されず、渡されたファイルでパニックしません。独立したレビューは受けていません。 |
-| ウィンドウ | 🔴 | 4 つのタブ（準備・プレビュー・デバイス・プロジェクト）が `--features gui` 付きで書かれています：フィルター付きのプリンターとフィラメントの一覧、スライダー付きの層ごとのプラン、確認が必要な開始を備えたサーバーのキュー、非常停止、変更できるショートカット、画像モード（`--shot`）。ロジックは画面なしでテスト済みですが、ウィンドウはまだビルドも画面での確認もされていません。 |
+| ウィンドウ | 🔴 | 4 つのタブ（準備・プレビュー・デバイス・プロジェクト）が `--features gui` 付きで書かれています：フィルター付きのプリンターとフィラメントの一覧、スライダー付きの層ごとのプラン、確認が必要な開始を備えたサーバーのキュー、非常停止、変更できるショートカット、画像モード（`--shot`）、部品を陰影付きの立体で表示するベッドの 3D ビュー、自動の向き決めと整列を備えた部品パネル、見積もり付きのバックグラウンドスライス、編集できる温度上限、ダークとライトの外観。ロジックは画面なしでテスト済みですが、ウィンドウはまだビルドも画面での確認もされていません。 |
 | 実機 | 🔴 | 未試験：ここにあるものはプリンターでは一度も動かしておらず、Bambu Lab A1 や P1S でも試していません。 |
 | ドキュメント | 🟡 | 8 言語の README、変更履歴、`docs/` フォルダー（アーキテクチャ、ロードマップ、未実装の内容、サーバー）、そして `docs/` から描かれる 2 枚の図。 |
 
@@ -93,6 +93,7 @@ EH3D-PHOENIX-3DP は EH3D Fabrication Suite の PHOENIX ファミリーに属す
 * **勝手には始まらない：** サーバーのキューへの要求は `auto_start: false` で確認を求めます。生の G コードは既定でオフで、オンにしても同じ上限のもとで 1 行ずつ処理します。
 * **全プロトコルで一つの状態：** 15 の正規化された状態、温度、ジョブ、警告があり、プリンター元のテキストは別に保持するので、プログラムの他の部分は一つの言語で話せます。
 * **テスト用シミュレーター：** 各プロトコルに、要求に応じて障害（接続なし、タイムアウト、503）を起こせるメモリ上のシミュレーターがあり、再試行・拒否・停止をネットワークなしでテストします。
+* **スライサーのようなウィンドウ：** 準備・プレビュー・デバイス・プロジェクトのタブ、部品を陰影付きの立体で表示するベッドの 3D ビュー、プリンター・フィラメント・プロセスのパネル、各部品の数値（配置・回転・サイズ）、自動の向き決めと整列、下部の見積もりを備えたバックグラウンドのスライス、ダークとライトの外観。ロジックは画面なしでテスト済みですが、ウィンドウ自体はまだ確認されていません。
 * **クリーンルームと独自の画像：** 公開されたプロトコル、マニュアル、事実から書かれています。他のスライサーのコード、文言、アイコン、プロファイル ファイルは使いません。試すまで各プロファイルは `verified = false` です。
 * **8 言語：** プログラムの文言とドキュメントは、英語、スペイン語、ドイツ語、フランス語、イタリア語、日本語、中国語、ポルトガル（ポルトガル）語で提供されます。
 * **unsafe コードなし：** すべてのクレートで `#![forbid(unsafe_code)]`。
@@ -129,12 +130,12 @@ phoenix-3dp resins [--kind KIND] [--printer ID] [--part-ml ML]
 phoenix-3dp slice MODEL --printer ID [--settings FILE] [--filament ID] [--nozzle MM] [--hardened] [--report] [--out FILE.gcode] [--force]
 phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.gcode|FILE.sl1 [--thumbnail FILE] [--force] [--bottom-layers N] [--lift MM] [--light-power MW]
 phoenix-3dp version
-phoenix-3dp gui [SETTINGS] [--shot FILE.png]                       the window (a build with --features gui)
+phoenix-3dp gui [SETTINGS] [--open MODEL] [--printer ID] [--shot FILE.png [--window TAB] [--size WxH] [--slice] [--demo]]  the window (a build with --features gui)
 ```
 
 ## ⚙️ 設定
 
-設定は `キー = 値` の行からなる 1 つのファイル（`--config FILE`）です。読み込みの上限（`limit_*`）、サーバーへの接続（`server_address`、`server_token`、`server_machine`、`server_timeout_s`、`server_retries`、`server_mdns`、`server_max_answer_mib`）、`direct_mode`（スタンドアロン、既定ではオフ）、`lang`、`default_printer`、価格(`price_filament_per_kg`, `price_resin_per_litre`, `resin_waste_percent`)、レポート(`report_slowest_layers`, `report_short_layer_s`)、キュー(`queue_refuse_duplicates`, `queue_max_waiting`)、通常の G コードをどこまで調べるか(`limit_gcode_head_kib`, `limit_gcode_tail_kib`, `limit_gcode_thumbnails`)です。プリンター プロファイルも同じ形式の別ファイルです（`examples/my-printer.cfg`）。未知のキーや範囲外の値は、その行を示すエラーになります。既定値はすべて控えめです。`examples/phoenix-3dp.cfg` を参照してください。
+設定は `キー = 値` の行からなる 1 つのファイル（`--config FILE`）です。読み込みの上限（`limit_*`）、サーバーへの接続（`server_address`、`server_token`、`server_machine`、`server_timeout_s`、`server_retries`、`server_mdns`、`server_max_answer_mib`）、`direct_mode`（スタンドアロン、既定ではオフ）、`lang`、`default_printer`、価格(`price_filament_per_kg`, `price_resin_per_litre`, `resin_waste_percent`)、レポート(`report_slowest_layers`, `report_short_layer_s`)、キュー(`queue_refuse_duplicates`, `queue_max_waiting`)、通常の G コードをどこまで調べるか(`limit_gcode_head_kib`, `limit_gcode_tail_kib`, `limit_gcode_thumbnails`)です。プリンター プロファイルも同じ形式の別ファイルです（`examples/my-printer.cfg`）。未知のキーや範囲外の値は、その行を示すエラーになります。既定値はすべて控えめです。`examples/phoenix-3dp.cfg` を参照してください。ウィンドウは自身の選択を同じファイルに保存します：`theme`（`dark` または `light`）、`grid_mm`、`arrange_gap_mm`、`arrange_on_add`、`ui_hints`、そして温度上限を変更したプリンターごとの `printer_limits_<id>`。
 
 ## 🚀 クイックスタート
 
@@ -152,7 +153,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 テスト
 
-スイートには 537 本のテストがあります（`cargo test --workspace`。CI では Windows と Linux で実行）。乱数を使う箇所は固定シードです。通常のケース、境界ケース、壊れた入力を確認し、切れたファイル、ゴミ、悪意あるヘッダーでパニックせず、カタログのどのプリンターの温度も上限を超えないことを検証します。CI では `cargo fmt --all --check`、警告をエラーとする `cargo clippy`、`python -I tools/ci_validate.py` も実行します。
+スイートには 599 本のテストがあります（`cargo test --workspace`。CI では Windows と Linux で実行）。乱数を使う箇所は固定シードです。通常のケース、境界ケース、壊れた入力を確認し、切れたファイル、ゴミ、悪意あるヘッダーでパニックせず、カタログのどのプリンターの温度も上限を超えないことを検証します。CI では `cargo fmt --all --check`、警告をエラーとする `cargo clippy`、`python -I tools/ci_validate.py` も実行します。
 
 ## 🏗️ ビルドとリリース
 
@@ -184,18 +185,24 @@ EH3D-PHOENIX-3DP/
 │   ├── cli.rs                                   コマンド：printers、info、check-profile、convert、filaments、resins、slice、project、version
 │   ├── app_state.rs                             ウィンドウなしのウィンドウ状態：タブ、プリンター、モデル、レポート、模擬デバイス
 │   ├── config.rs                                設定ファイル：上限、サーバー接続、言語、既定のプリンター、価格、レポート、キュー
+│   ├── demo.rs                                  画像用のデモモデル：いくつかの半径から回転成形した杯
 │   ├── device.rs                                サーバーのプリンター、キューとその規則、確認付きの開始、非常停止
 │   ├── i18n.rs                                  8 言語のプログラムの文言
 │   ├── keys.rs                                  キーボードショートカット：ファミリー共通の割り当て、独自の割り当て、変更
 │   ├── lists.rs                                 プリンターとフィラメントの一覧とそのフィルター
+│   ├── limits_ui.rs                             プリンターの温度上限の編集と保存、編集時の警告
 │   ├── look.rs                                  ウィンドウの色、マーク、図柄、サイズに応じた配置
+│   ├── objects.rs                               ベッド上の部品：配置、回転、拡大縮小、自動の向き決め、整列、重なり
 │   ├── preview.rs                               ウィンドウからのスライス、層のスライダー、画面上のプラン、レポート
 │   ├── project.rs                               プロジェクト：モデルとそのプリンターを独自の 3MF パッケージに保存
 │   ├── report.rs                                レポートの文言：スライス、レジン、サムネイル、プロファイル編集（8 言語）
 │   ├── server_ui.rs                             サーバーの設定、接続の状態、ログイン（スイート共通のパネル上）
+│   ├── shade.rs                                 3D ビューの立体表示：陰影付きポリゴン、ベッド、標準ビュー、選択
 │   ├── shot.rs                                  ウィンドウの画像モード（--shot）と書き出す PNG ファイル
+│   ├── slice_job.rs                             バックグラウンドでのスライスと進捗バーの推定
+│   ├── studio.rs                                「準備」タブの作業台：部品、カメラ、バックグラウンドのスライス、警告、見積もり
 │   ├── view.rs                                  メッシュをプレビュー用の線に変換する周回カメラ
-│   └── gui.rs                                   ウィンドウ（egui、gui 機能）：状態を描画し、操作を伝える
+│   └── gui.rs                                   ウィンドウ（egui、gui 機能）：バー、パネル、3D ビューと操作の伝達
 ├── tests/
 │   ├── end_to_end.rs                            モデルからプログラム、模擬プリンターまでのテスト
 │   ├── examples.rs                              examples/ のファイルがコマンドで動くことのテスト

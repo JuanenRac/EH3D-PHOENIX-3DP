@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.5-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-537-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-599-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**诚实检查 - 今天真正能运行的内容：** 一个由八个库和一个命令行程序（`phoenix-3dp`）组成的 Rust 工作区，带有 537 个可在电脑上运行的测试。它读取并检查 STL、OBJ 和 3MF 模型，包含一个由公开数据建立的 120 个打印机配置的目录（没有一个在机器上试过），为 Marlin、Klipper、RepRapFirmware 和 Bambu 方言写出 G 代码，温度上限会拒绝超限的值而不是截断它，并能操作 Moonraker 和 OctoPrint 打印机以及 EH3D 服务器，但仅限模拟器（内存中的，以及本机的套接字）。它能把封闭模型切成平整的层，生成外壁、直线填充和实心表层（一个小型切片器，有网格和螺旋体填充、桥接、简易支撑、接缝、可变线宽、移动时抬升、裙边/帽檐/筏板、花瓶模式、短层降速、随移动距离变化的回抽，以及带加速度的时间估算；尚无多材料功能）；窗口尚未构建，也没有在屏幕上看过；没有任何内容在真实打印机上运行过。
+**诚实检查 - 今天真正能运行的内容：** 一个由八个库和一个命令行程序（`phoenix-3dp`）组成的 Rust 工作区，带有 599 个可在电脑上运行的测试。它读取并检查 STL、OBJ 和 3MF 模型，包含一个由公开数据建立的 120 个打印机配置的目录（没有一个在机器上试过），为 Marlin、Klipper、RepRapFirmware 和 Bambu 方言写出 G 代码，温度上限会拒绝超限的值而不是截断它，并能操作 Moonraker 和 OctoPrint 打印机以及 EH3D 服务器，但仅限模拟器（内存中的，以及本机的套接字）。它能把封闭模型切成平整的层，生成外壁、直线填充和实心表层（一个小型切片器，有网格和螺旋体填充、桥接、简易支撑、接缝、可变线宽、移动时抬升、裙边/帽檐/筏板、花瓶模式、短层降速、随移动距离变化的回抽，以及带加速度的时间估算；尚无多材料功能）；窗口尚未构建，也没有在屏幕上看过；没有任何内容在真实打印机上运行过。
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | 版本 | `0.0.5` |
 | 成熟度 | 脚手架 |
-| 测试 | 537 |
+| 测试 | 599 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试验：这里的任何内容都没有在打印机上运行过，包括 Bambu Lab A1 和 P1S。 |
 
@@ -55,9 +55,9 @@
 | 服务器连接 | 🟠 | 连接的设置，以及建立在套件通用客户端（登录、续期、重试、八种语言的错误信息）之上的服务器打印机插件客户端，已针对内存中的服务器试过；从未对真实服务器试过。 |
 | 切片器 | 🟡 | 封闭网格的平整层、外壁、直线、网格或螺旋体填充、实心表层、桥接、简易支撑、接缝、可变线宽、按方言生成的 G 代码、以数据形式提供的逐层预览，以及带加速度的时间估算；已用固定种子形状上的性质测试检查（挤出的塑料量等于零件体积，没有任何内容超出热床，没有温度超过上限）；还没有用它在打印机上打印过。 |
 | 命令行 | 🟡 | `phoenix-3dp`（`printers`、`info`、`check-profile`、`convert`、`filaments`、`resins`、`slice`、`project`、`version`）运行库中的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 537 个测试通过（`cargo test --workspace`），包含正常情况、边界情况、损坏的输入，涉及随机的地方使用固定种子。 |
+| 测试 | 🟡 | 599 个测试通过（`cargo test --workspace`），包含正常情况、边界情况、损坏的输入，涉及随机的地方使用固定种子。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：上限是拒绝而不是截断；令牌绝不打印；收到的文件不会引发 panic；没有独立审查。 |
-| 窗口 | 🔴 | 四个标签页（准备、预览、设备、项目）已用 `--features gui` 写好：带筛选的打印机和耗材列表、带滑块的分层方案、需要确认才能开始的服务器队列、紧急停止、可修改的快捷键和图片模式（`--shot`）；逻辑已在无屏幕下测试，但窗口尚未构建，也没有在屏幕上看过。 |
+| 窗口 | 🔴 | 四个标签页（准备、预览、设备、项目）已用 `--features gui` 写好：带筛选的打印机和耗材列表、带滑块的分层方案、需要确认才能开始的服务器队列、紧急停止、可修改的快捷键、图片模式（`--shot`）、以着色实体显示零件的热床 3D 视图、带自动摆放方向和排列的零件面板、带预估的后台切片、可编辑的温度上限以及深色和浅色外观；逻辑已在无屏幕下测试，但窗口尚未构建，也没有在屏幕上看过。 |
 | 真实硬件 | 🔴 | 未试验：这里的任何内容都没有在打印机上运行过，包括 Bambu Lab A1 和 P1S。 |
 | 文档 | 🟡 | 八种语言的 README、变更日志、`docs/` 文件夹（架构、路线图、尚未完成的内容、服务器）以及由 `docs/` 绘制的两张图。 |
 
@@ -93,6 +93,7 @@ EH3D-PHOENIX-3DP 是 EH3D Fabrication Suite 中 PHOENIX 家族的 3D 打印程�
 * **不会自行开始：** 发往服务器队列的请求带有 `auto_start: false` 并要求确认；原始 G 代码默认关闭，开启后也按同样的上限逐行处理。
 * **所有协议一种状态：** 十五种规范化状态、温度、作业和警报，打印机的原始文本单独保存，使程序其余部分只说一种语言。
 * **测试用模拟器：** 每个协议都有可按需制造故障（无连接、超时、503）的内存模拟器，因此重试、拒绝和关机都无需网络即可测试。
+* **类似切片软件的窗口：** 准备、预览、设备和项目标签页；以着色实体显示零件的热床 3D 视图；打印机、耗材和工艺面板；每个零件的数值（位置、旋转、尺寸）、自动摆放方向和排列；后台切片，预估值显示在底部；深色和浅色两种外观。逻辑已在无屏幕下测试；窗口本身尚未在屏幕上看过。
 * **净室与自有图形：** 依据公开协议、手册和事实编写；不使用其他切片软件的代码、文字、图标或配置文件；在试用之前每个配置都标为 `verified = false`。
 * **八种语言：** 程序文字和文档提供英语、西班牙语、德语、法语、意大利语、日语、中文和葡萄牙（葡萄牙）语版本。
 * **没有 unsafe 代码：** 每个 crate 都有 `#![forbid(unsafe_code)]`。
@@ -129,12 +130,12 @@ phoenix-3dp resins [--kind KIND] [--printer ID] [--part-ml ML]
 phoenix-3dp slice MODEL --printer ID [--settings FILE] [--filament ID] [--nozzle MM] [--hardened] [--report] [--out FILE.gcode] [--force]
 phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.gcode|FILE.sl1 [--thumbnail FILE] [--force] [--bottom-layers N] [--lift MM] [--light-power MW]
 phoenix-3dp version
-phoenix-3dp gui [SETTINGS] [--shot FILE.png]                       the window (a build with --features gui)
+phoenix-3dp gui [SETTINGS] [--open MODEL] [--printer ID] [--shot FILE.png [--window TAB] [--size WxH] [--slice] [--demo]]  the window (a build with --features gui)
 ```
 
 ## ⚙️ 配置
 
-设置是一个由 `键 = 值` 行组成的文件（`--config 文件`）：读取器上限（`limit_*`）、与服务器的连接（`server_address`、`server_token`、`server_machine`、`server_timeout_s`、`server_retries`、`server_mdns`、`server_max_answer_mib`）、`direct_mode`（独立模式，默认关闭）、`lang`、`default_printer`、价格(`price_filament_per_kg`, `price_resin_per_litre`, `resin_waste_percent`)、报告(`report_slowest_layers`, `report_short_layer_s`)、队列(`queue_refuse_duplicates`, `queue_max_waiting`)以及普通 G 代码的搜索范围(`limit_gcode_head_kib`, `limit_gcode_tail_kib`, `limit_gcode_thumbnails`)。打印机配置是同类的另一个文件（`examples/my-printer.cfg`）。未知的键或超出范围的值都是会指明所在行的错误；所有默认值都偏保守。参见 `examples/phoenix-3dp.cfg`。
+设置是一个由 `键 = 值` 行组成的文件（`--config 文件`）：读取器上限（`limit_*`）、与服务器的连接（`server_address`、`server_token`、`server_machine`、`server_timeout_s`、`server_retries`、`server_mdns`、`server_max_answer_mib`）、`direct_mode`（独立模式，默认关闭）、`lang`、`default_printer`、价格(`price_filament_per_kg`, `price_resin_per_litre`, `resin_waste_percent`)、报告(`report_slowest_layers`, `report_short_layer_s`)、队列(`queue_refuse_duplicates`, `queue_max_waiting`)以及普通 G 代码的搜索范围(`limit_gcode_head_kib`, `limit_gcode_tail_kib`, `limit_gcode_thumbnails`)。打印机配置是同类的另一个文件（`examples/my-printer.cfg`）。未知的键或超出范围的值都是会指明所在行的错误；所有默认值都偏保守。参见 `examples/phoenix-3dp.cfg`。窗口把自己的选择保存在同一个文件中：`theme`（`dark` 或 `light`）、`grid_mm`、`arrange_gap_mm`、`arrange_on_add`、`ui_hints`，以及每台更改过温度上限的打印机的 `printer_limits_<id>`。
 
 ## 🚀 快速开始
 
@@ -152,7 +153,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 测试
 
-测试套件有 537 个测试（`cargo test --workspace`，CI 中在 Windows 和 Linux 上运行），涉及随机的地方使用固定种子。它们检查正常情况、边界情况和损坏的输入：被截断的文件、乱码和恶意文件头绝不会 panic，目录中任何打印机的温度都不会超过其上限。CI 还会运行 `cargo fmt --all --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
+测试套件有 599 个测试（`cargo test --workspace`，CI 中在 Windows 和 Linux 上运行），涉及随机的地方使用固定种子。它们检查正常情况、边界情况和损坏的输入：被截断的文件、乱码和恶意文件头绝不会 panic，目录中任何打印机的温度都不会超过其上限。CI 还会运行 `cargo fmt --all --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 
@@ -184,18 +185,24 @@ EH3D-PHOENIX-3DP/
 │   ├── cli.rs                                   命令：printers、info、check-profile、convert、filaments、resins、slice、project、version
 │   ├── app_state.rs                             无窗口的窗口状态：标签页、打印机、模型、报告、模拟设备
 │   ├── config.rs                                设置文件：上限、服务器连接、语言、默认打印机、价格、报告和队列
+│   ├── demo.rs                                  用于截图的演示模型：由几个半径旋转而成的高脚杯
 │   ├── device.rs                                服务器的打印机、队列及其规则、需确认的开始、紧急停止
 │   ├── i18n.rs                                  程序的八种语言文字
 │   ├── keys.rs                                  键盘快捷键：系列通用方案、自定义方案和修改
 │   ├── lists.rs                                 打印机和耗材列表及其筛选
+│   ├── limits_ui.rs                             编辑并保存打印机的温度上限，以及编辑时的警告
 │   ├── look.rs                                  窗口的颜色、标志、图案及按大小的布局
+│   ├── objects.rs                               热床上的零件：放置、旋转、缩放、自动摆放方向、排列、重叠
 │   ├── preview.rs                               在窗口中切片、层滑块、屏幕上的方案、报告
 │   ├── project.rs                               项目：模型及其打印机，保存在自有的 3MF 包中
 │   ├── report.rs                                报告的文字：切片、树脂、缩略图和配置编辑（八种语言）
 │   ├── server_ui.rs                             服务器设置、连接状态和登录，基于套件的共用面板
+│   ├── shade.rs                                 3D 视图的实体外观：着色多边形、热床、标准视图和拾取
 │   ├── shot.rs                                  窗口的图片模式（--shot）及其写出的 PNG 文件
+│   ├── slice_job.rs                             后台切片和进度条的估算
+│   ├── studio.rs                                “准备”标签页的工作台：零件、相机、后台切片、警告和预估
 │   ├── view.rs                                  把网格变成预览线条的轨道相机
-│   └── gui.rs                                   窗口（egui，gui 功能）：绘制状态并转达用户的操作
+│   └── gui.rs                                   窗口（egui，gui 特性）：工具栏、面板、3D 视图和操作传达
 ├── tests/
 │   ├── end_to_end.rs                            从模型到程序再到模拟打印机的测试
 │   ├── examples.rs                              测试 examples/ 中的文件能配合命令使用

@@ -203,6 +203,19 @@
           }
         },
         {
+          "name": "demo.rs",
+          "desc": {
+            "en": "the demonstration model for the pictures: a goblet turned from a few radii",
+            "es": "el modelo de demostración para las capturas: una copa torneada a partir de unos radios",
+            "de": "das Demomodell für die Bilder: ein aus wenigen Radien gedrehter Pokal",
+            "fr": "le modèle de démonstration pour les images : une coupe tournée à partir de quelques rayons",
+            "it": "il modello dimostrativo per le immagini: un calice tornito da pochi raggi",
+            "ja": "画像用のデモモデル：いくつかの半径から回転成形した杯",
+            "zh": "用于截图的演示模型：由几个半径旋转而成的高脚杯",
+            "pt": "o modelo de demonstração para as imagens: um cálice torneado a partir de alguns raios"
+          }
+        },
+        {
           "name": "device.rs",
           "desc": {
             "en": "the printers of the server, the queue and its rules, a confirmed start, the emergency stop",
@@ -255,6 +268,19 @@
           }
         },
         {
+          "name": "limits_ui.rs",
+          "desc": {
+            "en": "editing and keeping the temperature limits of a printer, with the warnings of an edit",
+            "es": "editar y guardar los límites de temperatura de una impresora, con los avisos de una edición",
+            "de": "die Temperaturgrenzen eines Druckers bearbeiten und behalten, mit den Hinweisen zu einer Änderung",
+            "fr": "modifier et conserver les limites de température d'une imprimante, avec les avertissements d'une modification",
+            "it": "modificare e conservare i limiti di temperatura di una stampante, con gli avvisi di una modifica",
+            "ja": "プリンターの温度上限の編集と保存、編集時の警告",
+            "zh": "编辑并保存打印机的温度上限，以及编辑时的警告",
+            "pt": "editar e guardar os limites de temperatura de uma impressora, com os avisos de uma edição"
+          }
+        },
+        {
           "name": "look.rs",
           "desc": {
             "en": "the colours, the mark and the drawings of the window and its layout by size",
@@ -265,6 +291,19 @@
             "ja": "ウィンドウの色、マーク、図柄、サイズに応じた配置",
             "zh": "窗口的颜色、标志、图案及按大小的布局",
             "pt": "as cores, a marca e os desenhos da janela e a sua disposição conforme o tamanho"
+          }
+        },
+        {
+          "name": "objects.rs",
+          "desc": {
+            "en": "the parts on the bed: place, turn, scale, auto-orient, arrange, overlaps",
+            "es": "las piezas en la cama: colocar, girar, escalar, orientar solo, organizar, solapes",
+            "de": "die Teile auf dem Druckbett: platzieren, drehen, skalieren, ausrichten, anordnen",
+            "fr": "les pièces sur le plateau : placer, tourner, échelle, orienter auto, disposer",
+            "it": "i pezzi sul piano: posizionare, ruotare, scalare, orientare, disporre",
+            "ja": "ベッド上の部品：配置、回転、拡大縮小、自動の向き決め、整列、重なり",
+            "zh": "热床上的零件：放置、旋转、缩放、自动摆放方向、排列、重叠",
+            "pt": "as peças na mesa: posicionar, rodar, dimensionar, orientar, organizar, sobreposições"
           }
         },
         {
@@ -320,6 +359,19 @@
           }
         },
         {
+          "name": "shade.rs",
+          "desc": {
+            "en": "the solid look of the 3D view: shaded polygons, the bed, the standard views and picking",
+            "es": "el aspecto sólido de la vista 3D: polígonos sombreados, la cama, las vistas estándar y la selección",
+            "de": "das massive Aussehen der 3D-Ansicht: schattierte Polygone, das Druckbett, die Standardansichten und das Auswählen",
+            "fr": "l'aspect plein de la vue 3D : polygones ombrés, le plateau, les vues standard et la sélection",
+            "it": "l'aspetto solido della vista 3D: poligoni ombreggiati, il piano, le viste standard e la selezione",
+            "ja": "3D ビューの立体表示：陰影付きポリゴン、ベッド、標準ビュー、選択",
+            "zh": "3D 视图的实体外观：着色多边形、热床、标准视图和拾取",
+            "pt": "o aspeto sólido da vista 3D: polígonos sombreados, a mesa, as vistas padrão e a seleção"
+          }
+        },
+        {
           "name": "shot.rs",
           "desc": {
             "en": "the picture mode of the window (--shot) and the PNG file it writes",
@@ -330,6 +382,32 @@
             "ja": "ウィンドウの画像モード（--shot）と書き出す PNG ファイル",
             "zh": "窗口的图片模式（--shot）及其写出的 PNG 文件",
             "pt": "o modo de imagem da janela (--shot) e o ficheiro PNG que escreve"
+          }
+        },
+        {
+          "name": "slice_job.rs",
+          "desc": {
+            "en": "slicing in the background and the estimate of the progress bar",
+            "es": "laminar en segundo plano y la estimación de la barra de progreso",
+            "de": "Slicen im Hintergrund und die Schätzung des Fortschrittsbalkens",
+            "fr": "la découpe en arrière-plan et l'estimation de la barre de progression",
+            "it": "l'elaborazione in background e la stima della barra di avanzamento",
+            "ja": "バックグラウンドでのスライスと進捗バーの推定",
+            "zh": "后台切片和进度条的估算",
+            "pt": "a fatiagem em segundo plano e a estimativa da barra de progresso"
+          }
+        },
+        {
+          "name": "studio.rs",
+          "desc": {
+            "en": "the work table of the Prepare tab: parts, camera, background slice, estimates",
+            "es": "la mesa de trabajo de Preparar: piezas, cámara, laminado en segundo plano, estimaciones",
+            "de": "der Arbeitstisch von Vorbereiten: Teile, Kamera, Slicen im Hintergrund, Schätzungen",
+            "fr": "la table de travail de Préparer : pièces, caméra, découpe en arrière-plan, estimations",
+            "it": "il tavolo di lavoro di Prepara: pezzi, camera, elaborazione in background, stime",
+            "ja": "「準備」タブの作業台：部品、カメラ、バックグラウンドのスライス、警告、見積もり",
+            "zh": "“准备”标签页的工作台：零件、相机、后台切片、警告和预估",
+            "pt": "a mesa de trabalho do separador Preparar: peças, câmara, a fatiagem em segundo plano, avisos e estimativas"
           }
         },
         {
@@ -348,14 +426,14 @@
         {
           "name": "gui.rs",
           "desc": {
-            "en": "the window (egui, with the gui feature): draws the state and passes on what the person does",
-            "es": "la ventana (egui, con la característica gui): dibuja el estado y transmite lo que hace la persona",
-            "de": "das Fenster (egui, mit dem Feature gui): zeichnet den Zustand und gibt weiter, was die Person tut",
-            "fr": "la fenêtre (egui, avec la fonctionnalité gui) : dessine l'état et transmet ce que fait la personne",
-            "it": "la finestra (egui, con la funzione gui): disegna lo stato e inoltra ciò che fa la persona",
-            "ja": "ウィンドウ（egui、gui 機能）：状態を描画し、操作を伝える",
-            "zh": "窗口（egui，gui 功能）：绘制状态并转达用户的操作",
-            "pt": "a janela (egui, com a funcionalidade gui): desenha o estado e transmite o que a pessoa faz"
+            "en": "the window (egui, gui feature): bars, panels and 3D view; passes on what the person does",
+            "es": "la ventana (egui, característica gui): barras, paneles y vista 3D; transmite lo que hace la persona",
+            "de": "das Fenster (egui, Feature gui): Leisten, Bereiche und 3D-Ansicht; gibt weiter, was die Person tut",
+            "fr": "la fenêtre (egui, fonction gui) : barres, panneaux et vue 3D ; transmet ce que fait la personne",
+            "it": "la finestra (egui, funzione gui): barre, pannelli e vista 3D; trasmette ciò che fa la persona",
+            "ja": "ウィンドウ（egui、gui 機能）：バー、パネル、3D ビューと操作の伝達",
+            "zh": "窗口（egui，gui 特性）：工具栏、面板、3D 视图和操作传达",
+            "pt": "a janela (egui, funcionalidade gui): barras, painéis e vista 3D; transmite o que a pessoa faz"
           }
         }
       ]

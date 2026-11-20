@@ -171,7 +171,7 @@ pub fn shade(parts: &[(u32, &Mesh)], cam: &OrbitCamera, vp: Viewport) -> Vec<Sha
                 }
                 seen += 1;
                 let keep_every = (total / MAX_TRIANGLES).max(1);
-                if seen % keep_every != 0 {
+                if !seen.is_multiple_of(keep_every) {
                     continue;
                 }
             }
@@ -302,6 +302,35 @@ pub fn thumbnail(parts: &[(u32, &Mesh)], size: f64) -> Vec<ShadedTriangle> {
     cam.pitch = pitch.to_radians();
     cam.fit_to_box(lo, hi, vp);
     shade(parts, &cam, vp)
+}
+
+/// The twelve edges of a box seen by the camera, as pairs of points in pixels (an edge with an end behind the camera is left out). It outlines the part that is selected.
+pub fn box_lines(
+    lo: [f64; 3],
+    hi: [f64; 3],
+    cam: &OrbitCamera,
+    vp: Viewport,
+) -> Vec<([f32; 2], [f32; 2])> {
+    let corner = |i: usize| {
+        [
+            if i & 1 == 0 { lo[0] } else { hi[0] },
+            if i & 2 == 0 { lo[1] } else { hi[1] },
+            if i & 4 == 0 { lo[2] } else { hi[2] },
+        ]
+    };
+    let mut out = Vec::new();
+    for i in 0..8usize {
+        for bit in [1usize, 2, 4] {
+            if i & bit == 0 {
+                let j = i | bit;
+                if let (Some(a), Some(b)) = (cam.project(corner(i), vp), cam.project(corner(j), vp))
+                {
+                    out.push(([a[0] as f32, a[1] as f32], [b[0] as f32, b[1] as f32]));
+                }
+            }
+        }
+    }
+    out
 }
 
 /// Where the corner of the origin is told by a small mark in the window: the point of the bed where x and y are zero, on the screen.
@@ -502,6 +531,20 @@ mod tests {
         assert_eq!(at(175.0, 175.0), Some(2));
         assert_eq!(at(100.0, 100.0), None);
         assert_eq!(pick(&parts, &cam, vp(), [f64::NAN, 1.0]), None);
+    }
+
+    #[test]
+    fn a_box_has_twelve_edges_and_none_when_it_is_behind_the_camera() {
+        let cam = cam_for([220.0, 220.0, 250.0], StdView::Corner);
+        let lines = box_lines([10.0, 10.0, 0.0], [50.0, 50.0, 20.0], &cam, vp());
+        assert_eq!(lines.len(), 12);
+        for (a, b) in &lines {
+            assert!(a != b);
+        }
+        let mut behind = cam;
+        behind.target = [100_000.0, 100_000.0, 0.0];
+        behind.distance = 5.0;
+        assert!(box_lines([10.0, 10.0, 0.0], [50.0, 50.0, 20.0], &behind, vp()).len() < 12);
     }
 
     #[test]

@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.5-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-537-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-599-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Verificação de honestidade - o que funciona mesmo hoje:** um espaço de trabalho Rust com oito bibliotecas e um programa de linha de comandos (`phoenix-3dp`) com 537 testes que correm num computador. Lê e verifica modelos STL, OBJ e 3MF, tem um catálogo de 120 perfis de impressora feitos com dados públicos (nenhum testado numa máquina), escreve G-code para os dialetos Marlin, Klipper, RepRapFirmware e Bambu com limites de temperatura que recusam um valor em vez de o cortar, e comanda impressoras Moonraker e OctoPrint e o servidor EH3D, mas apenas contra simuladores (em memória e num socket deste computador). Corta um modelo fechado em camadas planas com perímetros, preenchimento retilíneo e peles sólidas (um fatiador pequeno com preenchimento em grelha e giroide, pontes, suportes simples, costuras, largura variável, elevação nas deslocações, skirt, brim ou raft, modo vaso, camadas curtas mais lentas, retração que acompanha a deslocação e uma estimativa do tempo com aceleração; ainda nada para vários materiais); a janela não foi compilada nem vista num ecrã; nada correu numa impressora real.
+**Verificação de honestidade - o que funciona mesmo hoje:** um espaço de trabalho Rust com oito bibliotecas e um programa de linha de comandos (`phoenix-3dp`) com 599 testes que correm num computador. Lê e verifica modelos STL, OBJ e 3MF, tem um catálogo de 120 perfis de impressora feitos com dados públicos (nenhum testado numa máquina), escreve G-code para os dialetos Marlin, Klipper, RepRapFirmware e Bambu com limites de temperatura que recusam um valor em vez de o cortar, e comanda impressoras Moonraker e OctoPrint e o servidor EH3D, mas apenas contra simuladores (em memória e num socket deste computador). Corta um modelo fechado em camadas planas com perímetros, preenchimento retilíneo e peles sólidas (um fatiador pequeno com preenchimento em grelha e giroide, pontes, suportes simples, costuras, largura variável, elevação nas deslocações, skirt, brim ou raft, modo vaso, camadas curtas mais lentas, retração que acompanha a deslocação e uma estimativa do tempo com aceleração; ainda nada para vários materiais); a janela não foi compilada nem vista num ecrã; nada correu numa impressora real.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Versão | `0.0.5` |
 | Maturidade | Estrutura inicial |
-| Testes | 537 |
+| Testes | 599 |
 | Tecnologias | Rust |
 | Em hardware real | Por testar: nada disto correu numa impressora, nem sequer numa Bambu Lab A1 ou numa P1S. |
 
@@ -55,9 +55,9 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 | Ligação ao servidor | 🟠 | as definições da ligação e um cliente do plugin de impressoras do servidor sobre o cliente comum da suite (início de sessão, renovação, novas tentativas, erros em oito línguas), testado contra um servidor em memória; nunca contra o servidor real. |
 | Fatiador | 🟡 | camadas planas de uma malha fechada, perímetros, preenchimento retilíneo, em grelha ou giroide, peles sólidas, pontes, suportes simples, costuras, largura variável, G-code por dialeto, uma pré-visualização por camadas como dados e uma estimativa do tempo com aceleração; verificado com propriedades sobre formas de semente fixa (o plástico depositado é o volume da peça, nada sai da mesa, nenhuma temperatura ultrapassa um limite); nenhuma impressão saiu dele numa impressora. |
 | Linha de comandos | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) executa as funções das bibliotecas e imprime o resultado; cada erro volta como mensagem e código de saída diferente de zero. |
-| Testes | 🟡 | 537 testes passam (`cargo test --workspace`), com casos normais, casos-limite, entradas danificadas e uma semente fixa onde há aleatoriedade. |
+| Testes | 🟡 | 599 testes passam (`cargo test --workspace`), com casos normais, casos-limite, entradas danificadas e uma semente fixa onde há aleatoriedade. |
 | Segurança | 🟡 | Rust seguro e simples (`forbid(unsafe_code)`): um limite é uma recusa e nunca um corte; o token nunca se imprime; nada entra em pânico com os ficheiros recebidos; sem revisão independente. |
-| Janela | 🔴 | Os quatro separadores (Preparar, Pré-visualização, Dispositivo, Projeto) estão escritos com `--features gui`: listas de impressoras e filamentos com filtros, o plano por camadas com um cursor, a fila do servidor com um arranque que pede confirmação, uma paragem de emergência, atalhos alteráveis e um modo de imagem (`--shot`); a lógica é testada sem ecrã, mas a janela ainda não foi compilada nem vista num ecrã. |
+| Janela | 🔴 | Os quatro separadores (Preparar, Pré-visualização, Dispositivo, Projeto) estão escritos com `--features gui`: listas de impressoras e filamentos com filtros, o plano por camadas com um cursor, a fila do servidor com um arranque que pede confirmação, uma paragem de emergência, atalhos alteráveis, um modo de imagem (`--shot`), uma vista 3D da mesa com as peças como sólidos sombreados, um painel de peças com orientar automaticamente e organizar, fatiagem em segundo plano com estimativas, limites de temperatura editáveis e um aspeto escuro e um claro; a lógica é testada sem ecrã, mas a janela ainda não foi compilada nem vista num ecrã. |
 | Hardware real | 🔴 | Por testar: nada disto correu numa impressora, nem sequer numa Bambu Lab A1 ou numa P1S. |
 | Documentação | 🟡 | README em oito idiomas, o registo de alterações, a pasta `docs/` (arquitetura, roteiro, o que ainda não está feito, o servidor) e as duas imagens desenhadas a partir de `docs/`. |
 
@@ -93,6 +93,7 @@ Como as partes deste repositório se encaixam: quem o usa, o que contém e de qu
 * **Nada arranca sozinho:** os pedidos à fila do servidor dizem `auto_start: false` e pedem confirmação; o G-code direto está desligado por omissão e, ligado, segue linha a linha com os mesmos limites.
 * **Um estado para todos os protocolos:** quinze estados normalizados, temperaturas, trabalho e alertas, com o texto original da impressora à parte, de modo que o resto do programa fala uma só língua.
 * **Simuladores para os testes:** cada protocolo tem um simulador em memória com falhas a pedido (sem ligação, tempo esgotado, 503), por isso as novas tentativas, as recusas e as paragens testam-se sem rede.
+* **Uma janela ao estilo de um laminador:** separadores Preparar, Pré-visualização, Dispositivo e Projeto; uma vista 3D da mesa com as peças como sólidos sombreados; um painel de impressora, filamento e processo; os números de cada peça (posicionar, rodar, tamanho), orientar automaticamente e organizar; fatiagem em segundo plano com as estimativas em baixo; um aspeto escuro e um claro. A lógica é testada sem ecrã; a janela em si ainda não foi vista.
 * **Sala limpa e arte própria:** escrito a partir de protocolos públicos, manuais e factos; sem código, textos, ícones nem ficheiros de perfil de outro fatiador; cada perfil diz `verified = false` até ser testado.
 * **Oito idiomas:** os textos do programa e a documentação existem em inglês, espanhol, alemão, francês, italiano, japonês, chinês e português de Portugal.
 * **Sem código `unsafe`:** `#![forbid(unsafe_code)]` em cada crate.
@@ -129,12 +130,12 @@ phoenix-3dp resins [--kind KIND] [--printer ID] [--part-ml ML]
 phoenix-3dp slice MODEL --printer ID [--settings FILE] [--filament ID] [--nozzle MM] [--hardened] [--report] [--out FILE.gcode] [--force]
 phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.gcode|FILE.sl1 [--thumbnail FILE] [--force] [--bottom-layers N] [--lift MM] [--light-power MW]
 phoenix-3dp version
-phoenix-3dp gui [SETTINGS] [--shot FILE.png]                       the window (a build with --features gui)
+phoenix-3dp gui [SETTINGS] [--open MODEL] [--printer ID] [--shot FILE.png [--window TAB] [--size WxH] [--slice] [--demo]]  the window (a build with --features gui)
 ```
 
 ## ⚙️ Configuração
 
-As definições são um ficheiro de linhas `chave = valor` (`--config FICHEIRO`): os limites dos leitores (`limit_*`), a ligação ao servidor (`server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries`, `server_mdns`, `server_max_answer_mib`), `direct_mode` (autónomo, desligado por omissão), `lang` e `default_printer`, os preços (`price_filament_per_kg`, `price_resin_per_litre`, `resin_waste_percent`), o relatório (`report_slowest_layers`, `report_short_layer_s`), a fila (`queue_refuse_duplicates`, `queue_max_waiting`) e até onde se procura num G-code simples (`limit_gcode_head_kib`, `limit_gcode_tail_kib`, `limit_gcode_thumbnails`). Um perfil de impressora é outro ficheiro do mesmo tipo (`examples/my-printer.cfg`). Uma chave desconhecida ou um valor fora do intervalo é um erro que nomeia a sua linha; todos os valores por omissão são prudentes. Ver `examples/phoenix-3dp.cfg`.
+As definições são um ficheiro de linhas `chave = valor` (`--config FICHEIRO`): os limites dos leitores (`limit_*`), a ligação ao servidor (`server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries`, `server_mdns`, `server_max_answer_mib`), `direct_mode` (autónomo, desligado por omissão), `lang` e `default_printer`, os preços (`price_filament_per_kg`, `price_resin_per_litre`, `resin_waste_percent`), o relatório (`report_slowest_layers`, `report_short_layer_s`), a fila (`queue_refuse_duplicates`, `queue_max_waiting`) e até onde se procura num G-code simples (`limit_gcode_head_kib`, `limit_gcode_tail_kib`, `limit_gcode_thumbnails`). Um perfil de impressora é outro ficheiro do mesmo tipo (`examples/my-printer.cfg`). Uma chave desconhecida ou um valor fora do intervalo é um erro que nomeia a sua linha; todos os valores por omissão são prudentes. Ver `examples/phoenix-3dp.cfg`. A janela guarda as suas próprias escolhas no mesmo ficheiro: `theme` (`dark` ou `light`), `grid_mm`, `arrange_gap_mm`, `arrange_on_add`, `ui_hints` e, para cada impressora cujos limites de temperatura foram alterados, `printer_limits_<id>`.
 
 ## 🚀 Início rápido
 
@@ -152,7 +153,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Testes
 
-O conjunto tem 537 testes (`cargo test --workspace`, executados em Windows e Linux na CI), com semente fixa onde há aleatoriedade. Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros cortados, lixo e cabeçalhos hostis nunca entram em pânico, e nenhuma temperatura de nenhuma impressora do catálogo ultrapassa o seu limite. A CI também executa `cargo fmt --all --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
+O conjunto tem 599 testes (`cargo test --workspace`, executados em Windows e Linux na CI), com semente fixa onde há aleatoriedade. Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros cortados, lixo e cabeçalhos hostis nunca entram em pânico, e nenhuma temperatura de nenhuma impressora do catálogo ultrapassa o seu limite. A CI também executa `cargo fmt --all --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilação e publicação
 
@@ -184,18 +185,24 @@ EH3D-PHOENIX-3DP/
 │   ├── cli.rs                                   os comandos: printers, info, check-profile, convert, filaments, resins, slice, project, version
 │   ├── app_state.rs                             o estado da janela sem janela: separadores, impressora, modelo, relatórios, dispositivo simulado
 │   ├── config.rs                                o ficheiro de definições: limites, ligação ao servidor, idioma, impressora por omissão, preços, relatório e fila
+│   ├── demo.rs                                  o modelo de demonstração para as imagens: um cálice torneado a partir de alguns raios
 │   ├── device.rs                                as impressoras do servidor, a fila e as suas regras, um arranque confirmado, a paragem de emergência
 │   ├── i18n.rs                                  os textos do programa nos oito idiomas
 │   ├── keys.rs                                  os atalhos de teclado: o esquema da família, um próprio e as alterações
 │   ├── lists.rs                                 as listas de impressoras e de filamentos com os seus filtros
+│   ├── limits_ui.rs                             editar e guardar os limites de temperatura de uma impressora, com os avisos de uma edição
 │   ├── look.rs                                  as cores, a marca e os desenhos da janela e a sua disposição conforme o tamanho
+│   ├── objects.rs                               as peças na mesa: posicionar, rodar, dimensionar, orientar, organizar, sobreposições
 │   ├── preview.rs                               fatiar a partir da janela, o cursor de camadas, o plano no ecrã, o relatório
 │   ├── project.rs                               o projeto: um modelo e a sua impressora no pacote 3MF próprio
 │   ├── report.rs                                as palavras dos relatórios: fatiamento, resina, miniaturas e edições de perfil, nas oito línguas
 │   ├── server_ui.rs                             as definições do servidor, o estado da ligação e o início de sessão, sobre o painel da suite
+│   ├── shade.rs                                 o aspeto sólido da vista 3D: polígonos sombreados, a mesa, as vistas padrão e a seleção
 │   ├── shot.rs                                  o modo de imagem da janela (--shot) e o ficheiro PNG que escreve
+│   ├── slice_job.rs                             a fatiagem em segundo plano e a estimativa da barra de progresso
+│   ├── studio.rs                                a mesa de trabalho do separador Preparar: peças, câmara, a fatiagem em segundo plano, avisos e estimativas
 │   ├── view.rs                                  a câmara orbital que transforma uma malha em linhas para a pré-visualização
-│   └── gui.rs                                   a janela (egui, com a funcionalidade gui): desenha o estado e transmite o que a pessoa faz
+│   └── gui.rs                                   a janela (egui, funcionalidade gui): barras, painéis e vista 3D; transmite o que a pessoa faz
 ├── tests/
 │   ├── end_to_end.rs                            testes de um modelo a um programa a uma impressora simulada
 │   ├── examples.rs                              testes de que os ficheiros de examples/ funcionam com os comandos

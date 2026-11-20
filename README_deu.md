@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.5-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-537-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-599-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** ein Rust-Workspace mit acht Bibliotheken und einem Kommandozeilenprogramm (`phoenix-3dp`) mit 537 Tests, die auf einem Computer laufen. Es liest und prüft STL-, OBJ- und 3MF-Modelle, enthält einen Katalog von 120 Druckerprofilen aus öffentlichen Daten (keines an einer Maschine getestet), schreibt G-Code für die Dialekte Marlin, Klipper, RepRapFirmware und Bambu mit Temperaturgrenzen, die einen Wert ablehnen, statt ihn zu kappen, und steuert Moonraker- und OctoPrint-Drucker sowie den EH3D-Server, aber nur gegen Simulatoren (im Speicher und an einem Socket dieses Computers). Es zerlegt ein geschlossenes Modell in ebene Schichten mit Perimetern, geradliniger Füllung und massiven Außenhäuten (ein kleiner Slicer mit Gitter- und Gyroid-Füllung, Brücken, einfachen Stützen, Nähten, variabler Breite, Anheben beim Verfahren, Skirt, Brim oder Raft, einem Vasenmodus, langsameren kurzen Schichten, einem Rückzug nach der Länge der Fahrt und einer Zeitschätzung mit Beschleunigung; für mehrere Materialien noch nichts); das Fenster wurde weder gebaut noch auf einem Bildschirm angesehen; nichts lief an einem echten Drucker.
+**Ehrlichkeitscheck - was heute wirklich läuft:** ein Rust-Workspace mit acht Bibliotheken und einem Kommandozeilenprogramm (`phoenix-3dp`) mit 599 Tests, die auf einem Computer laufen. Es liest und prüft STL-, OBJ- und 3MF-Modelle, enthält einen Katalog von 120 Druckerprofilen aus öffentlichen Daten (keines an einer Maschine getestet), schreibt G-Code für die Dialekte Marlin, Klipper, RepRapFirmware und Bambu mit Temperaturgrenzen, die einen Wert ablehnen, statt ihn zu kappen, und steuert Moonraker- und OctoPrint-Drucker sowie den EH3D-Server, aber nur gegen Simulatoren (im Speicher und an einem Socket dieses Computers). Es zerlegt ein geschlossenes Modell in ebene Schichten mit Perimetern, geradliniger Füllung und massiven Außenhäuten (ein kleiner Slicer mit Gitter- und Gyroid-Füllung, Brücken, einfachen Stützen, Nähten, variabler Breite, Anheben beim Verfahren, Skirt, Brim oder Raft, einem Vasenmodus, langsameren kurzen Schichten, einem Rückzug nach der Länge der Fahrt und einer Zeitschätzung mit Beschleunigung; für mehrere Materialien noch nichts); das Fenster wurde weder gebaut noch auf einem Bildschirm angesehen; nichts lief an einem echten Drucker.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Version | `0.0.5` |
 | Reifegrad | Gerüst |
-| Tests | 537 |
+| Tests | 599 |
 | Technologie-Stack | Rust |
 | Auf echter Hardware | Nicht getestet: nichts davon lief an einem Drucker, nicht einmal an einem Bambu Lab A1 oder P1S. |
 
@@ -55,9 +55,9 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 | Serververbindung | 🟠 | die Einstellungen der Verbindung und ein Client des Druckerplugins des Servers über den gemeinsamen Client der Suite (Anmeldung, Erneuerung, Wiederholungen, Fehler in acht Sprachen), gegen einen Server im Speicher getestet; nie gegen den echten Server. |
 | Slicer | 🟡 | ebene Schichten eines geschlossenen Netzes, Perimeter, geradlinige, Gitter- oder Gyroid-Füllung, massive Außenhäute, Brücken, einfache Stützen, Nähte, variable Breite, G-Code je Dialekt, eine Vorschau nach Schichten als Daten und eine Zeitschätzung mit Beschleunigung; mit Eigenschaftstests an Formen aus festem Seed geprüft (das abgelegte Material entspricht dem Volumen des Teils, nichts verlässt das Bett, keine Temperatur überschreitet eine Grenze); noch kein Druck daraus auf einem Drucker. |
 | Kommandozeile | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) führt die Funktionen der Bibliotheken aus und gibt das Ergebnis aus; jeder Fehler kommt als Meldung und mit einem Exit-Code ungleich null zurück. |
-| Tests | 🟡 | 537 Tests bestehen (`cargo test --workspace`), mit Normalfällen, Grenzfällen, beschädigten Eingaben und festem Seed, wo Zufall im Spiel ist. |
+| Tests | 🟡 | 599 Tests bestehen (`cargo test --workspace`), mit Normalfällen, Grenzfällen, beschädigten Eingaben und festem Seed, wo Zufall im Spiel ist. |
 | Sicherheit | 🟡 | Schlichtes sicheres Rust (`forbid(unsafe_code)`): eine Grenze ist eine Ablehnung und nie eine Kappung; das Token wird nie ausgegeben; nichts gerät bei den Dateien in Panik; keine unabhängige Prüfung. |
-| Fenster | 🔴 | Die vier Reiter (Vorbereiten, Vorschau, Gerät, Projekt) sind mit `--features gui` geschrieben: Listen von Druckern und Filamenten mit Filtern, der Plan nach Schichten mit Schieberegler, die Warteschlange des Servers mit einem Start, der eine Bestätigung braucht, ein Not-Halt, änderbare Tastenkürzel und ein Bildmodus (`--shot`); die Logik wird ohne Bildschirm getestet, aber das Fenster wurde noch nicht gebaut oder auf einem Bildschirm angesehen. |
+| Fenster | 🔴 | Die vier Reiter (Vorbereiten, Vorschau, Gerät, Projekt) sind mit `--features gui` geschrieben: Listen von Druckern und Filamenten mit Filtern, der Plan nach Schichten mit Schieberegler, die Warteschlange des Servers mit einem Start, der eine Bestätigung braucht, ein Not-Halt, änderbare Tastenkürzel, ein Bildmodus (`--shot`), eine 3D-Ansicht des Druckbetts mit schattierten Teilen, ein Teilebereich mit automatischem Ausrichten und Anordnen, Slicen im Hintergrund mit Schätzungen, bearbeitbare Temperaturgrenzen und ein dunkles und ein helles Aussehen; die Logik wird ohne Bildschirm getestet, aber das Fenster wurde noch nicht gebaut oder auf einem Bildschirm angesehen. |
 | Echte Hardware | 🔴 | Nicht getestet: nichts davon lief an einem Drucker, nicht einmal an einem Bambu Lab A1 oder P1S. |
 | Dokumentation | 🟡 | README in acht Sprachen, das Änderungsprotokoll, der Ordner `docs/` (Architektur, Roadmap, was noch nicht fertig ist, der Server) und die zwei aus `docs/` gezeichneten Bilder. |
 
@@ -93,6 +93,7 @@ Wie die Teile dieses Repositorys zusammenpassen: wer es nutzt, was es enthält u
 * **Nichts startet von selbst:** die Anfragen an die Warteschlange des Servers sagen `auto_start: false` und verlangen eine Bestätigung; rohes G-Code ist standardmäßig aus und läuft, wenn an, Zeile für Zeile unter denselben Grenzen.
 * **Ein Zustand für alle Protokolle:** fünfzehn normalisierte Zustände, Temperaturen, Auftrag und Warnungen, mit dem Originaltext des Druckers getrennt, sodass der Rest des Programms eine Sprache spricht.
 * **Simulatoren für die Tests:** jedes Protokoll hat einen Speicher-Simulator mit Fehlern auf Abruf (keine Verbindung, Zeitüberschreitung, 503); so werden Wiederholungen, Ablehnungen und Abschaltungen ohne Netzwerk getestet.
+* **Ein Fenster wie bei einem Slicer:** Reiter Vorbereiten, Vorschau, Gerät und Projekt; eine 3D-Ansicht des Druckbetts mit den Teilen als schattierten Körpern; ein Bereich für Drucker, Filament und Prozess; die Zahlen jedes Teils (Platz, Drehung, Größe), automatisch ausrichten und anordnen; Slicen im Hintergrund mit den Schätzungen unten; ein dunkles und ein helles Aussehen. Die Logik wird ohne Bildschirm getestet; das Fenster selbst wurde noch nicht angesehen.
 * **Clean Room und eigene Grafik:** aus öffentlichen Protokollen, Handbüchern und Fakten geschrieben; kein Code, Text, Symbol oder Profildatei eines anderen Slicers; jedes Profil sagt `verified = false`, bis es getestet wurde.
 * **Acht Sprachen:** die Texte des Programms und die Dokumentation gibt es auf Englisch, Spanisch, Deutsch, Französisch, Italienisch, Japanisch, Chinesisch und europäischem Portugiesisch.
 * **Kein unsicherer Code:** `#![forbid(unsafe_code)]` in jedem Crate.
@@ -129,12 +130,12 @@ phoenix-3dp resins [--kind KIND] [--printer ID] [--part-ml ML]
 phoenix-3dp slice MODEL --printer ID [--settings FILE] [--filament ID] [--nozzle MM] [--hardened] [--report] [--out FILE.gcode] [--force]
 phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.gcode|FILE.sl1 [--thumbnail FILE] [--force] [--bottom-layers N] [--lift MM] [--light-power MW]
 phoenix-3dp version
-phoenix-3dp gui [SETTINGS] [--shot FILE.png]                       the window (a build with --features gui)
+phoenix-3dp gui [SETTINGS] [--open MODEL] [--printer ID] [--shot FILE.png [--window TAB] [--size WxH] [--slice] [--demo]]  the window (a build with --features gui)
 ```
 
 ## ⚙️ Konfiguration
 
-Die Einstellungen sind eine Datei mit Zeilen `Schlüssel = Wert` (`--config DATEI`): die Grenzen der Leser (`limit_*`), die Verbindung zum Server (`server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries`, `server_mdns`, `server_max_answer_mib`), `direct_mode` (eigenständig, standardmäßig aus), `lang` und `default_printer`, die Preise (`price_filament_per_kg`, `price_resin_per_litre`, `resin_waste_percent`), der Bericht (`report_slowest_layers`, `report_short_layer_s`), die Warteschlange (`queue_refuse_duplicates`, `queue_max_waiting`) und wie weit eine einfache G-Code-Datei durchsucht wird (`limit_gcode_head_kib`, `limit_gcode_tail_kib`, `limit_gcode_thumbnails`). Ein Druckerprofil ist eine weitere Datei derselben Art (`examples/my-printer.cfg`). Ein unbekannter Schlüssel oder ein Wert außerhalb des Bereichs ist ein Fehler, der seine Zeile nennt; alle Vorgaben sind vorsichtig. Siehe `examples/phoenix-3dp.cfg`.
+Die Einstellungen sind eine Datei mit Zeilen `Schlüssel = Wert` (`--config DATEI`): die Grenzen der Leser (`limit_*`), die Verbindung zum Server (`server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries`, `server_mdns`, `server_max_answer_mib`), `direct_mode` (eigenständig, standardmäßig aus), `lang` und `default_printer`, die Preise (`price_filament_per_kg`, `price_resin_per_litre`, `resin_waste_percent`), der Bericht (`report_slowest_layers`, `report_short_layer_s`), die Warteschlange (`queue_refuse_duplicates`, `queue_max_waiting`) und wie weit eine einfache G-Code-Datei durchsucht wird (`limit_gcode_head_kib`, `limit_gcode_tail_kib`, `limit_gcode_thumbnails`). Ein Druckerprofil ist eine weitere Datei derselben Art (`examples/my-printer.cfg`). Ein unbekannter Schlüssel oder ein Wert außerhalb des Bereichs ist ein Fehler, der seine Zeile nennt; alle Vorgaben sind vorsichtig. Siehe `examples/phoenix-3dp.cfg`. Das Fenster hält seine eigenen Entscheidungen in derselben Datei fest: `theme` (`dark` oder `light`), `grid_mm`, `arrange_gap_mm`, `arrange_on_add`, `ui_hints` und für jeden Drucker, dessen Temperaturgrenzen geändert wurden, `printer_limits_<id>`.
 
 ## 🚀 Schnellstart
 
@@ -152,7 +153,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Tests
 
-Die Suite hat 537 Tests (`cargo test --workspace`, in der CI unter Windows und Linux ausgeführt), mit festem Seed, wo Zufall im Spiel ist. Sie prüfen die Normalfälle, die Grenzfälle und beschädigte Eingaben: abgeschnittene Dateien, Müll und feindliche Header lösen nie eine Panik aus, und keine Temperatur eines Druckers des Katalogs überschreitet ihre Grenze. Die CI führt außerdem `cargo fmt --all --check`, `cargo clippy` mit Warnungen als Fehler und `python -I tools/ci_validate.py` aus.
+Die Suite hat 599 Tests (`cargo test --workspace`, in der CI unter Windows und Linux ausgeführt), mit festem Seed, wo Zufall im Spiel ist. Sie prüfen die Normalfälle, die Grenzfälle und beschädigte Eingaben: abgeschnittene Dateien, Müll und feindliche Header lösen nie eine Panik aus, und keine Temperatur eines Druckers des Katalogs überschreitet ihre Grenze. Die CI führt außerdem `cargo fmt --all --check`, `cargo clippy` mit Warnungen als Fehler und `python -I tools/ci_validate.py` aus.
 
 ## 🏗️ Build und Veröffentlichung
 
@@ -184,18 +185,24 @@ EH3D-PHOENIX-3DP/
 │   ├── cli.rs                                   die Befehle: printers, info, check-profile, convert, filaments, resins, slice, project, version
 │   ├── app_state.rs                             der Zustand des Fensters ohne Fenster: Reiter, Drucker, Modell, Berichte, simuliertes Gerät
 │   ├── config.rs                                die Einstellungsdatei: Grenzen, Serververbindung, Sprache, Standarddrucker, Preise, Bericht und Warteschlange
+│   ├── demo.rs                                  das Demomodell für die Bilder: ein aus wenigen Radien gedrehter Pokal
 │   ├── device.rs                                die Drucker des Servers, die Warteschlange und ihre Regeln, ein bestätigter Start, der Not-Halt
 │   ├── i18n.rs                                  die Texte des Programms in den acht Sprachen
 │   ├── keys.rs                                  die Tastenkürzel: das Schema der Familie, ein eigenes und die Änderungen
 │   ├── lists.rs                                 die Listen der Drucker und der Filamente mit ihren Filtern
+│   ├── limits_ui.rs                             die Temperaturgrenzen eines Druckers bearbeiten und behalten, mit den Hinweisen zu einer Änderung
 │   ├── look.rs                                  die Farben, das Zeichen und die Zeichnungen des Fensters und seine Anordnung nach Größe
+│   ├── objects.rs                               die Teile auf dem Druckbett: platzieren, drehen, skalieren, ausrichten, anordnen
 │   ├── preview.rs                               Slicen im Fenster, der Schichtenregler, der Plan auf dem Bildschirm, der Bericht
 │   ├── project.rs                               das Projekt: ein Modell und sein Drucker im eigenen 3MF-Paket
 │   ├── report.rs                                die Worte der Berichte: Slicing, Harz, Vorschaubilder und Profiländerungen, in den acht Sprachen
 │   ├── server_ui.rs                             die Einstellungen des Servers, der Zustand der Verbindung und die Anmeldung über das Panel der Suite
+│   ├── shade.rs                                 das massive Aussehen der 3D-Ansicht: schattierte Polygone, das Druckbett, die Standardansichten und das Auswählen
 │   ├── shot.rs                                  der Bildmodus des Fensters (--shot) und die PNG-Datei, die er schreibt
+│   ├── slice_job.rs                             Slicen im Hintergrund und die Schätzung des Fortschrittsbalkens
+│   ├── studio.rs                                der Arbeitstisch von Vorbereiten: Teile, Kamera, Slicen im Hintergrund, Schätzungen
 │   ├── view.rs                                  die Orbit-Kamera, die ein Netz in Linien für die Vorschau umwandelt
-│   └── gui.rs                                   das Fenster (egui, mit dem Feature gui): zeichnet den Zustand und gibt weiter, was die Person tut
+│   └── gui.rs                                   das Fenster (egui, Feature gui): Leisten, Bereiche und 3D-Ansicht; gibt weiter, was die Person tut
 ├── tests/
 │   ├── end_to_end.rs                            Tests von einem Modell über ein Programm zu einem simulierten Drucker
 │   ├── examples.rs                              Tests, dass die Dateien in examples/ mit den Befehlen funktionieren

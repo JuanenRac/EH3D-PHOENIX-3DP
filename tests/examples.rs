@@ -38,6 +38,25 @@ fn the_settings_example_is_valid_and_says_what_the_defaults_are() {
     assert_eq!(c.default_printer, "bambu-lab-a1");
     assert_eq!(c.limits, p3dp_core::Limits::default());
     assert_eq!(c.server, p3dp_server_bridge::Settings::default());
+    // the keys of the window say what the defaults are, and the example has none of the limits of a printer set
+    let d = AppConfig::default();
+    assert_eq!(
+        (
+            c.theme,
+            c.grid_mm,
+            c.arrange_gap_mm,
+            c.arrange_on_add,
+            c.ui_hints
+        ),
+        (
+            d.theme,
+            d.grid_mm,
+            d.arrange_gap_mm,
+            d.arrange_on_add,
+            d.ui_hints
+        )
+    );
+    assert!(c.limit_overrides.is_empty());
     let r = run(
         &args(&[
             "printers",

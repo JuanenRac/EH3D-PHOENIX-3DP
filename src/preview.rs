@@ -49,6 +49,28 @@ pub fn format_duration(seconds: f64) -> String {
     }
 }
 
+/// The layer a vertical slider is on when the pointer is at `fraction` of its track counted from the top (0 is the top, 1 the bottom): the top of the track is the last layer. A
+/// fraction that is not a number or is outside the track is held to its ends, and a plan with no layers gives layer 0.
+pub fn layer_at(fraction_from_top: f64, count: usize) -> usize {
+    if count == 0 {
+        return 0;
+    }
+    let f = if fraction_from_top.is_finite() {
+        fraction_from_top.clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    ((1.0 - f) * (count - 1) as f64).round() as usize
+}
+
+/// Where the handle of the slider is on its track, from the top, for a layer: the opposite of [`layer_at`].
+pub fn fraction_of_layer(layer: usize, count: usize) -> f64 {
+    if count <= 1 {
+        return 0.0;
+    }
+    1.0 - layer.min(count - 1) as f64 / (count - 1) as f64
+}
+
 /// The state of the tab.
 #[derive(Debug, Clone)]
 pub struct PreviewState {
@@ -584,8 +606,37 @@ mod tests {
         s.pan(10.0, 10.0, 0.0, 600.0);
         assert_eq!(s.camera, moved);
         s.pan(-40.0, 20.0, 800.0, 600.0);
-        for k in 0..3 {
-            assert!((s.camera.target[k] - before[k]).abs() < 1e-6);
+        for (now, then) in s.camera.target.iter().zip(before.iter()) {
+            assert!((now - then).abs() < 1e-6);
+        }
+    }
+
+    #[test]
+    fn the_vertical_slider_maps_the_track_to_the_layers_and_back() {
+        assert_eq!(
+            layer_at(0.0, 100),
+            99,
+            "the top of the track is the last layer"
+        );
+        assert_eq!(layer_at(1.0, 100), 0);
+        assert_eq!(layer_at(0.5, 101), 50);
+        assert_eq!(layer_at(-3.0, 10), 9);
+        assert_eq!(layer_at(7.0, 10), 0);
+        assert_eq!(layer_at(f64::NAN, 10), 9);
+        assert_eq!(layer_at(0.3, 0), 0);
+        assert_eq!(layer_at(0.3, 1), 0);
+        assert_eq!(fraction_of_layer(0, 1), 0.0);
+        assert_eq!(fraction_of_layer(99, 100), 0.0);
+        assert_eq!(fraction_of_layer(0, 100), 1.0);
+        assert_eq!(fraction_of_layer(500, 100), 0.0, "past the end is the end");
+        for count in [2usize, 3, 17, 250, 1000] {
+            for layer in 0..count {
+                assert_eq!(
+                    layer_at(fraction_of_layer(layer, count), count),
+                    layer,
+                    "{layer}/{count}"
+                );
+            }
         }
     }
 }

@@ -523,4 +523,41 @@ mod tests {
         assert!(c.to_text(true).contains("topsecret"));
         assert!(!format!("{c:?}").contains("topsecret"));
     }
+
+    #[test]
+    fn garbage_in_the_new_keys_never_panics_and_always_names_the_line_or_is_read() {
+        let mut rng = p3dp_core::rng::Rng::new(77);
+        let keys = [
+            "theme",
+            "grid_mm",
+            "arrange_gap_mm",
+            "arrange_on_add",
+            "ui_hints",
+            "printer_limits_prusa-mk4s",
+            "printer_limits_x",
+        ];
+        for _ in 0..500 {
+            let key = keys[rng.below(keys.len() as u64) as usize];
+            let junk: String = (0..rng.below(14))
+                .map(|_| {
+                    let pool = "0123456789.,-+ eEnNoOfFdDlLtT_xX";
+                    pool.chars()
+                        .nth(rng.below(pool.chars().count() as u64) as usize)
+                        .unwrap()
+                })
+                .collect();
+            let text = format!(
+                "{key} = {junk}
+"
+            );
+            match AppConfig::from_text(&text) {
+                Ok(c) => assert_eq!(
+                    AppConfig::from_text(&c.to_text(true)).unwrap(),
+                    c,
+                    "{text:?}"
+                ),
+                Err(e) => assert!(e.contains("line 1") || e.contains("key"), "{text:?} -> {e}"),
+            }
+        }
+    }
 }
