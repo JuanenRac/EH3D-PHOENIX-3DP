@@ -188,9 +188,44 @@ pub fn simple_loops(raw: &[P], want_positive: bool) -> Vec<Loop> {
         .collect()
 }
 
+/// The loop without the points that lie on the straight line between their neighbours (the cut of a face that a diagonal splits leaves one) and without repeated points: they
+/// change nothing of the shape, and next to a corner they would leave a whisker when the loop is moved in.
+pub fn without_collinear(pts: &[P]) -> Loop {
+    let mut v: Loop = Vec::with_capacity(pts.len());
+    for p in pts {
+        if v.last().is_none_or(|q| dist(*q, *p) > 1e-12) {
+            v.push(*p);
+        }
+    }
+    while v.len() > 1 && dist(v[0], v[v.len() - 1]) <= 1e-12 {
+        v.pop();
+    }
+    loop {
+        let n = v.len();
+        if n < 4 {
+            return v;
+        }
+        let drop = (0..n).find(|&i| {
+            let (a, b, c) = (v[(i + n - 1) % n], v[i], v[(i + 1) % n]);
+            let (e1, e2) = ([b[0] - a[0], b[1] - a[1]], [c[0] - b[0], c[1] - b[1]]);
+            let cross = e1[0] * e2[1] - e1[1] * e2[0];
+            let dot = e1[0] * e2[0] + e1[1] * e2[1];
+            cross.abs() <= 1e-9 * (dist(a, b) * dist(b, c)).max(1e-18) && dot > 0.0
+        });
+        match drop {
+            Some(i) => {
+                v.remove(i);
+            }
+            None => return v,
+        }
+    }
+}
+
 /// A loop moved to its left by `d` (inwards for material), with a miter at every corner, or a bevel where the corner is so sharp that the miter would run away. The loops it
 /// folds over itself in are cut apart and the folds dropped, so the answer is zero, one or several simple loops. A loop that is thinner than `2 d` is gone.
 pub fn inset(pts: &[P], d: f64) -> Vec<Loop> {
+    let cleaned = without_collinear(pts);
+    let pts = cleaned.as_slice();
     let n = pts.len();
     if n < 3 || !d.is_finite() {
         return Vec::new();
@@ -315,6 +350,29 @@ mod tests {
         let h = inset(&hole, 0.5);
         assert_eq!(h.len(), 1);
         assert!((area(&h[0]) + 9.0).abs() < 1e-9, "{}", area(&h[0]));
+    }
+
+    #[test]
+    fn points_on_a_straight_stretch_do_not_leave_a_whisker_at_the_corner() {
+        // a square with a point 0.1 mm from a corner on one side, and a repeated point
+        let l: Loop = vec![
+            [0.0, 0.0],
+            [10.0, 0.0],
+            [10.0, 10.0],
+            [10.0, 10.0],
+            [0.1, 10.0],
+            [0.0, 10.0],
+        ];
+        let c = without_collinear(&l);
+        assert_eq!(c.len(), 4, "{c:?}");
+        let r = inset(&l, 0.225);
+        assert_eq!(r.len(), 1);
+        assert_eq!(r[0].len(), 4, "{:?}", r[0]);
+        assert!((area(&r[0]) - 9.55 * 9.55).abs() < 1e-9);
+        assert!(without_collinear(&[[0.0, 0.0], [1.0, 0.0]]).len() == 2);
+        // a line that goes back on itself is not straight
+        let back = without_collinear(&[[0.0, 0.0], [2.0, 0.0], [1.0, 0.0], [1.0, 1.0]]);
+        assert_eq!(back.len(), 4);
     }
 
     #[test]

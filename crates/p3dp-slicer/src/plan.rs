@@ -1,10 +1,12 @@
-//! The plan of a print: for every layer, the paths of the head in the order they are printed (perimeters from the inside out, then the infill), in millimetres on the bed. The
-//! plan is the preview by layers (it is data, with no window) and the source of the G-code, so what is shown is what is written.
+//! The plan of a print: for every layer, the paths of the head in the order they are printed (supports, perimeters from the inside out, then the infill), in millimetres on the bed.
+//! The plan is the preview by layers (it is data, with no window) and the source of the G-code, so what is shown is what is written.
 
-use crate::config::{Placement, SliceConfig, ThinRegions};
+use crate::config::{Placement, Seam, SliceConfig, ThinRegions};
 use crate::cut::Cutter;
 use crate::error::SliceError;
-use crate::geom::{self, inset, inside, scan_lines, Loop, P};
+use crate::geom::{self, inset, Loop, P};
+use crate::infill::{fill_paths, order_paths, Fill};
+use crate::support::support_paths;
 use p3dp_core::machine::Zone;
 use p3dp_core::{Dialect, Mesh, TempLimits};
 use p3dp_profiles::profile::{PrinterProfile, Technology};
@@ -46,6 +48,9 @@ pub enum Kind {
     Perimeter,
     Infill,
     SolidInfill,
+    /// A solid skin over nothing: it is printed slower, with the fan on and a little less plastic.
+    Bridge,
+    Support,
 }
 
 impl Kind {
@@ -55,6 +60,8 @@ impl Kind {
             Kind::Perimeter => "perimeter",
             Kind::Infill => "infill",
             Kind::SolidInfill => "solid infill",
+            Kind::Bridge => "bridge",
+            Kind::Support => "support",
         }
     }
 }
@@ -66,6 +73,8 @@ pub struct Path {
     pub points: Vec<P>,
     /// A closed path comes back to its first point.
     pub closed: bool,
+    /// The width of the line, in millimetres (the perimeters of a thin part may be narrower than the others).
+    pub width_mm: f64,
 }
 
 impl Path {
@@ -179,6 +188,12 @@ pub fn plan(mesh: &Mesh, machine: &Machine, config: &SliceConfig) -> Result<Plan
             });
         }
     }
+    if config.z_hop_mm > 0.0 && size[2] + config.z_hop_mm > bz + 1e-9 {
+        return Err(SliceError::LiftPastTop {
+            needed_mm: size[2] + config.z_hop_mm,
+            height_mm: bz,
+        });
+    }
     let heights = layer_heights(
         size[2],
         config.first_layer_height_mm,
@@ -202,14 +217,30 @@ pub fn plan(mesh: &Mesh, machine: &Machine, config: &SliceConfig) -> Result<Plan
         )?);
         bottom += h;
     }
+    // the supports, decided on the whole stack of cuts
+    let supports = support_paths(&outlines, &heights, config)?;
     // the paths
     let mut layers = Vec::with_capacity(heights.len());
     let mut warnings = Vec::new();
     let mut top = 0.0;
-    let mut head: P = [0.0, 0.0];
+    let mut state = State {
+        head: [0.0, 0.0],
+        seams: Vec::new(),
+    };
     for (i, h) in heights.iter().enumerate() {
         top += h;
-        let paths = layer_paths(i, *h, config, &outlines, &mut warnings, &mut head)?;
+        let paths = layer_paths(
+            LayerInput {
+                index: i,
+                height: *h,
+                top,
+                supports: &supports[i],
+            },
+            config,
+            &outlines,
+            &mut warnings,
+            &mut state,
+        )?;
         layers.push(Layer {
             index: i,
             z_mm: top,
@@ -256,23 +287,64 @@ fn nearest_vertex(l: &[P], at: P) -> usize {
     best.0
 }
 
-fn layer_paths(
+/// The vertex farthest back: the highest y, and the lowest x among those.
+fn rear_vertex(l: &[P]) -> usize {
+    let mut best = 0usize;
+    for (i, p) in l.iter().enumerate() {
+        let b = l[best];
+        if p[1] > b[1] + 1e-9 || ((p[1] - b[1]).abs() <= 1e-9 && p[0] < b[0]) {
+            best = i;
+        }
+    }
+    best
+}
+
+/// Where a perimeter that closes starts, by the rule of the seam. `before` are the seams of the layer below.
+fn seam_start(l: &[P], seam: Seam, before: &[P], head: P) -> usize {
+    match seam {
+        Seam::Nearest => nearest_vertex(l, head),
+        Seam::Rear => rear_vertex(l),
+        Seam::Aligned => {
+            if before.is_empty() {
+                return rear_vertex(l);
+            }
+            let mut best = (0usize, f64::MAX);
+            for (i, p) in l.iter().enumerate() {
+                let d = before
+                    .iter()
+                    .map(|q| geom::dist(*p, *q))
+                    .fold(f64::MAX, f64::min);
+                if d < best.1 {
+                    best = (i, d);
+                }
+            }
+            best.0
+        }
+    }
+}
+
+/// What is carried from one layer to the next.
+struct State {
+    head: P,
+    /// The seams of the layer that was just made.
+    seams: Vec<P>,
+}
+
+struct LayerInput<'a> {
     index: usize,
-    h: f64,
-    cfg: &SliceConfig,
-    outlines: &[Vec<Loop>],
-    warnings: &mut Vec<Warning>,
-    head: &mut P,
-) -> Result<Vec<Path>, SliceError> {
-    let w = cfg.line_width_mm;
-    let s = cfg.spacing_mm(h);
-    let outline = &outlines[index];
-    let mut paths: Vec<Path> = Vec::new();
+    height: f64,
+    /// The height of the top of the layer.
+    top: f64,
+    supports: &'a [Path],
+}
+
+/// The perimeters of a layer at one width, from the outside in, and whether the part was too thin for them.
+fn rings_at(outline: &[Loop], width: f64, cfg: &SliceConfig, h: f64) -> (Vec<Vec<Loop>>, bool) {
+    let s = cfg.spacing_for(width, h);
     let mut thin = false;
-    // the perimeters, from the inside out
     let mut rings: Vec<Vec<Loop>> = Vec::new();
     for k in 0..cfg.perimeters {
-        let d = w / 2.0 + f64::from(k) * s;
+        let d = width / 2.0 + f64::from(k) * s;
         let mut ring: Vec<Loop> = Vec::new();
         for l in outline {
             let moved = inset(l, d);
@@ -283,12 +355,46 @@ fn layer_paths(
         }
         rings.push(ring);
     }
+    (rings, thin)
+}
+
+fn layer_paths(
+    input: LayerInput,
+    cfg: &SliceConfig,
+    outlines: &[Vec<Loop>],
+    warnings: &mut Vec<Warning>,
+    st: &mut State,
+) -> Result<Vec<Path>, SliceError> {
+    let (index, h) = (input.index, input.height);
+    let outline = &outlines[index];
+    let mut paths: Vec<Path> = Vec::new();
+    // the supports first, so the part is laid on them
+    paths.extend(order_paths(input.supports.to_vec(), &mut st.head));
+    // the perimeters, from the inside out; a part too thin for them at full width gets narrower lines when the settings allow it
+    let mut width = cfg.line_width_mm;
+    let (mut rings, mut thin) = rings_at(outline, width, cfg, h);
+    if thin && cfg.width_variation_percent > 0.0 {
+        let narrowest = cfg.line_width_mm * (1.0 - cfg.width_variation_percent / 100.0);
+        let steps = 5;
+        for i in 1..=steps {
+            let w = cfg.line_width_mm
+                - (cfg.line_width_mm - narrowest) * f64::from(i) / f64::from(steps);
+            let (r, t) = rings_at(outline, w, cfg, h);
+            if !t {
+                rings = r;
+                thin = false;
+                width = w;
+                break;
+            }
+        }
+    }
     if thin {
         if cfg.thin_regions == ThinRegions::Refuse {
             return Err(SliceError::ThinRegion { layer: index });
         }
         warnings.push(Warning::ThinRegion { layer: index });
     }
+    let mut seams: Vec<P> = Vec::new();
     for (k, ring) in rings.iter().enumerate().rev() {
         let kind = if k == 0 {
             Kind::ExternalPerimeter
@@ -296,119 +402,45 @@ fn layer_paths(
             Kind::Perimeter
         };
         for l in ring {
-            let start = nearest_vertex(l, *head);
+            let start = if k == 0 {
+                seam_start(l, cfg.seam, &st.seams, st.head)
+            } else {
+                nearest_vertex(l, st.head)
+            };
             let mut pts: Vec<P> = l[start..].to_vec();
             pts.extend_from_slice(&l[..start]);
-            *head = pts[0];
+            if k == 0 {
+                seams.push(pts[0]);
+            }
+            st.head = pts[0];
             paths.push(Path {
                 kind,
                 points: pts,
                 closed: true,
+                width_mm: width,
             });
         }
     }
+    if !seams.is_empty() {
+        st.seams = seams;
+    }
     // the infill, inside the innermost perimeter
-    let d_region = w / 2.0 + f64::from(cfg.perimeters.saturating_sub(1)) * s + s / 2.0;
+    let s = cfg.spacing_for(width, h);
+    let d_region = width / 2.0 + f64::from(cfg.perimeters.saturating_sub(1)) * s + s / 2.0;
     let region: Vec<Loop> = outline.iter().flat_map(|l| inset(l, d_region)).collect();
     if !region.is_empty() {
-        paths.extend(infill_paths(index, h, cfg, outlines, &region, head));
+        let fill = Fill {
+            index,
+            height: h,
+            z: input.top,
+            cfg,
+            outlines,
+            region: &region,
+            bridges: cfg.supports == crate::config::Supports::Off,
+        };
+        paths.extend(fill_paths(&fill, &mut st.head)?);
     }
     Ok(paths)
-}
-
-/// Whether every one of `count` layers on one side of layer `index` covers the point.
-fn covered(p: P, index: usize, count: u32, up: bool, outlines: &[Vec<Loop>]) -> bool {
-    (1..=count as usize).all(|j| {
-        let k = if up {
-            index.checked_add(j)
-        } else {
-            index.checked_sub(j)
-        };
-        k.and_then(|k| outlines.get(k))
-            .is_some_and(|o| inside(p, o))
-    })
-}
-
-fn infill_paths(
-    index: usize,
-    h: f64,
-    cfg: &SliceConfig,
-    outlines: &[Vec<Loop>],
-    region: &[Loop],
-    head: &mut P,
-) -> Vec<Path> {
-    let s = cfg.spacing_mm(h);
-    let density = cfg.infill_percent / 100.0;
-    let horizontal = index.is_multiple_of(2);
-    let min_len = (cfg.line_width_mm * 0.5).max(0.2);
-    let all_solid = density >= 0.999;
-    let needs_skin = |p: P| {
-        (cfg.top_layers > 0 && !covered(p, index, cfg.top_layers, true, outlines))
-            || (cfg.bottom_layers > 0 && !covered(p, index, cfg.bottom_layers, false, outlines))
-    };
-    // the lines are cut in short pieces and each piece is judged by its middle
-    let piece = (4.0 * s).max(1.0);
-    let mut segments: Vec<(Kind, P, P)> = Vec::new();
-    let mut keep = |lines: Vec<(P, P)>, kind: Kind, want_skin: bool| {
-        for (a, b) in lines {
-            let len = geom::dist(a, b);
-            let n = ((len / piece).ceil() as usize).max(1);
-            let at = |t: f64| [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
-            let mut run: Option<P> = None;
-            for c in 0..n {
-                let (t0, t1) = (c as f64 / n as f64, (c + 1) as f64 / n as f64);
-                let mid = at((t0 + t1) / 2.0);
-                let wanted = all_solid || needs_skin(mid) == want_skin;
-                match (wanted, run) {
-                    (true, None) => run = Some(at(t0)),
-                    (false, Some(from)) => {
-                        segments.push((kind, from, at(t0)));
-                        run = None;
-                    }
-                    _ => {}
-                }
-            }
-            if let Some(from) = run {
-                segments.push((kind, from, b));
-            }
-        }
-    };
-    keep(
-        scan_lines(region, horizontal, s, min_len),
-        Kind::SolidInfill,
-        true,
-    );
-    if !all_solid && density > 0.0 {
-        keep(
-            scan_lines(region, horizontal, s / density, min_len),
-            Kind::Infill,
-            false,
-        );
-    }
-    // the order: always to the nearest end that is left, so the head does not cross the layer for every line
-    let mut paths = Vec::with_capacity(segments.len());
-    let mut left = segments;
-    while !left.is_empty() {
-        let mut best = (0usize, false, f64::MAX);
-        for (i, (_, a, b)) in left.iter().enumerate() {
-            let (da, db) = (geom::dist(*head, *a), geom::dist(*head, *b));
-            if da < best.2 {
-                best = (i, false, da);
-            }
-            if db < best.2 {
-                best = (i, true, db);
-            }
-        }
-        let (kind, a, b) = left.swap_remove(best.0);
-        let (from, to) = if best.1 { (b, a) } else { (a, b) };
-        *head = to;
-        paths.push(Path {
-            kind,
-            points: vec![from, to],
-            closed: false,
-        });
-    }
-    paths
 }
 
 impl Plan {
@@ -417,10 +449,24 @@ impl Plan {
         self.layers
             .iter()
             .map(|l| {
-                let a = self.config.line_area_mm2(l.height_mm) * self.config.extrusion_multiplier;
-                l.paths.iter().map(|p| p.length_mm() * a).sum::<f64>()
+                l.paths
+                    .iter()
+                    .map(|p| p.length_mm() * self.line_area_mm2(l.height_mm, p.kind, p.width_mm))
+                    .sum::<f64>()
             })
             .sum()
+    }
+
+    /// The section of the plastic of a line of this kind and width on a layer of this height, in square millimetres: the shape of the line, the extrusion multiplier and, for a
+    /// bridge, its own flow.
+    pub fn line_area_mm2(&self, layer_height: f64, kind: Kind, width: f64) -> f64 {
+        let c = &self.config;
+        let flow = if kind == Kind::Bridge {
+            c.bridge_flow_ratio
+        } else {
+            1.0
+        };
+        c.line_area_for(width, layer_height) * c.extrusion_multiplier * flow
     }
 
     /// The length of filament that goes through the extruder, in millimetres.
@@ -703,5 +749,389 @@ mod tests {
             Err(SliceError::DoesNotFit { .. })
         ));
         assert!(plan(&m, &machine(), &SliceConfig::default()).is_ok());
+    }
+
+    /// A closed mesh made of boxes that may touch on a face (the shared faces cancel): each is `(low corner, high corner)` in millimetres.
+    pub(crate) fn boxes(parts: &[([f64; 3], [f64; 3])]) -> Mesh {
+        let mut soup = Vec::new();
+        let c = cube(1.0);
+        for (lo, hi) in parts {
+            for t in &c.triangles {
+                soup.push(t.map(|i| {
+                    let v = c.vertices[i as usize].mm();
+                    [
+                        lo[0] + v[0] * (hi[0] - lo[0]),
+                        lo[1] + v[1] * (hi[1] - lo[1]),
+                        lo[2] + v[2] * (hi[2] - lo[2]),
+                    ]
+                }));
+            }
+        }
+        Mesh::from_soup(&soup, &p3dp_core::Limits::default()).unwrap()
+    }
+
+    /// A table: two pillars 5 mm wide and a plate over them, 30 x 10 x 6 mm, made from its profile in x and z. The plate hangs over 20 mm of nothing.
+    fn table_mesh() -> Mesh {
+        let poly: [[f64; 2]; 8] = [
+            [0.0, 0.0],
+            [5.0, 0.0],
+            [5.0, 5.0],
+            [25.0, 5.0],
+            [25.0, 0.0],
+            [30.0, 0.0],
+            [30.0, 6.0],
+            [0.0, 6.0],
+        ];
+        let caps: [[usize; 3]; 6] = [
+            [0, 1, 2],
+            [0, 2, 7],
+            [2, 3, 6],
+            [2, 6, 7],
+            [4, 5, 6],
+            [4, 6, 3],
+        ];
+        let at = |i: usize, y: f64| [poly[i][0], y, poly[i][1]];
+        let mut soup: Vec<[[f64; 3]; 3]> = Vec::new();
+        for t in caps {
+            soup.push([at(t[0], 0.0), at(t[1], 0.0), at(t[2], 0.0)]);
+            soup.push([at(t[0], 10.0), at(t[2], 10.0), at(t[1], 10.0)]);
+        }
+        for i in 0..poly.len() {
+            let j = (i + 1) % poly.len();
+            soup.push([at(i, 0.0), at(j, 10.0), at(j, 0.0)]);
+            soup.push([at(i, 0.0), at(i, 10.0), at(j, 10.0)]);
+        }
+        Mesh::from_soup(&soup, &p3dp_core::Limits::default()).unwrap()
+    }
+
+    fn table() -> Mesh {
+        table_mesh()
+    }
+
+    fn total_of(p: &Plan, kind: Kind) -> f64 {
+        p.layers
+            .iter()
+            .flat_map(|l| &l.paths)
+            .filter(|x| x.kind == kind)
+            .map(|x| x.length_mm())
+            .sum()
+    }
+
+    #[test]
+    fn the_grid_has_lines_both_ways_on_every_layer_and_as_much_plastic_as_the_lines() {
+        let rect = plan(&cube(20.0), &machine(), &SliceConfig::default()).unwrap();
+        let grid_cfg = SliceConfig {
+            infill_pattern: crate::config::InfillPattern::Grid,
+            ..SliceConfig::default()
+        };
+        let grid = plan(&cube(20.0), &machine(), &grid_cfg).unwrap();
+        for i in [30usize, 31] {
+            let lines: Vec<&Path> = grid.layers[i]
+                .paths
+                .iter()
+                .filter(|x| x.kind == Kind::Infill)
+                .collect();
+            assert!(lines.iter().any(|x| x.points[0][0] == x.points[1][0]));
+            assert!(lines.iter().any(|x| x.points[0][1] == x.points[1][1]));
+        }
+        let ratio = grid.extrusion_mm3() / rect.extrusion_mm3();
+        assert!((0.9..=1.1).contains(&ratio), "{ratio}");
+    }
+
+    #[test]
+    fn the_gyroid_waves_stay_inside_and_more_infill_is_more_plastic() {
+        let mk = |pct: f64| SliceConfig {
+            infill_pattern: crate::config::InfillPattern::Gyroid,
+            infill_percent: pct,
+            ..SliceConfig::default()
+        };
+        let a = plan(&cube(20.0), &machine(), &mk(15.0)).unwrap();
+        let b = plan(&cube(20.0), &machine(), &mk(35.0)).unwrap();
+        let rect = plan(&cube(20.0), &machine(), &SliceConfig::default()).unwrap();
+        assert!(b.extrusion_mm3() > a.extrusion_mm3());
+        // 20 % of rectilinear and 15 % to 35 % of gyroid bracket each other
+        assert!(a.extrusion_mm3() < rect.extrusion_mm3() * 1.1);
+        assert!(b.extrusion_mm3() > rect.extrusion_mm3() * 0.9);
+        // a wave is a path with many points, and its cut changes from one layer to the next
+        let waves = |l: &Layer| -> Vec<Vec<P>> {
+            l.paths
+                .iter()
+                .filter(|x| x.kind == Kind::Infill)
+                .map(|x| x.points.clone())
+                .collect()
+        };
+        assert!(waves(&a.layers[50]).iter().any(|w| w.len() > 5));
+        assert_ne!(waves(&a.layers[50]), waves(&a.layers[51]));
+        // inside the cube: 100 +- 10 on both axes
+        for p in waves(&a.layers[50]).iter().flatten() {
+            assert!(
+                p[0] > 100.0 && p[0] < 120.0 && p[1] > 100.0 && p[1] < 120.0,
+                "{p:?}"
+            );
+        }
+        // the same plan twice, the same answer
+        assert_eq!(a, plan(&cube(20.0), &machine(), &mk(15.0)).unwrap());
+    }
+
+    #[test]
+    fn the_seam_goes_where_the_setting_says() {
+        let first_external = |p: &Plan, layer: usize| -> P {
+            p.layers[layer]
+                .paths
+                .iter()
+                .find(|x| x.kind == Kind::ExternalPerimeter)
+                .unwrap()
+                .points[0]
+        };
+        let rear = plan(
+            &cube(20.0),
+            &machine(),
+            &SliceConfig {
+                seam: Seam::Rear,
+                ..SliceConfig::default()
+            },
+        )
+        .unwrap();
+        for i in [0usize, 10, 60] {
+            let s = first_external(&rear, i);
+            // the back left corner of the outer perimeter
+            assert!(
+                (s[1] - (120.0 - 0.225)).abs() < 1e-6 && (s[0] - (100.0 + 0.225)).abs() < 1e-6,
+                "{s:?}"
+            );
+        }
+        let aligned = plan(
+            &cube(20.0),
+            &machine(),
+            &SliceConfig {
+                seam: Seam::Aligned,
+                ..SliceConfig::default()
+            },
+        )
+        .unwrap();
+        let (a, b) = (first_external(&aligned, 20), first_external(&aligned, 21));
+        assert_eq!(a, b, "the seam climbs in a line");
+        let nearest = plan(&cube(20.0), &machine(), &SliceConfig::default()).unwrap();
+        assert!(nearest.layers[50]
+            .paths
+            .iter()
+            .any(|x| x.kind == Kind::ExternalPerimeter));
+    }
+
+    #[test]
+    fn a_wall_too_thin_for_the_perimeters_gets_narrower_lines_when_the_settings_allow() {
+        // a plate 0.9 mm thick: two lines of 0.45 mm do not fit, two of 0.32 do
+        let plate = boxes(&[([0.0, 0.0, 0.0], [20.0, 0.9, 1.0])]);
+        let fixed = plan(&plate, &machine(), &SliceConfig::default()).unwrap();
+        assert!(fixed.warnings.contains(&Warning::ThinRegion { layer: 0 }));
+        let wide = SliceConfig {
+            width_variation_percent: 30.0,
+            ..SliceConfig::default()
+        };
+        let var = plan(&plate, &machine(), &wide).unwrap();
+        assert!(var.warnings.is_empty(), "{:?}", var.warnings);
+        let widths: Vec<f64> = var.layers[0].paths.iter().map(|x| x.width_mm).collect();
+        assert!(
+            widths.iter().all(|w| *w < 0.45 && *w >= 0.45 * 0.70 - 1e-9),
+            "{widths:?}"
+        );
+        // and a narrower line is less plastic per millimetre
+        let long = |p: &Plan| {
+            p.extrusion_mm3() / p.layers[0].paths.iter().map(|x| x.length_mm()).sum::<f64>()
+        };
+        assert!(long(&var) < long(&fixed));
+        // a part that is wide enough keeps the full width even with the setting on
+        let cube_plan = plan(&cube(20.0), &machine(), &wide).unwrap();
+        assert!(cube_plan.layers[5].paths.iter().all(|x| x.width_mm == 0.45));
+    }
+
+    #[test]
+    fn a_skin_over_nothing_is_a_bridge_and_a_bridge_that_is_too_long_is_refused() {
+        let t = table();
+        let p = plan(&t, &machine(), &SliceConfig::default()).unwrap();
+        // the plate is the layers from z = 5: layer 25 is the first one over the gap
+        let bridge = total_of(&p, Kind::Bridge);
+        assert!(bridge > 100.0, "{bridge}");
+        assert!(p.layers[24].paths.iter().all(|x| x.kind != Kind::Bridge));
+        assert!(p.layers[25].paths.iter().any(|x| x.kind == Kind::Bridge));
+        // laid across the gap from pillar to pillar, along x, and not along the 10 mm of the other way that no pillar holds
+        let across = p.layers[25]
+            .paths
+            .iter()
+            .find(|x| x.kind == Kind::Bridge)
+            .unwrap();
+        assert_eq!(across.points[0][1], across.points[1][1]);
+        assert!(across.length_mm() > 15.0, "{}", across.length_mm());
+        // a bridge is slower and has a little less plastic than a solid line of the same length
+        assert!(p.speed_mm_s(25, Kind::Bridge) < p.speed_mm_s(25, Kind::SolidInfill));
+        let line = p.line_area_mm2(0.2, Kind::SolidInfill, 0.45);
+        assert!((p.line_area_mm2(0.2, Kind::Bridge, 0.45) / line - 0.95).abs() < 1e-12);
+        // 20 mm of nothing is too much for a limit of 10 mm
+        let strict = SliceConfig {
+            max_bridge_span_mm: 10.0,
+            ..SliceConfig::default()
+        };
+        let refused = plan(&t, &machine(), &strict);
+        assert!(
+            matches!(refused, Err(SliceError::BridgeTooLong { layer: 25, .. })),
+            "{refused:?}"
+        );
+        // and 0 is no limit
+        let none = SliceConfig {
+            max_bridge_span_mm: 0.0,
+            ..strict
+        };
+        assert!(plan(&t, &machine(), &none).is_ok());
+    }
+
+    #[test]
+    fn supports_hold_the_plate_and_there_is_no_bridge_over_them() {
+        let t = table();
+        let cfg = SliceConfig {
+            supports: crate::config::Supports::BuildPlate,
+            max_bridge_span_mm: 10.0,
+            ..SliceConfig::default()
+        };
+        let p = plan(&t, &machine(), &cfg).unwrap();
+        assert!(total_of(&p, Kind::Support) > 100.0);
+        assert_eq!(total_of(&p, Kind::Bridge), 0.0);
+        // nothing is under the plate where the pillars are, and the supports end one layer short of the plate
+        for l in &p.layers {
+            for path in l.paths.iter().filter(|x| x.kind == Kind::Support) {
+                for q in &path.points {
+                    let x = q[0] - 95.0;
+                    assert!(x > 5.0 && x < 25.0, "x {x}");
+                }
+                assert!(l.index < 24, "layer {}", l.index);
+            }
+        }
+        // the gcode names them and the plastic of the file is the plastic of the plan
+        let g = p.gcode("test").unwrap();
+        assert!(g.contains("TYPE:support"));
+    }
+
+    #[test]
+    fn the_head_lifts_on_a_travel_that_retracts_and_never_past_the_printer() {
+        let cfg = SliceConfig {
+            z_hop_mm: 0.4,
+            ..SliceConfig::default()
+        };
+        let p = plan(&cube(20.0), &machine(), &cfg).unwrap();
+        let g = p.gcode("test").unwrap();
+        let mut hops = 0;
+        let mut up = false;
+        let mut layer_z = 0.0;
+        for line in g.lines() {
+            let code = line.split(';').next().unwrap_or("");
+            if let Some(z) = code
+                .split_ascii_whitespace()
+                .find_map(|w| w.strip_prefix('Z'))
+                .and_then(|v| v.parse::<f64>().ok())
+            {
+                if up {
+                    assert!(
+                        (z - layer_z).abs() < 1e-9,
+                        "comes back to {layer_z}, not {z}"
+                    );
+                    up = false;
+                } else if z > layer_z + 0.39 && z < layer_z + 0.41 {
+                    hops += 1;
+                    up = true;
+                } else if z >= layer_z {
+                    layer_z = z;
+                }
+            }
+        }
+        assert!(hops > 0 && !up);
+        let low = Machine {
+            volume_mm: [220.0, 220.0, 20.2],
+            ..machine()
+        };
+        assert!(matches!(
+            plan(&cube(20.0), &low, &cfg),
+            Err(SliceError::LiftPastTop { .. })
+        ));
+        // with no hop the same printer takes the cube
+        assert!(plan(&cube(20.0), &low, &SliceConfig::default()).is_ok());
+    }
+
+    #[test]
+    fn the_fan_climbs_over_the_layers_asked_and_a_bridge_has_its_own() {
+        let cfg = SliceConfig {
+            fan_percent: 80.0,
+            fan_from_layer: 2,
+            fan_ramp_layers: 4,
+            ..SliceConfig::default()
+        };
+        let p = plan(&cube(5.0), &machine(), &cfg).unwrap();
+        let fans: Vec<f64> = (0..8).map(|i| p.fan_for_layer(i)).collect();
+        assert_eq!(fans[0], 0.0);
+        assert_eq!(fans[1], 0.0);
+        assert!((fans[2] - 20.0).abs() < 1e-9 && (fans[3] - 40.0).abs() < 1e-9);
+        assert!((fans[5] - 80.0).abs() < 1e-9 && fans[7] == 80.0);
+        let g = p.gcode("test").unwrap();
+        let set: Vec<&str> = g.lines().filter(|l| l.starts_with("M106")).collect();
+        assert_eq!(set, vec!["M106 S51", "M106 S102", "M106 S153", "M106 S204"]);
+        // a bridge puts the fan to its own level and the layer goes back to its level after it
+        let t = plan(
+            &table(),
+            &machine(),
+            &SliceConfig {
+                fan_percent: 50.0,
+                ..SliceConfig::default()
+            },
+        )
+        .unwrap();
+        let g = t.gcode("test").unwrap();
+        let lines: Vec<&str> = g.lines().collect();
+        let at = lines
+            .iter()
+            .position(|l| l.contains("TYPE:bridge"))
+            .unwrap();
+        assert!(
+            lines[at..at + 3].iter().any(|l| l.starts_with("M106 S255")),
+            "{:?}",
+            &lines[at..at + 3]
+        );
+        let after = lines[at..]
+            .iter()
+            .position(|l| l.contains("TYPE:") && !l.contains("bridge"))
+            .unwrap();
+        assert!(lines[at + after..]
+            .iter()
+            .take(3)
+            .any(|l| l.starts_with("M106")));
+    }
+
+    #[test]
+    fn the_estimate_with_acceleration_is_longer_than_the_plain_one_and_follows_the_acceleration() {
+        let base = plan(&cube(20.0), &machine(), &SliceConfig::default()).unwrap();
+        assert!(base.estimated_seconds() > base.flat_estimated_seconds());
+        let quick = plan(
+            &cube(20.0),
+            &machine(),
+            &SliceConfig {
+                accel_mm_s2: 20_000.0,
+                ..SliceConfig::default()
+            },
+        )
+        .unwrap();
+        let slow = plan(
+            &cube(20.0),
+            &machine(),
+            &SliceConfig {
+                accel_mm_s2: 500.0,
+                ..SliceConfig::default()
+            },
+        )
+        .unwrap();
+        assert!(slow.estimated_seconds() > base.estimated_seconds());
+        assert!(base.estimated_seconds() > quick.estimated_seconds());
+        assert!(quick.estimated_seconds() > quick.flat_estimated_seconds());
+        let sums = base.summaries();
+        assert!(
+            (sums.iter().map(|s| s.time_s).sum::<f64>() - base.estimated_seconds()).abs() < 1e-9
+        );
+        assert!(sums.iter().all(|s| s.flat_time_s <= s.time_s));
     }
 }

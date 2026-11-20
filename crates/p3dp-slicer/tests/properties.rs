@@ -6,7 +6,9 @@ use p3dp_core::mesh::cube;
 use p3dp_core::rng::Rng;
 use p3dp_core::{Dialect, Limits, Mesh, TempLimits};
 use p3dp_gcode::check_program;
-use p3dp_slicer::{plan, slice, Kind, Machine, Placement, SliceConfig, SliceError};
+use p3dp_slicer::{
+    plan, slice, InfillPattern, Kind, Machine, Placement, Seam, SliceConfig, SliceError, Supports,
+};
 
 const BED: [f64; 3] = [220.0, 220.0, 250.0];
 
@@ -420,4 +422,161 @@ fn what_is_written_is_what_the_same_settings_wrote_before() {
         slice(&b, &m, &cfg).unwrap().1,
         slice(&b, &m, &cfg).unwrap().1
     );
+}
+
+/// The G-code read again: every feed rate, every fan value and the highest z.
+fn feeds_and_fans(gcode: &str) -> (f64, Vec<f64>) {
+    let mut max_feed = 0.0f64;
+    let mut fans = Vec::new();
+    for raw in gcode.lines() {
+        let line = raw.split(';').next().unwrap_or("").trim();
+        if let Some(f) = word(line, 'F') {
+            max_feed = max_feed.max(f);
+        }
+        if line.starts_with("M106") {
+            fans.push(word(line, 'S').unwrap_or(255.0));
+        }
+    }
+    (max_feed, fans)
+}
+
+#[test]
+fn every_pattern_seam_and_support_keeps_to_the_limits_on_shapes_from_a_fixed_seed() {
+    let mut rng = Rng::new(0xF111_5EED);
+    let patterns = [
+        InfillPattern::Rectilinear,
+        InfillPattern::Grid,
+        InfillPattern::Gyroid,
+    ];
+    let seams = [Seam::Nearest, Seam::Aligned, Seam::Rear];
+    let supports = [Supports::Off, Supports::BuildPlate, Supports::Everywhere];
+    for case in 0..18 {
+        let cfg = SliceConfig {
+            infill_pattern: patterns[case % 3],
+            seam: seams[(case / 3) % 3],
+            supports: supports[(case / 2) % 3],
+            infill_percent: [10.0, 20.0, 40.0][rng.below(3) as usize],
+            perimeters: 1 + rng.below(3) as u32,
+            z_hop_mm: if case % 2 == 0 { 0.4 } else { 0.0 },
+            fan_percent: [0.0, 60.0, 100.0][rng.below(3) as usize],
+            fan_ramp_layers: rng.below(5) as u32,
+            width_variation_percent: if case % 4 == 0 { 20.0 } else { 0.0 },
+            ..SliceConfig::default()
+        };
+        let tall = rng.range(3.0, 9.0);
+        let what = format!("case {case}: {cfg:?}");
+        let mesh = match case % 3 {
+            0 => block(rng.range(16.0, 40.0), rng.range(16.0, 40.0), tall),
+            1 => prism(10 + rng.below(30) as usize, rng.range(8.0, 25.0), 0.0, tall),
+            _ => {
+                let r = rng.range(14.0, 28.0);
+                prism(
+                    16 + rng.below(20) as usize,
+                    r,
+                    r * rng.range(0.3, 0.5),
+                    tall,
+                )
+            }
+        };
+        let m = machine(Dialect::Klipper);
+        let (p, g) = slice(&mesh, &m, &cfg).unwrap_or_else(|e| panic!("{what}: {e}"));
+        // plastic: more than nothing and not more than a solid part
+        let ratio = p.extrusion_mm3() / mesh.volume_mm3();
+        assert!(ratio > 0.2 && ratio < 1.07, "{what}: {ratio}");
+        let w = walk(&g);
+        assert!(
+            w.outside_bed.is_empty(),
+            "{what}: {:?}",
+            w.outside_bed.first()
+        );
+        assert!(
+            w.max_z <= p.height_mm() + cfg.end_lift_mm + cfg.z_hop_mm + 1e-3,
+            "{what}"
+        );
+        let violations = check_program(&g, &m.limits);
+        assert!(violations.is_empty(), "{what}: {:?}", violations.first());
+        let (max_feed, fans) = feeds_and_fans(&g);
+        assert!(
+            max_feed <= cfg.max_speed_mm_s * 60.0 + 1e-6,
+            "{what}: feed {max_feed}"
+        );
+        assert!(
+            fans.iter().all(|s| (0.0..=255.0).contains(s)),
+            "{what}: {fans:?}"
+        );
+        // the file and the plan agree on the plastic
+        let from_file = w.filament_mm * cfg.filament_area_mm2();
+        assert!(
+            (from_file - p.extrusion_mm3()).abs() / p.extrusion_mm3() < 0.003,
+            "{what}"
+        );
+        assert!(
+            p.estimated_seconds() >= p.flat_estimated_seconds(),
+            "{what}"
+        );
+    }
+}
+
+/// A table: two pillars 5 mm wide and a plate over them, 30 x 10 x 6 mm, made from its profile in x and z. The plate hangs over 20 mm of nothing.
+fn table_mesh() -> Mesh {
+    let poly: [[f64; 2]; 8] = [
+        [0.0, 0.0],
+        [5.0, 0.0],
+        [5.0, 5.0],
+        [25.0, 5.0],
+        [25.0, 0.0],
+        [30.0, 0.0],
+        [30.0, 6.0],
+        [0.0, 6.0],
+    ];
+    let caps: [[usize; 3]; 6] = [
+        [0, 1, 2],
+        [0, 2, 7],
+        [2, 3, 6],
+        [2, 6, 7],
+        [4, 5, 6],
+        [4, 6, 3],
+    ];
+    let at = |i: usize, y: f64| [poly[i][0], y, poly[i][1]];
+    let mut soup: Vec<[[f64; 3]; 3]> = Vec::new();
+    for t in caps {
+        soup.push([at(t[0], 0.0), at(t[1], 0.0), at(t[2], 0.0)]);
+        soup.push([at(t[0], 10.0), at(t[2], 10.0), at(t[1], 10.0)]);
+    }
+    for i in 0..poly.len() {
+        let j = (i + 1) % poly.len();
+        soup.push([at(i, 0.0), at(j, 10.0), at(j, 0.0)]);
+        soup.push([at(i, 0.0), at(i, 10.0), at(j, 10.0)]);
+    }
+    Mesh::from_soup(&soup, &Limits::default()).unwrap()
+}
+
+#[test]
+fn a_table_is_printed_with_a_bridge_or_with_supports_and_refused_when_neither_can() {
+    let table = table_mesh();
+    let m = machine(Dialect::Marlin);
+    let with_bridge = SliceConfig::default();
+    let (p, g) = slice(&table, &m, &with_bridge).unwrap();
+    assert!(g.contains("TYPE:bridge") && !g.contains("TYPE:support"));
+    assert!(p
+        .layers
+        .iter()
+        .flat_map(|l| &l.paths)
+        .any(|x| x.kind == Kind::Bridge));
+    let short = SliceConfig {
+        max_bridge_span_mm: 8.0,
+        ..SliceConfig::default()
+    };
+    assert!(matches!(
+        slice(&table, &m, &short),
+        Err(SliceError::BridgeTooLong { .. })
+    ));
+    let held = SliceConfig {
+        supports: Supports::Everywhere,
+        ..short
+    };
+    let (_, g) = slice(&table, &m, &held).unwrap();
+    assert!(g.contains("TYPE:support") && !g.contains("TYPE:bridge"));
+    let w = walk(&g);
+    assert!(w.outside_bed.is_empty());
 }

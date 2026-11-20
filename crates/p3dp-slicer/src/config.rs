@@ -23,6 +23,69 @@ pub enum Placement {
     Origin,
 }
 
+/// The pattern of the sparse infill. The solid skins are always rectilinear lines that turn by a right angle on each layer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InfillPattern {
+    /// Parallel lines, turned by a right angle on each layer (the default).
+    Rectilinear,
+    /// Two sets of parallel lines on every layer, at a right angle to each other.
+    Grid,
+    /// The wavy lines of a gyroid, a surface that never repeats the same cut on two layers.
+    Gyroid,
+}
+
+impl InfillPattern {
+    pub fn name(self) -> &'static str {
+        match self {
+            InfillPattern::Rectilinear => "rectilinear",
+            InfillPattern::Grid => "grid",
+            InfillPattern::Gyroid => "gyroid",
+        }
+    }
+}
+
+/// Where each closed perimeter starts and ends, which is where the seam shows.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Seam {
+    /// The corner nearest to where the head is (the default: the shortest travel).
+    Nearest,
+    /// The corner nearest to the seam of the layer below, so the seams make one line up the part.
+    Aligned,
+    /// The corner farthest back (the highest y, then the lowest x): the seam is at the back of the part.
+    Rear,
+}
+
+impl Seam {
+    pub fn name(self) -> &'static str {
+        match self {
+            Seam::Nearest => "nearest",
+            Seam::Aligned => "aligned",
+            Seam::Rear => "rear",
+        }
+    }
+}
+
+/// Whether the overhangs get supports, and where those may stand.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Supports {
+    /// No supports (the default): an overhang is printed as it is, and a bridge that is too long is refused.
+    Off,
+    /// Supports that stand on the bed only; an overhang over the part itself is refused.
+    BuildPlate,
+    /// Supports that may also stand on the part.
+    Everywhere,
+}
+
+impl Supports {
+    pub fn name(self) -> &'static str {
+        match self {
+            Supports::Off => "off",
+            Supports::BuildPlate => "buildplate",
+            Supports::Everywhere => "everywhere",
+        }
+    }
+}
+
 /// The settings.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SliceConfig {
@@ -67,6 +130,38 @@ pub struct SliceConfig {
     /// The most points in the cut of one layer.
     pub max_points_per_layer: u32,
     pub max_gcode_lines: u32,
+    pub infill_pattern: InfillPattern,
+    pub seam: Seam,
+    /// How much narrower than `line_width_mm` the perimeters of a layer may be made, in per cent, when the part is too thin for them at full width (0 is off).
+    pub width_variation_percent: f64,
+    pub solid_infill_speed_mm_s: f64,
+    pub bridge_speed_mm_s: f64,
+    /// The plastic of a bridge as a part of a normal line (a bridge is stretched, so a little less).
+    pub bridge_flow_ratio: f64,
+    /// The part fan on a bridge, 0 to 100.
+    pub bridge_fan_percent: f64,
+    /// A bridge longer than this is refused when there are no supports (0 is no limit).
+    pub max_bridge_span_mm: f64,
+    pub supports: Supports,
+    /// The distance between the lines of a support, and between the samples that decide where it stands.
+    pub support_spacing_mm: f64,
+    /// An overhang is left alone while it leans no more than this from the vertical.
+    pub support_overhang_angle_deg: f64,
+    /// The clearance between a support and the part, sideways.
+    pub support_xy_gap_mm: f64,
+    /// The layers left empty between the top of a support and the part.
+    pub support_z_gap_layers: u32,
+    pub support_speed_mm_s: f64,
+    /// The most samples (columns times layers) the decision on the supports may take.
+    pub max_support_samples: u32,
+    /// How far the head is lifted on a travel that retracts (0 is off).
+    pub z_hop_mm: f64,
+    /// The layers over which the part fan climbs from nothing to `fan_percent` after `fan_from_layer` (0 is at once).
+    pub fan_ramp_layers: u32,
+    /// The acceleration the time is estimated with.
+    pub accel_mm_s2: f64,
+    /// The speed at a corner that turns all the way back, for the estimate of the time.
+    pub corner_speed_mm_s: f64,
 }
 
 impl Default for SliceConfig {
@@ -104,12 +199,31 @@ impl Default for SliceConfig {
             max_layers: 5000,
             max_points_per_layer: 200_000,
             max_gcode_lines: 5_000_000,
+            infill_pattern: InfillPattern::Rectilinear,
+            seam: Seam::Nearest,
+            width_variation_percent: 0.0,
+            solid_infill_speed_mm_s: 50.0,
+            bridge_speed_mm_s: 25.0,
+            bridge_flow_ratio: 0.95,
+            bridge_fan_percent: 100.0,
+            max_bridge_span_mm: 100.0,
+            supports: Supports::Off,
+            support_spacing_mm: 3.0,
+            support_overhang_angle_deg: 50.0,
+            support_xy_gap_mm: 0.4,
+            support_z_gap_layers: 1,
+            support_speed_mm_s: 50.0,
+            max_support_samples: 5_000_000,
+            z_hop_mm: 0.0,
+            fan_ramp_layers: 0,
+            accel_mm_s2: 3000.0,
+            corner_speed_mm_s: 8.0,
         }
     }
 }
 
 /// The keys, in the order of the file.
-pub const KEYS: [&str; 32] = [
+pub const KEYS: [&str; 51] = [
     "layer_height_mm",
     "first_layer_height_mm",
     "nozzle_diameter_mm",
@@ -142,6 +256,25 @@ pub const KEYS: [&str; 32] = [
     "max_layers",
     "max_points_per_layer",
     "max_gcode_lines",
+    "infill_pattern",
+    "seam",
+    "width_variation_percent",
+    "solid_infill_speed_mm_s",
+    "bridge_speed_mm_s",
+    "bridge_flow_ratio",
+    "bridge_fan_percent",
+    "max_bridge_span_mm",
+    "supports",
+    "support_spacing_mm",
+    "support_overhang_angle_deg",
+    "support_xy_gap_mm",
+    "support_z_gap_layers",
+    "support_speed_mm_s",
+    "max_support_samples",
+    "z_hop_mm",
+    "fan_ramp_layers",
+    "accel_mm_s2",
+    "corner_speed_mm_s",
 ];
 
 fn invalid(msg: String) -> CoreError {
@@ -198,6 +331,54 @@ impl SliceConfig {
             "max_layers" => self.max_layers = n(1, 100_000)? as u32,
             "max_points_per_layer" => self.max_points_per_layer = n(100, 10_000_000)? as u32,
             "max_gcode_lines" => self.max_gcode_lines = n(1_000, 100_000_000)? as u32,
+            "infill_pattern" => {
+                self.infill_pattern = match value.trim().to_ascii_lowercase().as_str() {
+                    "rectilinear" => InfillPattern::Rectilinear,
+                    "grid" => InfillPattern::Grid,
+                    "gyroid" => InfillPattern::Gyroid,
+                    _ => {
+                        return Err(invalid(format!(
+                            "{key}: expected rectilinear, grid or gyroid"
+                        )))
+                    }
+                }
+            }
+            "seam" => {
+                self.seam = match value.trim().to_ascii_lowercase().as_str() {
+                    "nearest" => Seam::Nearest,
+                    "aligned" => Seam::Aligned,
+                    "rear" => Seam::Rear,
+                    _ => return Err(invalid(format!("{key}: expected nearest, aligned or rear"))),
+                }
+            }
+            "width_variation_percent" => self.width_variation_percent = f(0.0, 50.0)?,
+            "solid_infill_speed_mm_s" => self.solid_infill_speed_mm_s = f(1.0, 1000.0)?,
+            "bridge_speed_mm_s" => self.bridge_speed_mm_s = f(1.0, 1000.0)?,
+            "bridge_flow_ratio" => self.bridge_flow_ratio = f(0.5, 1.5)?,
+            "bridge_fan_percent" => self.bridge_fan_percent = f(0.0, 100.0)?,
+            "max_bridge_span_mm" => self.max_bridge_span_mm = f(0.0, 1000.0)?,
+            "supports" => {
+                self.supports = match value.trim().to_ascii_lowercase().as_str() {
+                    "off" => Supports::Off,
+                    "buildplate" => Supports::BuildPlate,
+                    "everywhere" => Supports::Everywhere,
+                    _ => {
+                        return Err(invalid(format!(
+                            "{key}: expected off, buildplate or everywhere"
+                        )))
+                    }
+                }
+            }
+            "support_spacing_mm" => self.support_spacing_mm = f(1.0, 20.0)?,
+            "support_overhang_angle_deg" => self.support_overhang_angle_deg = f(1.0, 89.0)?,
+            "support_xy_gap_mm" => self.support_xy_gap_mm = f(0.0, 5.0)?,
+            "support_z_gap_layers" => self.support_z_gap_layers = n(0, 10)? as u32,
+            "support_speed_mm_s" => self.support_speed_mm_s = f(1.0, 1000.0)?,
+            "max_support_samples" => self.max_support_samples = n(1_000, 2_000_000_000)? as u32,
+            "z_hop_mm" => self.z_hop_mm = f(0.0, 10.0)?,
+            "fan_ramp_layers" => self.fan_ramp_layers = n(0, 1_000)? as u32,
+            "accel_mm_s2" => self.accel_mm_s2 = f(50.0, 100_000.0)?,
+            "corner_speed_mm_s" => self.corner_speed_mm_s = f(0.5, 100.0)?,
             other => return Err(invalid(format!("{other}: not a setting of the slicer"))),
         }
         Ok(())
@@ -214,54 +395,85 @@ impl SliceConfig {
         Ok(c)
     }
 
+    /// The value of a key as it is written in the file; `None` for a key that is not one.
+    pub fn value_of(&self, key: &str) -> Option<String> {
+        let v = match key {
+            "layer_height_mm" => self.layer_height_mm.to_string(),
+            "first_layer_height_mm" => self.first_layer_height_mm.to_string(),
+            "nozzle_diameter_mm" => self.nozzle_diameter_mm.to_string(),
+            "line_width_mm" => self.line_width_mm.to_string(),
+            "perimeters" => self.perimeters.to_string(),
+            "top_layers" => self.top_layers.to_string(),
+            "bottom_layers" => self.bottom_layers.to_string(),
+            "infill_percent" => self.infill_percent.to_string(),
+            "filament_diameter_mm" => self.filament_diameter_mm.to_string(),
+            "extrusion_multiplier" => self.extrusion_multiplier.to_string(),
+            "nozzle_c" => self.nozzle_c.to_string(),
+            "bed_c" => self.bed_c.to_string(),
+            "chamber_c" => self.chamber_c.to_string(),
+            "fan_percent" => self.fan_percent.to_string(),
+            "fan_from_layer" => self.fan_from_layer.to_string(),
+            "first_layer_speed_mm_s" => self.first_layer_speed_mm_s.to_string(),
+            "perimeter_speed_mm_s" => self.perimeter_speed_mm_s.to_string(),
+            "external_perimeter_speed_mm_s" => self.external_perimeter_speed_mm_s.to_string(),
+            "infill_speed_mm_s" => self.infill_speed_mm_s.to_string(),
+            "travel_speed_mm_s" => self.travel_speed_mm_s.to_string(),
+            "z_speed_mm_s" => self.z_speed_mm_s.to_string(),
+            "max_speed_mm_s" => self.max_speed_mm_s.to_string(),
+            "retract_mm" => self.retract_mm.to_string(),
+            "retract_speed_mm_s" => self.retract_speed_mm_s.to_string(),
+            "retract_min_travel_mm" => self.retract_min_travel_mm.to_string(),
+            "end_lift_mm" => self.end_lift_mm.to_string(),
+            "bed_margin_mm" => self.bed_margin_mm.to_string(),
+            "max_layers" => self.max_layers.to_string(),
+            "max_points_per_layer" => self.max_points_per_layer.to_string(),
+            "max_gcode_lines" => self.max_gcode_lines.to_string(),
+            "width_variation_percent" => self.width_variation_percent.to_string(),
+            "solid_infill_speed_mm_s" => self.solid_infill_speed_mm_s.to_string(),
+            "bridge_speed_mm_s" => self.bridge_speed_mm_s.to_string(),
+            "bridge_flow_ratio" => self.bridge_flow_ratio.to_string(),
+            "bridge_fan_percent" => self.bridge_fan_percent.to_string(),
+            "max_bridge_span_mm" => self.max_bridge_span_mm.to_string(),
+            "support_spacing_mm" => self.support_spacing_mm.to_string(),
+            "support_overhang_angle_deg" => self.support_overhang_angle_deg.to_string(),
+            "support_xy_gap_mm" => self.support_xy_gap_mm.to_string(),
+            "support_z_gap_layers" => self.support_z_gap_layers.to_string(),
+            "support_speed_mm_s" => self.support_speed_mm_s.to_string(),
+            "max_support_samples" => self.max_support_samples.to_string(),
+            "z_hop_mm" => self.z_hop_mm.to_string(),
+            "fan_ramp_layers" => self.fan_ramp_layers.to_string(),
+            "accel_mm_s2" => self.accel_mm_s2.to_string(),
+            "corner_speed_mm_s" => self.corner_speed_mm_s.to_string(),
+            "placement" => match self.placement {
+                Placement::Center => "center",
+                Placement::Origin => "origin",
+            }
+            .to_string(),
+            "thin_regions" => match self.thin_regions {
+                ThinRegions::Skip => "skip",
+                ThinRegions::Refuse => "refuse",
+            }
+            .to_string(),
+            "infill_pattern" => self.infill_pattern.name().to_string(),
+            "seam" => self.seam.name().to_string(),
+            "supports" => self.supports.name().to_string(),
+            _ => return None,
+        };
+        Some(v)
+    }
+
     /// The settings as text, every key with its value (`from_text` reads it back).
     pub fn to_text(&self) -> String {
-        let placement = match self.placement {
-            Placement::Center => "center",
-            Placement::Origin => "origin",
-        };
-        let thin = match self.thin_regions {
-            ThinRegions::Skip => "skip",
-            ThinRegions::Refuse => "refuse",
-        };
-        format!(
-            "layer_height_mm = {}\nfirst_layer_height_mm = {}\nnozzle_diameter_mm = {}\nline_width_mm = {}\nperimeters = {}\ntop_layers = {}\nbottom_layers = {}\ninfill_percent = {}\n\
-             filament_diameter_mm = {}\nextrusion_multiplier = {}\nnozzle_c = {}\nbed_c = {}\nchamber_c = {}\nfan_percent = {}\nfan_from_layer = {}\n\
-             first_layer_speed_mm_s = {}\nperimeter_speed_mm_s = {}\nexternal_perimeter_speed_mm_s = {}\ninfill_speed_mm_s = {}\ntravel_speed_mm_s = {}\nz_speed_mm_s = {}\nmax_speed_mm_s = {}\n\
-             retract_mm = {}\nretract_speed_mm_s = {}\nretract_min_travel_mm = {}\nend_lift_mm = {}\nplacement = {}\nbed_margin_mm = {}\nthin_regions = {}\nmax_layers = {}\nmax_points_per_layer = {}\nmax_gcode_lines = {}\n",
-            self.layer_height_mm,
-            self.first_layer_height_mm,
-            self.nozzle_diameter_mm,
-            self.line_width_mm,
-            self.perimeters,
-            self.top_layers,
-            self.bottom_layers,
-            self.infill_percent,
-            self.filament_diameter_mm,
-            self.extrusion_multiplier,
-            self.nozzle_c,
-            self.bed_c,
-            self.chamber_c,
-            self.fan_percent,
-            self.fan_from_layer,
-            self.first_layer_speed_mm_s,
-            self.perimeter_speed_mm_s,
-            self.external_perimeter_speed_mm_s,
-            self.infill_speed_mm_s,
-            self.travel_speed_mm_s,
-            self.z_speed_mm_s,
-            self.max_speed_mm_s,
-            self.retract_mm,
-            self.retract_speed_mm_s,
-            self.retract_min_travel_mm,
-            self.end_lift_mm,
-            placement,
-            self.bed_margin_mm,
-            thin,
-            self.max_layers,
-            self.max_points_per_layer,
-            self.max_gcode_lines
-        )
+        let mut out = String::new();
+        for k in KEYS {
+            if let Some(v) = self.value_of(k) {
+                out.push_str(k);
+                out.push_str(" = ");
+                out.push_str(&v);
+                out.push('\n');
+            }
+        }
+        out
     }
 
     /// Checks the settings against each other. Nothing is changed.
@@ -302,6 +514,9 @@ impl SliceConfig {
             ("travel_speed_mm_s", self.travel_speed_mm_s),
             ("z_speed_mm_s", self.z_speed_mm_s),
             ("retract_speed_mm_s", self.retract_speed_mm_s),
+            ("solid_infill_speed_mm_s", self.solid_infill_speed_mm_s),
+            ("bridge_speed_mm_s", self.bridge_speed_mm_s),
+            ("support_speed_mm_s", self.support_speed_mm_s),
         ] {
             if v > self.max_speed_mm_s {
                 return bad(format!(
@@ -310,14 +525,43 @@ impl SliceConfig {
                 ));
             }
         }
+        let narrowest = self.line_width_mm * (1.0 - self.width_variation_percent / 100.0);
+        if self.width_variation_percent > 0.0
+            && (narrowest < self.nozzle_diameter_mm * 0.6 - 1e-9
+                || narrowest < self.layer_height_mm
+                || narrowest < self.first_layer_height_mm)
+        {
+            return bad(format!(
+                "width_variation_percent {} would make a line {narrowest:.3} mm wide, narrower than 60% of the nozzle or than a layer",
+                self.width_variation_percent
+            ));
+        }
+        if self.supports != Supports::Off && self.support_spacing_mm < self.line_width_mm {
+            return bad(format!(
+                "support_spacing_mm {} is narrower than a line ({})",
+                self.support_spacing_mm, self.line_width_mm
+            ));
+        }
+        if self.z_hop_mm > 0.0 && self.z_hop_mm < self.layer_height_mm * 0.5 {
+            return bad("z_hop_mm is under half a layer: it would not clear the print".to_string());
+        }
         Ok(())
     }
 
     /// The cross-section of a line of a layer of this height, in square millimetres: a rectangle with rounded ends, as the plastic lies when it is pressed.
     pub fn line_area_mm2(&self, layer_height: f64) -> f64 {
-        let w = self.line_width_mm;
+        self.line_area_for(self.line_width_mm, layer_height)
+    }
+
+    /// The same for a line of another width.
+    pub fn line_area_for(&self, width: f64, layer_height: f64) -> f64 {
         let h = layer_height;
-        h * (w - h) + std::f64::consts::PI * h * h / 4.0
+        h * (width - h) + std::f64::consts::PI * h * h / 4.0
+    }
+
+    /// The distance between the centres of two lines of another width that touch.
+    pub fn spacing_for(&self, width: f64, layer_height: f64) -> f64 {
+        self.line_area_for(width, layer_height) / layer_height
     }
 
     /// The distance between the centres of two lines that touch, for a layer of this height.
@@ -398,6 +642,53 @@ mod tests {
         assert!(c.check().is_err(), "above max_speed_mm_s");
         c.set("max_speed_mm_s", "300").unwrap();
         assert!(c.check().is_ok());
+    }
+
+    #[test]
+    fn the_new_settings_read_back_and_refuse_what_does_not_go_together() {
+        let mut c = SliceConfig::default();
+        for (k, v) in [
+            ("infill_pattern", "gyroid"),
+            ("seam", "rear"),
+            ("supports", "buildplate"),
+            ("width_variation_percent", "20"),
+            ("z_hop_mm", "0.4"),
+            ("fan_ramp_layers", "5"),
+        ] {
+            c.set(k, v).unwrap();
+        }
+        assert!(c.check().is_ok());
+        let back = SliceConfig::from_text(&c.to_text()).unwrap();
+        assert_eq!(back, c);
+        assert_eq!(c.value_of("infill_pattern").as_deref(), Some("gyroid"));
+        assert_eq!(c.value_of("nope"), None);
+        for (k, v) in [
+            ("infill_pattern", "honeycomb"),
+            ("seam", "random"),
+            ("supports", "tree"),
+            ("support_overhang_angle_deg", "90"),
+            ("z_hop_mm", "-1"),
+            ("bridge_flow_ratio", "2"),
+        ] {
+            assert!(c.set(k, v).is_err(), "{k}={v}");
+        }
+        // lines that would be too thin, a support narrower than a line, a hop too small to clear anything
+        let mut d = SliceConfig::default();
+        d.set("width_variation_percent", "50").unwrap();
+        assert!(d.check().is_err());
+        let mut d = SliceConfig::default();
+        d.set("supports", "everywhere").unwrap();
+        d.set("support_spacing_mm", "0.2").unwrap_err();
+        d.set("nozzle_diameter_mm", "2").unwrap();
+        d.set("line_width_mm", "2").unwrap();
+        d.set("support_spacing_mm", "1").unwrap();
+        assert!(d.check().is_err());
+        let mut d = SliceConfig::default();
+        d.set("z_hop_mm", "0.05").unwrap();
+        assert!(d.check().is_err());
+        let mut d = SliceConfig::default();
+        d.set("bridge_speed_mm_s", "250").unwrap();
+        assert!(d.check().is_err(), "above max_speed_mm_s");
     }
 
     #[test]

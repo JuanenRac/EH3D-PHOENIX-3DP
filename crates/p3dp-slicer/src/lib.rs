@@ -3,8 +3,9 @@
 //! window), and it is what the G-code is made from.
 //!
 //! Every limit is a refusal: a temperature over what the model allows, a model that does not fit the bed, a mesh that is not closed, a setting out of its range, a G-code line
-//! that would leave the bed, are all errors that name the cause, and nothing is cut down to make them pass. There is no variable line width, seam control, supports, bridges or
-//! multi-material yet; the document of the roadmap says so.
+//! that would leave the bed, are all errors that name the cause, and nothing is cut down to make them pass. The infill may be rectilinear, grid or gyroid, the perimeters may
+//! be narrower where a part is thin, the seams may be put at the rear or lined up, a skin over nothing is a bridge, the overhangs may get plain supports, and the head may lift on
+//! a travel that retracts; the time is estimated with the acceleration of the machine. There is no multi-material yet; the document of the roadmap says so.
 #![forbid(unsafe_code)]
 
 pub mod config;
@@ -12,9 +13,12 @@ pub mod cut;
 pub mod emit;
 pub mod error;
 pub mod geom;
+pub mod infill;
 pub mod plan;
+pub mod support;
+pub mod timing;
 
-pub use config::{Placement, SliceConfig, ThinRegions};
+pub use config::{InfillPattern, Placement, Seam, SliceConfig, Supports, ThinRegions};
 pub use emit::{LayerSummary, Move};
 pub use error::SliceError;
 pub use plan::{plan, Kind, Layer, Machine, Path, Plan, Warning};

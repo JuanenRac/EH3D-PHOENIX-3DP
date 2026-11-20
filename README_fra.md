@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.2-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-309-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-338-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Contrôle d'honnêteté - ce qui fonctionne vraiment aujourd'hui :** un espace de travail Rust de sept bibliothèques et un programme en ligne de commande (`phoenix-3dp`) avec 309 tests qui s'exécutent sur un ordinateur. Il lit et vérifie des modèles STL, OBJ et 3MF, contient un catalogue de 46 profils d'imprimante construits à partir de données publiques (aucun essayé sur une machine), écrit du G-code pour les dialectes Marlin, Klipper, RepRapFirmware et Bambu avec des limites de température qui refusent une valeur au lieu de la rogner, et pilote des imprimantes Moonraker et OctoPrint et le serveur EH3D, mais seulement contre des simulateurs (en mémoire et sur un socket de cet ordinateur). Il découpe un modèle fermé en couches planes avec des périmètres, un remplissage rectiligne et des peaux pleines (un premier trancheur minimal, encore sans supports, largeur variable ni ponts) ; la fenêtre n'a pas été compilée ni vue sur un écran ; rien n'a tourné sur une vraie imprimante.
+**Contrôle d'honnêteté - ce qui fonctionne vraiment aujourd'hui :** un espace de travail Rust de sept bibliothèques et un programme en ligne de commande (`phoenix-3dp`) avec 338 tests qui s'exécutent sur un ordinateur. Il lit et vérifie des modèles STL, OBJ et 3MF, contient un catalogue de 46 profils d'imprimante construits à partir de données publiques (aucun essayé sur une machine), écrit du G-code pour les dialectes Marlin, Klipper, RepRapFirmware et Bambu avec des limites de température qui refusent une valeur au lieu de la rogner, et pilote des imprimantes Moonraker et OctoPrint et le serveur EH3D, mais seulement contre des simulateurs (en mémoire et sur un socket de cet ordinateur). Il découpe un modèle fermé en couches planes avec des périmètres, un remplissage rectiligne et des peaux pleines (un premier trancheur minimal, encore sans supports, largeur variable ni ponts) ; la fenêtre n'a pas été compilée ni vue sur un écran ; rien n'a tourné sur une vraie imprimante.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Version | `0.0.2` |
 | Maturité | Échafaudage |
-| Tests | 309 |
+| Tests | 338 |
 | Pile technique | Rust |
 | Sur du matériel réel | Pas essayé : rien de tout cela n'a tourné sur une imprimante, pas même sur une Bambu Lab A1 ou une P1S. |
 
@@ -55,7 +55,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 | Liaison avec le serveur | 🟠 | les réglages de la liaison et un client du greffon d'imprimantes du serveur au-dessus du client commun de la suite (connexion, renouvellement, nouvelles tentatives, erreurs en huit langues), essayé contre un serveur en mémoire ; jamais contre le vrai serveur. |
 | Trancheur | 🟡 | couches planes d'un maillage fermé, périmètres, remplissage rectiligne, peaux pleines, G-code par dialecte et un aperçu par couches sous forme de données ; vérifié par des propriétés sur des formes à graine fixe (le plastique déposé est le volume de la pièce, rien ne sort du plateau, aucune température ne dépasse une limite) ; aucune impression n'en est sortie sur une imprimante. |
 | Ligne de commande | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `slice`, `project`, `version`) exécute les fonctions des bibliothèques et affiche le résultat ; chaque erreur revient sous forme de message et d'un code de sortie non nul. |
-| Tests | 🟡 | 309 tests réussissent (`cargo test --workspace`), avec des cas normaux, des cas limites, des entrées abîmées et une graine fixe là où il y a du hasard. |
+| Tests | 🟡 | 338 tests réussissent (`cargo test --workspace`), avec des cas normaux, des cas limites, des entrées abîmées et une graine fixe là où il y a du hasard. |
 | Sécurité | 🟡 | Rust sûr et simple (`forbid(unsafe_code)`) : une limite est un refus et jamais une coupe ; le jeton ne s'affiche jamais ; rien ne panique sur les fichiers reçus ; pas de revue indépendante. |
 | Fenêtre | 🔴 | Une première version des quatre onglets (Préparer, Aperçu, Appareil, Projet) est écrite avec `--features gui` ; sa logique est testée, mais elle n'a pas encore été compilée ni vue sur un écran. |
 | Matériel réel | 🔴 | Pas essayé : rien de tout cela n'a tourné sur une imprimante, pas même sur une Bambu Lab A1 ou une P1S. |
@@ -147,7 +147,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Tests
 
-La suite compte 309 tests (`cargo test --workspace`, exécutés sous Windows et Linux dans la CI), avec une graine fixe là où il y a du hasard. Ils vérifient les cas normaux, les cas limites et les entrées abîmées : des fichiers coupés, du bruit et des en-têtes hostiles ne font jamais paniquer, et aucune température d'aucune imprimante du catalogue ne dépasse sa limite. La CI exécute aussi `cargo fmt --all --check`, `cargo clippy` avec les avertissements en erreurs et `python -I tools/ci_validate.py`.
+La suite compte 338 tests (`cargo test --workspace`, exécutés sous Windows et Linux dans la CI), avec une graine fixe là où il y a du hasard. Ils vérifient les cas normaux, les cas limites et les entrées abîmées : des fichiers coupés, du bruit et des en-têtes hostiles ne font jamais paniquer, et aucune température d'aucune imprimante du catalogue ne dépasse sa limite. La CI exécute aussi `cargo fmt --all --check`, `cargo clippy` avec les avertissements en erreurs et `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilation et publication
 

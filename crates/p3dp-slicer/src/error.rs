@@ -36,6 +36,18 @@ pub enum SliceError {
     ThinRegion { layer: usize },
     /// More lines of G-code than the limit.
     TooManyLines { lines: usize, max: usize },
+    /// A bridge in the air longer than `max_bridge_span_mm` and no supports to hold it.
+    BridgeTooLong {
+        layer: usize,
+        span_mm: f64,
+        max_mm: f64,
+    },
+    /// An overhang that would have to stand on the part itself while the supports are asked to stand on the bed only.
+    UnsupportedOverhang { layer: usize },
+    /// The decision on the supports would take more samples than the limit.
+    TooManySupportSamples { samples: u64, max: u64 },
+    /// The head would be lifted past the height of the printer.
+    LiftPastTop { needed_mm: f64, height_mm: f64 },
     /// The writer of G-code refused something.
     Gcode(GcodeError),
     /// A number of the model that cannot be used.
@@ -71,6 +83,29 @@ impl fmt::Display for SliceError {
             SliceError::TooManyLines { lines, max } => {
                 write!(f, "{lines} lines of G-code, more than the limit of {max}")
             }
+            SliceError::BridgeTooLong {
+                layer,
+                span_mm,
+                max_mm,
+            } => write!(
+                f,
+                "layer {layer} has a bridge {span_mm:.1} mm long over nothing, more than max_bridge_span_mm {max_mm}: turn the supports on or change the part"
+            ),
+            SliceError::UnsupportedOverhang { layer } => write!(
+                f,
+                "an overhang at layer {layer} would have to stand on the part itself, and the supports are limited to the bed (supports = buildplate)"
+            ),
+            SliceError::TooManySupportSamples { samples, max } => write!(
+                f,
+                "the supports would need {samples} samples, more than the limit of {max} (raise support_spacing_mm)"
+            ),
+            SliceError::LiftPastTop {
+                needed_mm,
+                height_mm,
+            } => write!(
+                f,
+                "the print and the z hop need {needed_mm:.2} mm of height and the printer has {height_mm} mm"
+            ),
             SliceError::Gcode(e) => write!(f, "{e}"),
             SliceError::Core(e) => write!(f, "{e}"),
         }

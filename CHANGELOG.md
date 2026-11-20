@@ -4,6 +4,13 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- The slicer fills with a grid or a gyroid as well as with lines (`infill_pattern`); the gyroid is followed on a grid of squares and its period is worked out from the density, so the plastic it lays is near that of lines of the same percentage.
+- A skin that hangs over nothing is a bridge: it is laid across the gap from one holder to the other, printed slower (`bridge_speed_mm_s`) with its own flow (`bridge_flow_ratio`) and its own fan (`bridge_fan_percent`), and a bridge longer than `max_bridge_span_mm` is refused instead of printed.
+- Plain supports (`supports = buildplate` or `everywhere`): columns of the part are sampled, an overhang steeper than `support_overhang_angle_deg` with no lower material in its cone gets crossed lines under it with a gap at the top and a clearance at the sides; an overhang that would have to stand on the part while the supports are limited to the bed, or a decision that needs more samples than `max_support_samples`, is refused.
+- The seam of the perimeters can be put at the corner nearest to the head, at the rear or lined up with the seam of the layer below (`seam`), and the perimeters of a part too thin for them may be made narrower, up to `width_variation_percent`, before the part is called thin; every path now carries its width and the plastic follows it.
+- Retraction may be followed by a lift of the head on the travels that retract (`z_hop_mm`, refused when the print and the lift do not fit the printer), the part fan may climb over several layers (`fan_ramp_layers`), and there are speeds for solid infill, bridges and supports; no speed may be above `max_speed_mm_s`.
+- The estimate of the time uses the acceleration and the corner speed of the settings (`accel_mm_s2`, `corner_speed_mm_s`): a planner that limits the speed at each joint by the angle and by the length of the move, with the plain estimate kept beside it as the least a print can take.
+- The offset of a loop drops the points that lie on a straight stretch, which used to leave a short whisker next to a corner of the perimeters of a cut face.
 - The CI is built against EH3D-COMMON v0.2.5 in the three workflows that name the tag of a sibling.
 - The client of the printer plugin sets the target of a heater (`hotend`, `bed` or `chamber`, checked here against the stricter limits before anything is sent, and again by the server) and reads the answers shaped like Moonraker's and OctoPrint's when the machine has them on; the server in memory gives the same refusals as the real one (`temperature_over_limit`, `bad_heater`, `not_supported`).
 
