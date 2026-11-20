@@ -13,7 +13,7 @@
     "egui"
   ],
   "deployment_target": "user-pc",
-  "maturity": "scaffolding",
+  "maturity": "functional",
   "evidence": "simulator",
   "hardware_bound": true,
   "family": "PHOENIX",
