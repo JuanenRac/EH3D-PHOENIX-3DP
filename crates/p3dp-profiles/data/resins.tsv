@@ -1,0 +1,11 @@
+# id | name | kind | layer um: best, lowest, highest | normal exposure s: best, lowest, highest | bottom exposure s: best, lowest, highest | bottom layers | lift mm | lift speed mm/min | wavelength nm | density g/ml | wash | verified
+# Typical starting points of each kind of photopolymer resin for a monochrome screen printer, written from the figures that makers print for generic resins and from public material data sheets.
+# They are the middle of the road, not the figures of any bottle: the exposure depends on the power of the light of the printer and on the colour of the resin, so the bottle in hand and a test print win, and a profile file
+# can replace any of them. None of them has been tried on a machine, so every row says verified = false.
+generic-standard|Generic standard resin|standard|50|25|100|2.5|1.5|4|25|15|40|5|6|150|405|1.10|alcohol|false
+generic-water-washable|Generic water-washable resin|standard|50|25|100|2.8|2|4.5|25|15|40|5|6|150|405|1.10|water|false
+generic-tough|Generic tough (ABS-like) resin|tough|50|25|100|3|2|5|28|18|40|5|6|120|405|1.12|alcohol|false
+generic-flexible|Generic flexible resin|flexible|50|50|100|4|3|6|30|20|45|6|5|90|405|1.08|alcohol|false
+generic-castable|Generic castable resin|castable|50|25|100|3.2|2.5|5|28|18|40|5|6|120|405|1.07|alcohol|false
+generic-clear|Generic clear resin|clear|50|25|100|3.5|2.5|5|30|20|45|5|6|120|405|1.10|alcohol|false
+generic-high-detail|Generic high-detail resin|high-detail|25|10|50|2.2|1.5|3.5|20|12|35|6|5|120|405|1.11|alcohol|false

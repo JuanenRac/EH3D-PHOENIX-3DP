@@ -6,6 +6,7 @@
 //! replace any row. None of them has been tried on a machine.
 
 use crate::profile::{PrinterProfile, ProfileError, Technology};
+use p3dp_core::kv;
 
 /// The table of the program.
 pub const DATA: &str = include_str!("../data/filaments.tsv");
@@ -217,6 +218,110 @@ impl FilamentProfile {
         Ok(())
     }
 
+    /// The profile as the text of a profile file (`from_text` reads it back).
+    pub fn to_text(&self) -> String {
+        let r = |a: &Range| format!("{}, {}, {}", a.best, a.lowest, a.highest);
+        let onoff = |b: bool| if b { "on" } else { "off" };
+        format!(
+            "id = {}\nname = {}\nmaterial = {}\nnozzle_c = {}\nbed_c = {}\nfan_percent = {}\ndensity_g_cm3 = {}\ndiameter_mm = {}\nmin_nozzle_mm = {}\nabrasive = {}\nenclosure_advised = {}\ndirect_drive_advised = {}\nverified = {}\n",
+            self.id,
+            self.name,
+            self.material.name(),
+            r(&self.nozzle_c),
+            r(&self.bed_c),
+            r(&self.fan_percent),
+            self.density_g_cm3,
+            self.diameter_mm,
+            self.min_nozzle_mm,
+            onoff(self.abrasive),
+            onoff(self.enclosure_advised),
+            onoff(self.direct_drive_advised),
+            onoff(self.verified)
+        )
+    }
+
+    /// Reads a profile file. Every key of `to_text` is understood; an unknown key, a missing one or a value out of range is an error that names the key. The last line of a key wins.
+    pub fn from_text(text: &str) -> Result<FilamentProfile, ProfileError> {
+        const KNOWN: [&str; 13] = [
+            "id",
+            "name",
+            "material",
+            "nozzle_c",
+            "bed_c",
+            "fan_percent",
+            "density_g_cm3",
+            "diameter_mm",
+            "min_nozzle_mm",
+            "abrasive",
+            "enclosure_advised",
+            "direct_drive_advised",
+            "verified",
+        ];
+        let entries = kv::parse(text).map_err(|e| ProfileError(e.to_string()))?;
+        for e in &entries {
+            if !KNOWN.contains(&e.key.as_str()) {
+                return Err(ProfileError(format!(
+                    "line {}: the key {} is not known",
+                    e.line, e.key
+                )));
+            }
+        }
+        let get = |k: &str| {
+            entries
+                .iter()
+                .rev()
+                .find(|e| e.key == k)
+                .map(|e| e.value.as_str())
+        };
+        let need = |k: &str| get(k).ok_or_else(|| ProfileError(format!("the key {k} is missing")));
+        let num = |k: &str, lo: f64, hi: f64| -> Result<f64, ProfileError> {
+            kv::float_in(k, need(k)?, lo, hi).map_err(|e| ProfileError(e.to_string()))
+        };
+        let range = |k: &str, hi: f64| -> Result<Range, ProfileError> {
+            let parts: Vec<&str> = need(k)?.split(',').map(str::trim).collect();
+            let [best, lowest, highest] = parts.as_slice() else {
+                return Err(ProfileError(format!(
+                    "{k}: three numbers are needed: the best, the lowest and the highest"
+                )));
+            };
+            let one =
+                |v: &str| kv::float_in(k, v, 0.0, hi).map_err(|e| ProfileError(e.to_string()));
+            Ok(Range {
+                best: one(best)?,
+                lowest: one(lowest)?,
+                highest: one(highest)?,
+            })
+        };
+        let flag = |k: &str| -> Result<bool, ProfileError> {
+            match get(k) {
+                Some(v) => kv::on_off(k, v).map_err(|e| ProfileError(e.to_string())),
+                None => Ok(false),
+            }
+        };
+        let id = need("id")?.to_string();
+        let p = FilamentProfile {
+            name: need("name")?.to_string(),
+            material: Material::from_name(need("material")?).ok_or_else(|| {
+                ProfileError(format!(
+                    "filament {id}: material: not one of pla, petg, abs, asa, tpu, pa"
+                ))
+            })?,
+            nozzle_c: range("nozzle_c", 500.0)?,
+            bed_c: range("bed_c", 200.0)?,
+            fan_percent: range("fan_percent", 100.0)?,
+            density_g_cm3: num("density_g_cm3", 0.5, 5.0)?,
+            diameter_mm: num("diameter_mm", 1.75, 3.0)?,
+            min_nozzle_mm: num("min_nozzle_mm", 0.1, 2.0)?,
+            abrasive: flag("abrasive")?,
+            enclosure_advised: flag("enclosure_advised")?,
+            direct_drive_advised: flag("direct_drive_advised")?,
+            verified: flag("verified")?,
+            id,
+        };
+        p.validate()?;
+        Ok(p)
+    }
+
     /// Checks the filament against a printer and a nozzle.
     pub fn check(&self, printer: &PrinterProfile, nozzle: Nozzle) -> Compatibility {
         let mut c = Compatibility {
@@ -408,17 +513,109 @@ mod tests {
     };
 
     #[test]
+    fn the_variants_with_fibre_fill_wear_a_brass_nozzle_and_are_refused_on_one() {
+        let c = FilamentCatalog::builtin().unwrap();
+        for id in [
+            "generic-pla-cf",
+            "generic-petg-cf",
+            "generic-asa-cf",
+            "generic-abs-gf",
+            "generic-pa-cf",
+        ] {
+            let f = c.find(id).unwrap();
+            assert!(f.abrasive, "{id}");
+            assert!(f.min_nozzle_mm >= 0.4, "{id}");
+            assert!(!f.verified, "{id}");
+        }
+        assert!(!c.find("generic-pla-plus").unwrap().abrasive);
+        let a1 = printer("bambu-lab-a1");
+        let brass = fil("generic-pla-cf").check(&a1, N04);
+        assert!(
+            brass.issues.contains(&Issue::NeedsHardenedNozzle),
+            "{:?}",
+            brass.issues
+        );
+        let hard = fil("generic-pla-cf").check(
+            &a1,
+            Nozzle {
+                diameter_mm: 0.4,
+                hardened: true,
+            },
+        );
+        assert!(hard.ok(), "{:?}", hard.issues);
+    }
+
+    #[test]
+    fn a_filament_profile_file_reads_back_what_was_written_and_a_mistake_names_the_key() {
+        for p in FilamentCatalog::builtin().unwrap().profiles {
+            assert_eq!(
+                FilamentProfile::from_text(&p.to_text()).unwrap(),
+                p,
+                "{}",
+                p.id
+            );
+        }
+        let good = fil("generic-petg").to_text();
+        for (from, to, want) in [
+            ("material = petg", "material = wood", "material"),
+            (
+                "nozzle_c = 235, 220, 250",
+                "nozzle_c = 235, 220",
+                "nozzle_c",
+            ),
+            (
+                "nozzle_c = 235, 220, 250",
+                "nozzle_c = 300, 220, 250",
+                "range of the nozzle",
+            ),
+            ("density_g_cm3 = 1.27", "density_g_cm3 = 9", "density_g_cm3"),
+            ("diameter_mm = 1.75", "diameter_mm = 2", "diameter"),
+            ("abrasive = off", "abrasive = sometimes", "abrasive"),
+            ("min_nozzle_mm = 0.2\n", "", "min_nozzle_mm"),
+        ] {
+            let text = good.replacen(from, to, 1);
+            assert_ne!(text, good, "{from}");
+            let e = FilamentProfile::from_text(&text).unwrap_err().to_string();
+            assert!(e.contains(want), "{from} -> {e}");
+        }
+        let e = FilamentProfile::from_text(&format!("{good}colour = red\n"))
+            .unwrap_err()
+            .to_string();
+        assert!(e.contains("colour") && e.contains("line 14"), "{e}");
+        // a flag left out is off, and the last line of a key wins
+        let short = good.replace("verified = off\n", "");
+        assert!(!FilamentProfile::from_text(&short).unwrap().verified);
+        let hot = format!("{good}bed_c = 85, 70, 90\n");
+        assert_eq!(FilamentProfile::from_text(&hot).unwrap().bed_c.best, 85.0);
+    }
+
+    #[test]
     fn the_six_families_are_there_with_ranges_that_make_sense() {
         let c = FilamentCatalog::builtin().unwrap();
-        assert_eq!(c.len(), 6);
+        assert_eq!(c.len(), 12, "the six generic ones and six variants");
         for m in Material::ALL {
-            assert_eq!(c.of(m).len(), 1, "{}", m.name());
+            assert!(!c.of(m).is_empty(), "{}", m.name());
+            assert_eq!(
+                c.of(m)
+                    .iter()
+                    .filter(|p| p.id == format!("generic-{}", m.name()))
+                    .count(),
+                1,
+                "{}",
+                m.name()
+            );
             assert_eq!(Material::from_name(&m.name().to_uppercase()), Some(m));
         }
         assert_eq!(Material::from_name("wood"), None);
         for p in &c.profiles {
             p.validate().unwrap();
-            assert!(!p.verified && !p.abrasive, "{}", p.id);
+            assert!(!p.verified, "{}", p.id);
+            assert_eq!(
+                p.abrasive,
+                p.id.ends_with("-cf") || p.id.ends_with("-gf"),
+                "{}",
+                p.id
+            );
         }
         // the families by heat: PLA is the coolest, PA the hottest
         let t = |m| c.of(m)[0].nozzle_c.best;

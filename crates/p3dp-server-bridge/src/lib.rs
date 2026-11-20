@@ -5,6 +5,7 @@
 #![forbid(unsafe_code)]
 
 pub mod client;
+pub mod queue;
 pub mod settings;
 pub mod sim;
 
@@ -12,4 +13,5 @@ pub use client::{
     server_model_for, stricter, BridgeError, CompatShape, Confirmation, HeaterInfo, JobInfo,
     LayerInfo, LinkState, MachineConnection, PrinterInfo, ServerClient, APP,
 };
+pub use queue::{board, check_enqueue, MachineQueue, QueuePolicy};
 pub use settings::{Connection, Settings};

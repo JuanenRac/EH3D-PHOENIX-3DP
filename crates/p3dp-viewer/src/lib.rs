@@ -14,7 +14,7 @@ pub mod math;
 pub mod scene;
 
 pub use camera::{OrbitCamera, Ray, Viewport};
-pub use layers::{lines_of, plate_lines, KindFilter, LayerRange, LineBatch};
+pub use layers::{lines_of, plate_lines, travel_lines, KindFilter, LayerRange, LineBatch};
 pub use scene::{BoxMode, Plate, Scene, SceneError, SceneObject, ScreenRect};
 
 /// The shader that draws the lines of a [`LineBatch`]: a matrix from the world to the clip space, the position and the colour of each vertex. It is plain text of the language of

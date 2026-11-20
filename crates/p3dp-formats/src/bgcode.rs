@@ -10,6 +10,8 @@
 
 use crate::crc32::crc32;
 use crate::error::FormatError;
+use crate::picture::PictureFormat;
+use crate::summary::PrintSummary;
 use p3dp_core::Limits;
 
 /// The first four bytes of the file.
@@ -127,12 +129,28 @@ pub enum Checksum {
     Crc32,
 }
 
+/// A thumbnail block: the picture format, its size in pixels and where its bytes are in the file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Thumbnail {
+    pub format: PictureFormat,
+    pub width: u16,
+    pub height: u16,
+    /// Where the bytes of the picture start in the file.
+    pub offset: usize,
+    /// How many bytes the picture takes as stored.
+    pub bytes: usize,
+    /// Whether the block is compressed (the picture is then not handed out: this reader does not unpack).
+    pub packed: bool,
+}
+
 /// What the header of a file says.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Header {
     pub version: u32,
     pub checksum: Checksum,
     pub blocks: Vec<BlockInfo>,
+    /// The thumbnail blocks, in the order of the file.
+    pub thumbnails: Vec<Thumbnail>,
     /// The `key = value` pairs of the metadata blocks that are stored as plain text, in the order of the file, each with the kind of block it came from.
     pub metadata: Vec<(BlockKind, String, String)>,
 }
@@ -160,6 +178,38 @@ impl Header {
     pub fn estimated_seconds(&self) -> Option<u64> {
         parse_duration(self.value("estimated printing time (normal mode)")?)
     }
+
+    /// The figures the metadata states about the print (printer, material, filament used, layer height, nozzle, time); what it does not state stays empty.
+    pub fn summary(&self) -> PrintSummary {
+        PrintSummary::from_pairs(
+            self.metadata
+                .iter()
+                .map(|(_, k, v)| (k.as_str(), v.as_str())),
+        )
+    }
+
+    /// The bytes of a thumbnail, cut from the file the header was read from. `None` when the number is out of range, when the block is compressed, when the file is not the one the
+    /// header came from (it ends before the picture does) or when the bytes are not the picture format the block says.
+    pub fn thumbnail_data<'a>(&self, file: &'a [u8], index: usize) -> Option<&'a [u8]> {
+        let t = self.thumbnails.get(index)?;
+        if t.packed {
+            return None;
+        }
+        let data = file.get(t.offset..t.offset.checked_add(t.bytes)?)?;
+        t.format.matches(data).then_some(data)
+    }
+
+    /// The thumbnail with the most pixels (the first of them when two are equal): its number and its description.
+    pub fn largest_thumbnail(&self) -> Option<(usize, &Thumbnail)> {
+        let mut best: Option<(usize, &Thumbnail)> = None;
+        for (i, t) in self.thumbnails.iter().enumerate() {
+            let area = u32::from(t.width) * u32::from(t.height);
+            if best.is_none_or(|(_, b)| area > u32::from(b.width) * u32::from(b.height)) {
+                best = Some((i, t));
+            }
+        }
+        best
+    }
 }
 
 /// `1d 2h 3m 4s` (any of the parts, in that order) as seconds.
@@ -167,13 +217,14 @@ pub fn parse_duration(text: &str) -> Option<u64> {
     let mut total = 0u64;
     let mut seen = false;
     for part in text.split_whitespace() {
-        let (num, unit) = part.split_at(part.len().checked_sub(1)?);
-        let n: u64 = num.parse().ok()?;
+        // the unit is the last character, which may be more than one byte long
+        let unit = part.chars().next_back()?;
+        let n: u64 = part[..part.len() - unit.len_utf8()].parse().ok()?;
         let mult = match unit {
-            "d" => 86_400,
-            "h" => 3_600,
-            "m" => 60,
-            "s" => 1,
+            'd' => 86_400,
+            'h' => 3_600,
+            'm' => 60,
+            's' => 1,
             _ => return None,
         };
         total = total.checked_add(n.checked_mul(mult)?)?;
@@ -230,6 +281,7 @@ pub fn read_header(bytes: &[u8], limits: &Limits) -> Result<Header, FormatError>
     let mut at = 10usize;
     let mut blocks: Vec<BlockInfo> = Vec::new();
     let mut metadata: Vec<(BlockKind, String, String)> = Vec::new();
+    let mut thumbnails: Vec<Thumbnail> = Vec::new();
     while at < bytes.len() {
         if blocks.len() >= MAX_BLOCKS {
             return Err(bad(format!("more than {MAX_BLOCKS} blocks")));
@@ -290,6 +342,21 @@ pub fn read_header(bytes: &[u8], limits: &Limits) -> Result<Header, FormatError>
                 }
             }
         }
+        if kind == BlockKind::Thumbnail {
+            // the parameters of a thumbnail are its picture format, its width and its height
+            let code = u16_at(bytes, start + header_len).unwrap_or(u16::MAX);
+            let format = PictureFormat::from_code(code).ok_or_else(|| {
+                FormatError::unsupported("bgcode", format!("thumbnail picture format {code}"))
+            })?;
+            thumbnails.push(Thumbnail {
+                format,
+                width: u16_at(bytes, start + header_len + 2).unwrap_or(0),
+                height: u16_at(bytes, start + header_len + 4).unwrap_or(0),
+                offset: data_at,
+                bytes: stored as usize,
+                packed: compression != Compression::None,
+            });
+        }
         blocks.push(BlockInfo {
             kind,
             compression,
@@ -307,6 +374,7 @@ pub fn read_header(bytes: &[u8], limits: &Limits) -> Result<Header, FormatError>
         version,
         checksum,
         blocks,
+        thumbnails,
         metadata,
     })
 }
@@ -397,6 +465,137 @@ pub(crate) mod tests {
         assert_eq!(h.checksum, Checksum::None);
         assert!(h.blocks.iter().all(|b| b.checksum_ok.is_none()));
         assert_eq!(h.value("filament_type"), Some("PLA"));
+    }
+
+    const PNG_HEAD: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
+
+    fn with_thumbnails(crc: bool) -> Vec<u8> {
+        let mut small = PNG_HEAD.to_vec();
+        small.extend_from_slice(&[1, 2, 3]);
+        let mut big = b"qoif".to_vec();
+        big.extend_from_slice(&[9; 20]);
+        let meta = b"filament used [mm]=2000.5\nfilament_type=PETG\nlayer_height=0.16\nnozzle_diameter=0.6\nprinter_model=XYZ\nestimated printing time (normal mode)=2h 0m 5s\n";
+        file(
+            crc,
+            &[
+                block(0, 0, &0u16.to_le_bytes(), b"Producer=T\n", 11, crc),
+                block(5, 0, &[0, 0, 16, 0, 16, 0], &small, small.len() as u32, crc),
+                block(3, 0, &0u16.to_le_bytes(), meta, meta.len() as u32, crc),
+                block(5, 0, &[2, 0, 0, 1, 0, 1], &big, big.len() as u32, crc),
+                block(1, 1, &0u16.to_le_bytes(), &[0u8; 16], 160, crc),
+            ],
+        )
+    }
+
+    #[test]
+    fn the_thumbnails_are_listed_with_their_format_size_and_place_and_their_bytes_can_be_cut_out() {
+        for crc in [true, false] {
+            let f = with_thumbnails(crc);
+            let h = read_header(&f, &Limits::default()).unwrap();
+            assert_eq!(h.thumbnails.len(), 2);
+            assert_eq!(h.count(BlockKind::Thumbnail), 2);
+            let a = h.thumbnails[0];
+            assert_eq!((a.format, a.width, a.height), (PictureFormat::Png, 16, 16));
+            assert!(!a.packed);
+            assert_eq!(h.thumbnail_data(&f, 0).unwrap().len(), 11);
+            assert!(h.thumbnail_data(&f, 0).unwrap().starts_with(&PNG_HEAD));
+            let (i, big) = h.largest_thumbnail().unwrap();
+            assert_eq!(
+                (i, big.format, big.width, big.height),
+                (1, PictureFormat::Qoi, 256, 256)
+            );
+            assert!(h.thumbnail_data(&f, 1).unwrap().starts_with(b"qoif"));
+            assert!(h.thumbnail_data(&f, 2).is_none(), "there is no third one");
+        }
+    }
+
+    #[test]
+    fn a_thumbnail_that_is_packed_cut_short_or_not_the_picture_it_says_is_not_handed_out() {
+        let f = with_thumbnails(true);
+        let h = read_header(&f, &Limits::default()).unwrap();
+        // the header of one file with the bytes of another that ends early
+        assert!(h
+            .thumbnail_data(&f[..h.thumbnails[1].offset + 3], 1)
+            .is_none());
+        // the bytes are not a PNG
+        let mut other = f.clone();
+        other[h.thumbnails[0].offset] = 0;
+        assert!(h.thumbnail_data(&other, 0).is_none());
+        // a compressed thumbnail block is listed and never unpacked
+        let mut small = PNG_HEAD.to_vec();
+        small.push(7);
+        let packed = file(
+            false,
+            &[block(5, 1, &[0, 0, 8, 0, 8, 0], &small, 40, false)],
+        );
+        let hp = read_header(&packed, &Limits::default()).unwrap();
+        assert!(hp.thumbnails[0].packed);
+        assert!(hp.thumbnail_data(&packed, 0).is_none());
+        // an unknown picture format is refused with its number
+        let odd = file(false, &[block(5, 0, &[7, 0, 8, 0, 8, 0], &small, 9, false)]);
+        let e = read_header(&odd, &Limits::default())
+            .unwrap_err()
+            .to_string();
+        assert!(e.contains("thumbnail picture format 7"), "{e}");
+        // a file with no thumbnail has none
+        let h = read_header(
+            &file(false, &[block(1, 0, &[0, 0], b"G28", 3, false)]),
+            &Limits::default(),
+        )
+        .unwrap();
+        assert!(h.thumbnails.is_empty() && h.largest_thumbnail().is_none());
+    }
+
+    #[test]
+    fn the_summary_states_what_the_metadata_states_and_the_equal_thumbnails_keep_the_first() {
+        let f = with_thumbnails(false);
+        let h = read_header(&f, &Limits::default()).unwrap();
+        let s = h.summary();
+        assert_eq!(s.printer_model.as_deref(), Some("XYZ"));
+        assert_eq!(s.filament_type.as_deref(), Some("PETG"));
+        assert_eq!(s.filament_mm, Some(2000.5));
+        assert_eq!(s.layer_height_mm, Some(0.16));
+        assert_eq!(s.nozzle_mm, Some(0.6));
+        assert_eq!(s.seconds, Some(7205));
+        assert_eq!(
+            s.filament_g, None,
+            "what the file does not state is not made up"
+        );
+        // two thumbnails of the same size: the first is the largest
+        let a = file(
+            false,
+            &[
+                block(5, 0, &[0, 0, 4, 0, 4, 0], &PNG_HEAD, 8, false),
+                block(5, 0, &[0, 0, 4, 0, 4, 0], &PNG_HEAD, 8, false),
+            ],
+        );
+        let h = read_header(&a, &Limits::default()).unwrap();
+        assert_eq!(h.largest_thumbnail().unwrap().0, 0);
+    }
+
+    #[test]
+    fn a_time_with_a_unit_of_more_than_one_byte_is_not_a_time_and_never_a_panic() {
+        assert_eq!(parse_duration("1h 2m 3s"), Some(3723));
+        assert_eq!(parse_duration("5é"), None);
+        assert_eq!(parse_duration("2h 7分"), None);
+        assert_eq!(parse_duration("日"), None);
+        let f = file(
+            false,
+            &[block(
+                3,
+                0,
+                &0u16.to_le_bytes(),
+                "estimated printing time (normal mode)=5é\n".as_bytes(),
+                42,
+                false,
+            )],
+        );
+        assert_eq!(
+            read_header(&f, &Limits::default())
+                .unwrap()
+                .estimated_seconds(),
+            None
+        );
     }
 
     #[test]

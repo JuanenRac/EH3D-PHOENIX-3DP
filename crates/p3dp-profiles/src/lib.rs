@@ -5,7 +5,11 @@
 pub mod catalog;
 pub mod filament;
 pub mod profile;
+pub mod resin;
 
 pub use catalog::Catalog;
 pub use filament::{FilamentCatalog, FilamentProfile, Material, Nozzle};
-pub use profile::{Connectivity, LimitSource, PrinterProfile, ProfileError, Technology};
+pub use profile::{
+    Change, Connectivity, Edited, LimitSource, Notice, PrinterProfile, ProfileError, Technology,
+};
+pub use resin::{ResinCatalog, ResinKind, ResinProfile, ResinUse, Wash};

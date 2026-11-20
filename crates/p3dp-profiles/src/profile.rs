@@ -396,10 +396,295 @@ impl PrinterProfile {
     }
 }
 
+/// One line of a profile that differs between two profiles.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Change {
+    pub key: String,
+    pub from: String,
+    pub to: String,
+}
+
+/// Something a person should know about an edit that was accepted.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Notice {
+    /// A temperature limit was raised. `above_maker` says that the old figure was the one the maker states for the model, so the new one is higher than the maker allows.
+    LimitRaised {
+        key: &'static str,
+        from: f64,
+        to: f64,
+        above_maker: bool,
+    },
+    /// The profile said it had been tried on a machine; an edited profile has not been, so it says `verified = off` now.
+    VerificationCleared,
+}
+
+/// A profile after an edit, with what the person should be told.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Edited {
+    pub profile: PrinterProfile,
+    pub notices: Vec<Notice>,
+}
+
+/// The keys of a profile an edit may not touch: they say which model it is.
+const LOCKED: [&str; 4] = ["id", "vendor", "model", "technology"];
+/// The keys that mean nothing to a resin printer.
+const FDM_ONLY: [&str; 4] = ["nozzles_mm", "nozzle_max_c", "bed_max_c", "chamber_max_c"];
+
+impl PrinterProfile {
+    /// The lines in which two profiles differ, as `(key, from, to)` in the order of a profile file (a key that only one has shows an empty text on the other side).
+    pub fn diff(&self, other: &PrinterProfile) -> Vec<Change> {
+        let a = self.lines();
+        let b = other.lines();
+        let mut out = Vec::new();
+        for (k, v) in &a {
+            let to = b
+                .iter()
+                .find(|(k2, _)| k2 == k)
+                .map_or("", |(_, v2)| v2.as_str());
+            if v != to {
+                out.push(Change {
+                    key: k.clone(),
+                    from: v.clone(),
+                    to: to.to_string(),
+                });
+            }
+        }
+        for (k, v) in &b {
+            if !a.iter().any(|(k2, _)| k2 == k) && !v.is_empty() {
+                out.push(Change {
+                    key: k.clone(),
+                    from: String::new(),
+                    to: v.clone(),
+                });
+            }
+        }
+        out
+    }
+
+    fn lines(&self) -> Vec<(String, String)> {
+        self.to_text()
+            .lines()
+            .filter_map(|l| l.split_once(" = "))
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect()
+    }
+
+    /// Applies edits (`key`, `value`) to a copy of the profile and checks the result as a whole. The id, the vendor, the model and the technology cannot be edited; a key that does not
+    /// exist for this kind of printer is an error that names it; a value out of range is an error that names the key. A limit that is changed makes the limits the owner's
+    /// (`limit_source = owner`), a raised limit comes back as a notice (and says if it is past the figure of the maker), and an edit of anything clears `verified`: an edited
+    /// profile has not been tried.
+    pub fn edited(&self, edits: &[(&str, &str)]) -> Result<Edited, ProfileError> {
+        let mut lines = self.lines();
+        let mut explicit_source = false;
+        for (key, value) in edits {
+            if LOCKED.contains(key) {
+                return Err(ProfileError(format!(
+                    "{key}: it says which model the profile is and cannot be edited (copy the profile under another id instead)"
+                )));
+            }
+            if self.technology == Technology::Msla && FDM_ONLY.contains(key) {
+                return Err(ProfileError(format!(
+                    "{key}: a resin printer has no nozzle and no heater limits"
+                )));
+            }
+            if *key == "limit_source" {
+                explicit_source = true;
+            }
+            match lines.iter_mut().find(|(k, _)| k == key) {
+                Some((_, v)) => *v = value.trim().to_string(),
+                None if matches!(*key, "chamber_max_c" | "multimaterial") => {
+                    lines.push((key.to_string(), value.trim().to_string()));
+                }
+                None => return Err(ProfileError(format!("{key}: not a key of this profile"))),
+            }
+        }
+        let text_of = |lines: &[(String, String)]| {
+            lines
+                .iter()
+                .map(|(k, v)| format!("{k} = {v}\n"))
+                .collect::<String>()
+        };
+        let mut p = PrinterProfile::from_text(&text_of(&lines))?;
+        let mut notices = Vec::new();
+        if let (Some(old), Some(new)) = (self.limits, p.limits) {
+            let pairs = [
+                ("nozzle_max_c", old.nozzle_c, new.nozzle_c),
+                ("bed_max_c", old.bed_c, new.bed_c),
+                (
+                    "chamber_max_c",
+                    old.chamber_c.unwrap_or(0.0),
+                    new.chamber_c.unwrap_or(0.0),
+                ),
+            ];
+            let mut changed = false;
+            for (key, from, to) in pairs {
+                if (from - to).abs() > f64::EPSILON {
+                    changed = true;
+                }
+                if to > from {
+                    notices.push(Notice::LimitRaised {
+                        key,
+                        from,
+                        to,
+                        above_maker: self.limit_source == LimitSource::Maker,
+                    });
+                }
+            }
+            if changed && !explicit_source {
+                p.limit_source = LimitSource::Owner;
+            }
+        }
+        if p != *self && self.verified {
+            p.verified = false;
+            notices.push(Notice::VerificationCleared);
+        }
+        // `verified` can only come off by an edit: a profile is never made verified by editing it
+        if p.verified && !self.verified {
+            return Err(ProfileError(
+                "verified: a profile becomes verified by a report from a machine, not by an edit"
+                    .to_string(),
+            ));
+        }
+        Ok(Edited {
+            profile: p,
+            notices,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use p3dp_core::mesh::cube;
+
+    fn catalog_profile(id: &str) -> PrinterProfile {
+        crate::catalog::Catalog::builtin()
+            .unwrap()
+            .find(id)
+            .unwrap()
+            .clone()
+    }
+
+    #[test]
+    fn raising_a_limit_past_the_maker_is_allowed_and_told_and_makes_the_limits_the_owners() {
+        // the A1 mini states a bed of 80 C; its owner may raise it by hand to 100
+        let a1 = catalog_profile("bambu-lab-a1-mini");
+        assert_eq!(a1.limits.unwrap().bed_c, 80.0);
+        assert_eq!(a1.limit_source, LimitSource::Maker);
+        let e = a1.edited(&[("bed_max_c", "100")]).unwrap();
+        assert_eq!(e.profile.limits.unwrap().bed_c, 100.0);
+        assert_eq!(e.profile.limit_source, LimitSource::Owner);
+        assert!(!e.profile.verified);
+        assert_eq!(
+            e.notices,
+            vec![Notice::LimitRaised {
+                key: "bed_max_c",
+                from: 80.0,
+                to: 100.0,
+                above_maker: true
+            }]
+        );
+        // the nozzle limit did not change, so there is no notice about it
+        assert_eq!(
+            e.profile.limits.unwrap().nozzle_c,
+            a1.limits.unwrap().nozzle_c
+        );
+        // lowering a limit is quiet
+        let low = a1.edited(&[("bed_max_c", "60")]).unwrap();
+        assert!(low.notices.is_empty());
+        assert_eq!(low.profile.limit_source, LimitSource::Owner);
+        // an edit that changes no limit leaves the source as it was
+        let same = a1.edited(&[("bed_max_c", "80")]).unwrap();
+        assert_eq!(same.profile.limit_source, LimitSource::Maker);
+        assert!(same.notices.is_empty());
+    }
+
+    #[test]
+    fn an_edit_that_cannot_be_applied_names_the_key_and_changes_nothing() {
+        let a1 = catalog_profile("bambu-lab-a1-mini");
+        for (key, value, want) in [
+            ("id", "other", "id"),
+            ("model", "X", "model"),
+            ("technology", "msla", "technology"),
+            ("colour", "red", "colour"),
+            ("bed_max_c", "900", "bed_max_c"),
+            ("bed_max_c", "hot", "bed_max_c"),
+            ("nozzles_mm", "9", "nozzles_mm"),
+            ("connectivity", "carrier-pigeon", "carrier-pigeon"),
+            ("verified", "on", "verified"),
+        ] {
+            let e = a1.edited(&[(key, value)]).unwrap_err().to_string();
+            assert!(e.contains(want), "{key}={value} -> {e}");
+        }
+        let resin = crate::catalog::Catalog::builtin()
+            .unwrap()
+            .technology(Technology::Msla)[0]
+            .clone();
+        let e = resin
+            .edited(&[("nozzle_max_c", "250")])
+            .unwrap_err()
+            .to_string();
+        assert!(e.contains("nozzle_max_c") && e.contains("resin"), "{e}");
+        assert!(resin.edited(&[("multimaterial", "none")]).is_ok());
+    }
+
+    #[test]
+    fn an_edit_clears_verified_and_the_chamber_limit_can_be_added() {
+        let mut p = catalog_profile("bambu-lab-a1");
+        p.verified = true;
+        let e = p.edited(&[("chamber_max_c", "45")]).unwrap();
+        assert!(!e.profile.verified);
+        assert!(e.notices.contains(&Notice::VerificationCleared));
+        assert_eq!(e.profile.limits.unwrap().chamber_c, Some(45.0));
+        assert!(e.notices.iter().any(|n| matches!(
+            n,
+            Notice::LimitRaised {
+                key: "chamber_max_c",
+                ..
+            }
+        )));
+        // no edits at all: the same profile, still verified
+        let none = p.edited(&[]).unwrap();
+        assert_eq!(none.profile, p);
+        assert!(none.notices.is_empty());
+    }
+
+    #[test]
+    fn the_difference_of_two_profiles_lists_the_lines_that_changed() {
+        let a1 = catalog_profile("bambu-lab-a1-mini");
+        assert!(a1.diff(&a1).is_empty());
+        let b = a1
+            .edited(&[("bed_max_c", "100"), ("nozzles_mm", "0.4")])
+            .unwrap()
+            .profile;
+        let d = a1.diff(&b);
+        let keys: Vec<&str> = d.iter().map(|c| c.key.as_str()).collect();
+        assert_eq!(keys, vec!["nozzles_mm", "bed_max_c", "limit_source"]);
+        assert_eq!(
+            d[1],
+            Change {
+                key: "bed_max_c".into(),
+                from: "80".into(),
+                to: "100".into()
+            }
+        );
+        assert_eq!(d[2].from, "maker");
+        // a line only one of them has
+        let mut c = a1.clone();
+        c.limits.as_mut().unwrap().chamber_c = Some(40.0);
+        let d = a1.diff(&c);
+        assert_eq!(
+            d,
+            vec![Change {
+                key: "chamber_max_c".into(),
+                from: String::new(),
+                to: "40".into()
+            }]
+        );
+        let back = c.diff(&a1);
+        assert_eq!(back[0].from, "40");
+        assert_eq!(back[0].to, "");
+    }
 
     fn sample() -> PrinterProfile {
         PrinterProfile {

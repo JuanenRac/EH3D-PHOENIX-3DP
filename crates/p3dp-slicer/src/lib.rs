@@ -16,6 +16,7 @@ pub mod error;
 pub mod geom;
 pub mod infill;
 pub mod plan;
+pub mod report;
 pub mod support;
 pub mod timing;
 

@@ -7,3 +7,9 @@ generic-abs|Generic ABS|abs|245|230|260|100|90|110|10|0|30|1.04|1.75|0.3|false|t
 generic-asa|Generic ASA|asa|250|235|260|100|90|110|20|0|30|1.07|1.75|0.3|false|true|false|false
 generic-tpu|Generic TPU|tpu|225|210|240|50|0|60|60|30|100|1.21|1.75|0.4|false|false|true|false
 generic-pa|Generic PA (nylon)|pa|260|240|280|80|70|100|10|0|30|1.14|1.75|0.4|false|true|false|false
+generic-pla-plus|Generic PLA+ (toughened PLA)|pla|215|200|235|60|0|70|100|70|100|1.24|1.75|0.2|false|false|false|false
+generic-pla-cf|Generic PLA with carbon fibre|pla|220|200|240|60|0|70|100|70|100|1.30|1.75|0.4|true|false|false|false
+generic-petg-cf|Generic PETG with carbon fibre|petg|250|230|270|80|70|90|40|20|60|1.30|1.75|0.4|true|false|false|false
+generic-asa-cf|Generic ASA with carbon fibre|asa|255|240|270|100|90|110|20|0|30|1.12|1.75|0.4|true|true|false|false
+generic-abs-gf|Generic ABS with glass fibre|abs|250|235|270|100|90|110|10|0|30|1.12|1.75|0.4|true|true|false|false
+generic-pa-cf|Generic PA (nylon) with carbon fibre|pa|280|260|300|90|70|110|10|0|30|1.20|1.75|0.4|true|true|false|false

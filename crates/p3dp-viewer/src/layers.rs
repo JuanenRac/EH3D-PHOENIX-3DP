@@ -191,6 +191,35 @@ pub fn lines_of(plan: &Plan, range: &LayerRange, filter: &KindFilter) -> LineBat
     batch
 }
 
+/// The colour of the travel moves: a pale blue, apart from every kind of path.
+pub const TRAVEL_COLOUR: [f32; 3] = [0.35, 0.65, 0.95];
+
+/// The moves of the head between one path and the next, in the layers of a range: a line from where a path ends to where the next one starts, at the height of the layer. A closed
+/// path ends where it began. The first path of a layer has no line before it (the head comes up from the layer below), and a move of no length is not drawn. The kinds filter does not
+/// apply: the head travels whether or not the path it comes from is shown.
+pub fn travel_lines(plan: &Plan, range: &LayerRange) -> LineBatch {
+    let mut batch = LineBatch::default();
+    for layer in plan.layers.iter().filter(|l| range.shows(l.index)) {
+        let z = layer.z_mm;
+        let end_of = |p: &p3dp_slicer::Path| {
+            if p.closed {
+                p.points.first().copied()
+            } else {
+                p.points.last().copied()
+            }
+        };
+        for pair in layer.paths.windows(2) {
+            let (Some(from), Some(to)) = (end_of(&pair[0]), pair[1].points.first().copied()) else {
+                continue;
+            };
+            if (from[0] - to[0]).abs() > 1e-9 || (from[1] - to[1]).abs() > 1e-9 {
+                batch.push([from[0], from[1], z], [to[0], to[1], z], TRAVEL_COLOUR);
+            }
+        }
+    }
+    batch
+}
+
 /// The lines of the outline of the plate on the bed, in the colour of a guide.
 pub fn plate_lines(size_x_mm: f64, size_y_mm: f64) -> LineBatch {
     let mut batch = LineBatch::default();
@@ -367,6 +396,68 @@ mod tests {
                 assert_ne!(colour_of(*a), colour_of(*c), "{a:?} and {c:?}");
             }
         }
+    }
+
+    #[test]
+    fn the_travel_lines_join_the_end_of_each_path_to_the_start_of_the_next_inside_the_range() {
+        let p = plan(&cube(10.0), &machine(), &SliceConfig::default()).unwrap();
+        let all = LayerRange::new(p.layer_count()).unwrap();
+        let t = travel_lines(&p, &all);
+        assert!(t.line_count() > 10, "{}", t.line_count());
+        // never more lines than gaps between paths, and every line has the colour of a travel
+        let gaps: usize = p
+            .layers
+            .iter()
+            .map(|l| l.paths.len().saturating_sub(1))
+            .sum();
+        assert!(t.line_count() <= gaps);
+        for v in t.vertices.chunks(FLOATS_PER_VERTEX) {
+            assert_eq!(&v[3..], &TRAVEL_COLOUR);
+        }
+        // one layer: its lines are at its height and no other
+        let mut one = all;
+        one.only(2);
+        let z = p.layers[2].z_mm as f32;
+        let t1 = travel_lines(&p, &one);
+        assert!(t1.line_count() > 0 && t1.line_count() < t.line_count());
+        assert!(t1
+            .vertices
+            .chunks(FLOATS_PER_VERTEX)
+            .all(|v| (v[2] - z).abs() < 1e-4));
+        // the first line of the layer starts where the first path ends
+        let first = &p.layers[2].paths[0];
+        let end = if first.closed {
+            first.points[0]
+        } else {
+            *first.points.last().unwrap()
+        };
+        let second = p.layers[2].paths[1].points[0];
+        if (end[0] - second[0]).abs() > 1e-9 || (end[1] - second[1]).abs() > 1e-9 {
+            assert_eq!(
+                (t1.vertices[0], t1.vertices[1]),
+                (end[0] as f32, end[1] as f32)
+            );
+        }
+    }
+
+    #[test]
+    fn a_plan_with_one_path_per_layer_has_no_travel_and_the_travel_ignores_the_kinds_filter() {
+        let mut p = plan(&cube(10.0), &machine(), &SliceConfig::default()).unwrap();
+        let all = LayerRange::new(p.layer_count()).unwrap();
+        let with = travel_lines(&p, &all).line_count();
+        for l in &mut p.layers {
+            l.paths.truncate(1);
+        }
+        assert!(travel_lines(&p, &all).is_empty());
+        assert!(with > 0);
+        // a path with no points is skipped, not a panic
+        p.layers[0].paths.push(p3dp_slicer::Path {
+            kind: Kind::Infill,
+            points: vec![],
+            closed: false,
+            width_mm: 0.4,
+        });
+        assert!(travel_lines(&p, &all).is_empty());
     }
 
     #[test]
