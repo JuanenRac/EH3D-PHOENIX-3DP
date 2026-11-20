@@ -4,14 +4,13 @@
 use crate::config::AppConfig;
 use crate::i18n::{fill, Lang, Msg};
 use crate::report;
+use crate::shade::{self, BedDrawing, LineKind};
 use p3dp_core::Mesh;
 use p3dp_profiles::filament::{FilamentProfile, Nozzle};
 use p3dp_profiles::PrinterProfile;
 use p3dp_slicer::report::{progress, Progress};
 use p3dp_slicer::{Kind, LayerSummary, Machine, Plan, SliceConfig};
-use p3dp_viewer::layers::{
-    lines_of, plate_lines, travel_lines, KindFilter, LayerRange, FLOATS_PER_VERTEX,
-};
+use p3dp_viewer::layers::{lines_of, travel_lines, KindFilter, LayerRange, FLOATS_PER_VERTEX};
 use p3dp_viewer::{OrbitCamera, Viewport};
 
 /// The most lines the window is asked to draw in one frame.
@@ -31,6 +30,35 @@ pub struct Frame {
     pub segments: Vec<Segment>,
     /// Lines that were left out because there were more than [`MAX_SEGMENTS`].
     pub left_out: usize,
+    /// The bed under the plan, with its grid, its edge and the axes (the box of the printer is left out), drawn the way the Prepare tab draws it.
+    pub bed: BedDrawing,
+}
+
+/// The box that holds the plan: where the lines of its layers are, and its height, a little wider all round so the print does not touch the edge of the view. `None` for a plan with no
+/// line at all.
+pub fn plan_box(plan: &Plan) -> Option<([f64; 3], [f64; 3])> {
+    let mut lo = [f64::INFINITY; 2];
+    let mut hi = [f64::NEG_INFINITY; 2];
+    for p in plan
+        .layers
+        .iter()
+        .flat_map(|l| &l.paths)
+        .flat_map(|p| &p.points)
+    {
+        for k in 0..2 {
+            lo[k] = lo[k].min(p[k]);
+            hi[k] = hi[k].max(p[k]);
+        }
+    }
+    if !lo.iter().chain(hi.iter()).all(|v| v.is_finite()) {
+        return None;
+    }
+    let span = (hi[0] - lo[0]).max(hi[1] - lo[1]).max(plan.height_mm());
+    let pad = (span * 0.08).max(3.0);
+    Some((
+        [lo[0] - pad, lo[1] - pad, 0.0],
+        [hi[0] + pad, hi[1] + pad, plan.height_mm() + pad],
+    ))
 }
 
 /// The time in words that need no language: `1 h 05 min`, `42 min` or `30 s`.
@@ -89,6 +117,10 @@ pub struct PreviewState {
     pub advice: Vec<String>,
     /// Draw the moves of the head between the paths too (pale blue lines).
     pub show_travel: bool,
+    /// See inside: the top and bottom skins are left out, so the infill and the walls under them show.
+    pub peek_inside: bool,
+    /// The spacing of the grid of the bed under the plan, in millimetres.
+    pub grid_mm: f64,
     /// The density of the plastic of the last slice, for the weight in the report.
     pub density_g_cm3: f64,
     /// What every layer of the plan comes to, worked out once when the plan is made.
@@ -111,6 +143,8 @@ impl Default for PreviewState {
             error: None,
             advice: Vec::new(),
             show_travel: false,
+            peek_inside: false,
+            grid_mm: 10.0,
             density_g_cm3: report::DEFAULT_DENSITY_G_CM3,
             summaries: Vec::new(),
             progress: Vec::new(),
@@ -120,6 +154,14 @@ impl Default for PreviewState {
 }
 
 impl PreviewState {
+    /// A state with nothing sliced, that looks inside the plan or not.
+    pub fn looking_inside(peek_inside: bool) -> PreviewState {
+        PreviewState {
+            peek_inside,
+            ..PreviewState::default()
+        }
+    }
+
     /// Slices a model for a printer, with a filament when one is chosen. A plan that was there stays when the new slice fails, and the reason is kept. Returns whether it worked.
     pub fn slice(
         &mut self,
@@ -293,24 +335,41 @@ impl PreviewState {
         self.fit_next = true;
     }
 
-    /// The lines of this frame, in pixels, for a view of `width` by `height`. The camera is put to fit the plate when a new plan is there or the view was reset.
+    /// The kinds of line that are drawn: the ones that are switched on, and without the skins when the person looks inside.
+    pub fn shown_filter(&self) -> KindFilter {
+        KindFilter {
+            solid: self.filter.solid && !self.peek_inside,
+            ..self.filter
+        }
+    }
+
+    /// The lines of this frame, in pixels, for a view of `width` by `height`. The camera is put to fit the print (the box of the plan, or the plate when it has no line) when a new
+    /// plan is there or the view was reset.
     pub fn frame(&mut self, width: f64, height: f64) -> Frame {
         let (Some(vp), Some(plan)) = (Viewport::new(width, height), self.plan.as_ref()) else {
             return Frame::default();
         };
-        let [bx, by, _] = plan.machine.volume_mm;
+        let [bx, by, bz] = plan.machine.volume_mm;
         if self.fit_next {
-            self.camera.reset_for_plate(bx, by, vp);
+            self.camera = OrbitCamera::default();
+            match plan_box(plan) {
+                Some((lo, hi)) => self.camera.fit_to_box(lo, hi, vp),
+                None => self.camera.reset_for_plate(bx, by, vp),
+            }
             self.fit_next = false;
         }
-        let mut batches = vec![plate_lines(bx, by)];
+        let mut batches = Vec::new();
         if let Some(r) = self.range() {
-            batches.push(lines_of(plan, &r, &self.filter));
+            batches.push(lines_of(plan, &r, &self.shown_filter()));
             if self.show_travel {
                 batches.push(travel_lines(plan, &r));
             }
         }
-        let mut frame = Frame::default();
+        let mut frame = Frame {
+            bed: shade::bed([bx, by, bz], self.grid_mm, &self.camera, vp),
+            ..Frame::default()
+        };
+        frame.bed.lines.retain(|l| l.kind != LineKind::Volume);
         for batch in &batches {
             for v in batch.vertices.as_chunks::<{ FLOATS_PER_VERTEX * 2 }>().0 {
                 if frame.segments.len() >= MAX_SEGMENTS {
@@ -609,6 +668,96 @@ mod tests {
         for (now, then) in s.camera.target.iter().zip(before.iter()) {
             assert!((now - then).abs() < 1e-6);
         }
+    }
+
+    #[test]
+    fn the_view_is_fitted_to_the_print_and_not_to_the_whole_plate() {
+        let (mut s, _) = sliced();
+        let plan = s.plan.as_ref().unwrap();
+        let (lo, hi) = plan_box(plan).unwrap();
+        // the box holds the print (a cube of 20 mm) with a margin, stands on the bed and is as high as the plan
+        assert!(
+            hi[0] - lo[0] > 20.0 && hi[0] - lo[0] < 40.0,
+            "{lo:?} {hi:?}"
+        );
+        assert_eq!(lo[2], 0.0);
+        assert!(hi[2] > plan.height_mm());
+        // a plan that holds a cube of 20 mm on a bed of 250 fills the view: it is far bigger than it would be with the plate fitted
+        let f = s.frame(800.0, 600.0);
+        let (mut min, mut max) = ([f32::MAX; 2], [f32::MIN; 2]);
+        for g in &f.segments {
+            for p in [g.a, g.b] {
+                for k in 0..2 {
+                    min[k] = min[k].min(p[k]);
+                    max[k] = max[k].max(p[k]);
+                }
+            }
+        }
+        assert!(
+            (max[0] - min[0]) > 200.0 || (max[1] - min[1]) > 150.0,
+            "{min:?} {max:?}"
+        );
+        // a plan with no line falls back to the plate
+        let mut empty = s.plan.clone().unwrap();
+        for l in &mut empty.layers {
+            l.paths.clear();
+        }
+        assert!(plan_box(&empty).is_none());
+    }
+
+    #[test]
+    fn the_bed_under_the_plan_has_its_grid_its_edge_and_its_axes_and_no_box() {
+        let (mut s, _) = sliced();
+        s.reset_view();
+        let f = s.frame(800.0, 600.0);
+        let count = |k: LineKind| f.bed.lines.iter().filter(|l| l.kind == k).count();
+        // the camera is near the print, so an edge of the plate may be cut by the plane in front of it, but the near ones are there
+        assert!(count(LineKind::Edge) >= 2);
+        assert!(count(LineKind::Grid) + count(LineKind::GridMajor) > 20);
+        assert_eq!(count(LineKind::Volume), 0);
+        // the axes are at the corner of the origin, which a near view may leave out of sight, but they are never drawn twice
+        assert!(
+            count(LineKind::AxisX) <= 1
+                && count(LineKind::AxisY) <= 1
+                && count(LineKind::AxisZ) <= 1
+        );
+        assert!(f.bed.quad.is_some());
+        // the spacing of the grid is the setting
+        s.grid_mm = 50.0;
+        let wide = s.frame(800.0, 600.0);
+        let grid = |f: &Frame| {
+            f.bed
+                .lines
+                .iter()
+                .filter(|l| matches!(l.kind, LineKind::Grid | LineKind::GridMajor))
+                .count()
+        };
+        assert!(grid(&wide) < grid(&f));
+        // nothing is drawn with no plan
+        s.forget();
+        assert_eq!(s.frame(800.0, 600.0), Frame::default());
+    }
+
+    #[test]
+    fn looking_inside_leaves_out_the_skins_and_keeps_the_rest() {
+        let (mut s, _) = sliced();
+        let all = s.frame(800.0, 600.0).segments.len();
+        assert!(s.shown_filter().solid);
+        s.peek_inside = true;
+        let f = s.shown_filter();
+        assert!(!f.solid && f.perimeters && f.infill);
+        let inside = s.frame(800.0, 600.0);
+        assert!(
+            inside.segments.len() < all,
+            "{} {all}",
+            inside.segments.len()
+        );
+        let solid = p3dp_viewer::layers::colour_of(Kind::SolidInfill);
+        assert!(inside.segments.iter().all(|g| g.colour != solid));
+        // a kind that is off stays off whatever the person looks at
+        s.filter.solid = false;
+        s.peek_inside = false;
+        assert!(!s.shown_filter().solid);
     }
 
     #[test]

@@ -71,6 +71,11 @@ impl Estimates {
         })
     }
 
+    /// Whether the bar at the bottom has to say that the figures come after a slice: there is a part on the bed, no slice is running and there is no plan to take the figures from.
+    pub fn pending(parts_on_bed: bool, slicing: bool, has_plan: bool) -> bool {
+        parts_on_bed && !slicing && !has_plan
+    }
+
     /// The label and the value of each figure, in a language; the cost is left out when there is no price.
     pub fn cells(&self, config: &AppConfig, lang: Lang) -> Vec<(&'static str, String)> {
         let mut out = vec![
@@ -104,8 +109,10 @@ struct Key {
 pub struct Studio {
     pub plate: Plate,
     pub camera: OrbitCamera,
-    /// Put the camera to look at the whole printer on the next frame.
+    /// Put the camera to look at the parts on the next frame (the whole printer when there is no part or it is as big as the bed).
     pub fit_next: bool,
+    /// With `fit_next`: look at the whole printer even when there is a small part.
+    pub fit_bed: bool,
     job: Option<SliceJob>,
     /// How long the last slice took, for the bar of the next one.
     pub last_slice_s: f64,
@@ -126,6 +133,7 @@ impl Default for Studio {
             plate: Plate::new(),
             camera: OrbitCamera::default(),
             fit_next: true,
+            fit_bed: false,
             job: None,
             last_slice_s: FIRST_GUESS_S,
             progress: 0.0,
@@ -155,7 +163,12 @@ impl Studio {
         volume_mm: [f64; 3],
         config: &AppConfig,
     ) -> Option<u32> {
+        let first = self.plate.is_empty();
         let id = self.plate.add(name, mesh, [volume_mm[0], volume_mm[1]])?;
+        if first {
+            // the first part on an empty bed is what the view is put to look at
+            self.fit_next = true;
+        }
         if config.arrange_on_add && self.plate.len() > 1 {
             self.arrange(volume_mm, config);
         }
@@ -309,16 +322,28 @@ impl Studio {
         }
     }
 
+    /// A standard view of the whole printer.
     pub fn look_from(&mut self, view: StdView, volume_mm: [f64; 3], vp: Viewport) {
         view.apply(&mut self.camera, volume_mm, vp);
         self.fit_next = false;
+        self.fit_bed = false;
     }
 
-    /// Fits the camera when it was asked for (a new printer, a reset), looking from the corner.
+    /// Fits the camera when it was asked for (a new printer, a first part, a reset), looking from the corner: at the parts when they are small next to the bed, and at the whole
+    /// printer when asked for it (`fit_bed`), when the bed is empty or when a part is big.
     pub fn fit_if_asked(&mut self, volume_mm: [f64; 3], vp: Viewport) {
-        if self.fit_next {
-            self.look_from(StdView::Corner, volume_mm, vp);
+        if !self.fit_next {
+            return;
         }
+        let parts = if self.fit_bed {
+            None
+        } else {
+            self.plate.bounds()
+        };
+        let (lo, hi) = crate::shade::focus_box(volume_mm, parts);
+        StdView::Corner.apply_to_box(&mut self.camera, lo, hi, vp);
+        self.fit_next = false;
+        self.fit_bed = false;
     }
 
     /// Starts slicing what is on the bed. Refused (and `false`) when a slice is already running, the bed is empty or the bed cannot be made into one mesh.
@@ -451,6 +476,63 @@ mod tests {
         );
         s.arrange(VOL, &c);
         assert!(s.warnings(VOL).is_empty());
+    }
+
+    #[test]
+    fn the_view_is_put_round_a_small_part_and_on_the_whole_bed_when_asked_or_when_empty() {
+        let vp = Viewport::new(800.0, 600.0).unwrap();
+        let mut s = Studio::new();
+        // an empty bed: the whole printer
+        s.fit_if_asked([256.0, 256.0, 256.0], vp);
+        let whole = s.camera.distance;
+        assert!(!s.fit_next);
+        // the first part asks for a new fit, and a small part is looked at from nearer
+        let c = config();
+        s.add_model("small", cube(40.0), [256.0, 256.0, 256.0], &c)
+            .unwrap();
+        assert!(s.fit_next);
+        s.fit_if_asked([256.0, 256.0, 256.0], vp);
+        assert!(
+            s.camera.distance < whole * 0.7,
+            "{} {whole}",
+            s.camera.distance
+        );
+        assert!(!s.fit_next && !s.fit_bed);
+        // the whole bed on request, and the second part does not move the view by itself
+        s.fit_next = true;
+        s.fit_bed = true;
+        s.fit_if_asked([256.0, 256.0, 256.0], vp);
+        assert!((s.camera.distance - whole).abs() < 1e-6);
+        s.add_model("second", cube(40.0), [256.0, 256.0, 256.0], &c)
+            .unwrap();
+        assert!(!s.fit_next);
+        // a part that is big next to the bed keeps the whole bed in view
+        let mut big = Studio::new();
+        big.add_model("big", cube(150.0), [256.0, 256.0, 256.0], &c)
+            .unwrap();
+        big.fit_if_asked([256.0, 256.0, 256.0], vp);
+        assert!((big.camera.distance - whole).abs() < 1e-6);
+    }
+
+    #[test]
+    fn the_bar_says_that_the_figures_come_after_a_slice_only_when_there_is_something_to_slice() {
+        assert!(Estimates::pending(true, false, false));
+        assert!(
+            !Estimates::pending(false, false, false),
+            "an empty bed has nothing to say"
+        );
+        assert!(
+            !Estimates::pending(true, true, false),
+            "the bar of the slice shows instead"
+        );
+        assert!(
+            !Estimates::pending(true, false, true),
+            "the figures are there"
+        );
+        for l in Lang::ALL {
+            let t = Msg::EstimatesPending.tr(l);
+            assert!(t.chars().count() > 8 && !t.contains("{}"), "{}", l.code());
+        }
     }
 
     #[test]

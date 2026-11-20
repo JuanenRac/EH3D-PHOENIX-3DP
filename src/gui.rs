@@ -8,7 +8,7 @@
 use crate::app_state::{demo_device, AppState, Status, Tab};
 use crate::config::AppConfig;
 use crate::demo;
-use crate::device::{DevicePanel, Done};
+use crate::device::{self, DevicePanel, Done};
 use crate::i18n::{fill, state_text, Lang, Msg};
 use crate::keys::{Action, Chord, Scheme, SchemeId};
 use crate::limits_ui::{self, LimitsDraft};
@@ -165,13 +165,14 @@ fn paint_triangles(
 ) {
     let mut mesh = egui::epaint::Mesh::default();
     for t in tris {
-        let c = col(look::scaled(colour_of(t.object), t.light));
+        let base = colour_of(t.object);
         let first = mesh.vertices.len() as u32;
-        for p in t.p {
+        // each corner has its own light, so a curved part is filled with a blend and not with flat facets
+        for (p, light) in t.p.iter().zip(t.corners) {
             mesh.vertices.push(egui::epaint::Vertex {
                 pos: Pos2::new(origin.x + p[0], origin.y + p[1]),
                 uv: egui::epaint::WHITE_UV,
-                color: c,
+                color: col(look::scaled(base, light)),
             });
         }
         mesh.add_triangle(first, first + 1, first + 2);
@@ -204,6 +205,8 @@ struct App {
     studio: Studio,
     device: DevicePanel,
     device_read: bool,
+    /// When the machines of the server were last read, for the line that says how old the figures are.
+    device_read_at: Option<std::time::Instant>,
     server: ServerUi,
     scheme: Scheme,
     show_shortcuts: bool,
@@ -262,10 +265,11 @@ impl App {
             filament_filter: FilamentFilter::default(),
             filament_id: None,
             nozzle_mm: 0.4,
-            preview: PreviewState::default(),
+            preview: PreviewState::looking_inside(args.peek),
             studio,
             device: DevicePanel::with_policy(state.config.queue_policy()),
             device_read: false,
+            device_read_at: None,
             server,
             scheme,
             show_shortcuts: false,
@@ -383,6 +387,7 @@ impl App {
     fn refresh_device(&mut self) {
         self.device.refresh(self.server.device_client());
         self.device_read = true;
+        self.device_read_at = Some(std::time::Instant::now());
     }
 
     fn emergency_stop(&mut self) {
@@ -457,9 +462,14 @@ impl App {
             Action::GoDevice => self.state.tab = Tab::Device,
             Action::GoProject => self.state.tab = Tab::Project,
             Action::Refresh => self.refresh_device(),
-            Action::ResetView | Action::FitView => {
+            Action::ResetView => {
                 self.preview.reset_view();
                 self.studio.fit_next = true;
+            }
+            Action::FitView => {
+                self.preview.reset_view();
+                self.studio.fit_next = true;
+                self.studio.fit_bed = true;
             }
             Action::LayerUp => self.preview.step_layer(1),
             Action::LayerDown => self.preview.step_layer(-1),
@@ -667,6 +677,15 @@ impl App {
                             .animate(true)
                             .text(Msg::Slicing.tr(lang)),
                     );
+                } else if Estimates::pending(
+                    !self.studio.plate.is_empty(),
+                    slicing,
+                    self.preview.plan.is_some(),
+                ) {
+                    ui.label(
+                        egui::RichText::new(Msg::EstimatesPending.tr(lang))
+                            .color(col(self.look.dim)),
+                    );
                 } else if let Some(e) = Estimates::of(&self.preview, &self.state.config) {
                     for (label, value) in e.cells(&self.state.config, lang) {
                         ui.label(egui::RichText::new(label).small().color(col(self.look.dim)));
@@ -699,7 +718,9 @@ impl App {
         ui.horizontal(|ui| {
             ui.label(Msg::FilterSearch.tr(lang));
             ui.add(
-                egui::TextEdit::singleline(&mut self.printer_filter.search).desired_width(140.0),
+                egui::TextEdit::singleline(&mut self.printer_filter.search)
+                    .hint_text(Msg::SearchHint.tr(lang))
+                    .desired_width(140.0),
             );
         });
         ui.horizontal(|ui| {
@@ -1097,7 +1118,11 @@ impl App {
             );
         });
         ui.horizontal(|ui| {
-            ui.add(egui::TextEdit::singleline(&mut self.path_text).desired_width(150.0));
+            ui.add(
+                egui::TextEdit::singleline(&mut self.path_text)
+                    .hint_text(Msg::OpenModelHint.tr(lang))
+                    .desired_width(150.0),
+            );
             if ui.button(Msg::Open.tr(lang)).clicked() {
                 self.open_model();
             }
@@ -1515,6 +1540,7 @@ impl App {
             });
         }
         ui.checkbox(&mut self.preview.only_one, Msg::LayerOnlyOne.tr(lang));
+        ui.checkbox(&mut self.preview.peek_inside, Msg::ViewPeekInside.tr(lang));
         if ui.button(Msg::ViewReset.tr(lang)).clicked() {
             self.preview.reset_view();
         }
@@ -1596,7 +1622,19 @@ impl App {
             );
             return;
         }
+        self.preview.grid_mm = self.state.config.grid_mm;
         let frame = self.preview.frame(w, h);
+        let at = |p: [f32; 2]| Pos2::new(rect.min.x + p[0], rect.min.y + p[1]);
+        if let Some(q) = frame.bed.quad {
+            painter.add(egui::Shape::convex_polygon(
+                q.iter().map(|p| at(*p)).collect(),
+                col(pal.bed),
+                Stroke::NONE,
+            ));
+        }
+        for l in &frame.bed.lines {
+            painter.line_segment([at(l.a), at(l.b)], bed_stroke(l.kind, &pal));
+        }
         let shapes: Vec<egui::Shape> = frame
             .segments
             .iter()
@@ -1737,6 +1775,56 @@ impl App {
         }
     }
 
+    /// A gauge: what it measures and its figures on one line, the bar under it at the width there is (with the target of a heater marked on it) and a small line of detail.
+    fn draw_bar(&self, ui: &mut egui::Ui, bar: &device::Bar) {
+        let pal = self.look;
+        let width = device::bar_width(ui.available_width());
+        ui.scope(|ui| {
+            ui.set_max_width(width);
+            ui.horizontal(|ui| {
+                ui.label(egui::RichText::new(&bar.label).strong());
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.label(&bar.figures);
+                });
+            });
+            let (rect, _) =
+                ui.allocate_exact_size(egui::vec2(width, device::BAR_H), egui::Sense::hover());
+            let painter = ui.painter_at(rect);
+            painter.rect_filled(rect, 4.0, col(pal.grid));
+            let filled = device::bar_fill_width(width, bar.fraction);
+            if filled > 0.0 {
+                let fill_rect =
+                    egui::Rect::from_min_size(rect.min, egui::vec2(filled, device::BAR_H));
+                painter.rect_filled(fill_rect, 4.0, col(pal.accent));
+            }
+            if let Some(m) = bar.marker {
+                let x = rect.min.x + width * m.clamp(0.0, 1.0);
+                painter.line_segment(
+                    [
+                        Pos2::new(x, rect.min.y - 2.0),
+                        Pos2::new(x, rect.max.y + 2.0),
+                    ],
+                    Stroke::new(2.0, col(pal.text)),
+                );
+            }
+            if let Some(d) = &bar.detail {
+                ui.label(egui::RichText::new(d).small().color(col(pal.dim)));
+            }
+        });
+        ui.add_space(8.0);
+    }
+
+    fn section_title(&self, ui: &mut egui::Ui, msg: Msg) {
+        ui.add_space(6.0);
+        ui.label(
+            egui::RichText::new(msg.tr(self.lang()))
+                .strong()
+                .size(15.0)
+                .color(col(self.look.accent)),
+        );
+        ui.add_space(4.0);
+    }
+
     fn device_centre(&mut self, ui: &mut egui::Ui) {
         let lang = self.lang();
         let pal = self.look;
@@ -1750,34 +1838,34 @@ impl App {
                     self.demo_printer(ui);
                     return;
                 }
-                for line in self.device.lines(lang) {
-                    ui.label(line);
+                if let Some(h) = self.device.headline() {
+                    ui.label(egui::RichText::new(h).strong().size(17.0));
                 }
-                for h in &self.device.heaters {
-                    let fraction = if h.limit_c > 0.0 {
-                        (h.current_c / h.limit_c) as f32
-                    } else {
-                        0.0
-                    };
-                    ui.add(
-                        egui::ProgressBar::new(fraction.clamp(0.0, 1.0))
-                            .desired_width(320.0)
-                            .text(format!(
-                                "{}: {:.0} / {:.0} C (max {:.0})",
-                                h.name, h.current_c, h.target_c, h.limit_c
-                            )),
+                // the heaters are the first bars and the layer, when there is one, the last
+                let bars = self.device.bars(lang);
+                let (heaters, print) = bars.split_at(self.device.heaters.len().min(bars.len()));
+                self.section_title(ui, Msg::DeviceTemperatures);
+                if heaters.is_empty() {
+                    ui.label(
+                        egui::RichText::new(Msg::DeviceNoHeaters.tr(lang)).color(col(pal.dim)),
                     );
                 }
-                if let Some(l) = &self.device.layer {
-                    let fraction = (l.progress_pct / 100.0) as f32;
-                    ui.add(
-                        egui::ProgressBar::new(fraction.clamp(0.0, 1.0))
-                            .desired_width(320.0)
-                            .text(format!(
-                                "{}/{} - {:.1} mm - {:.0} %",
-                                l.layer, l.layers, l.z_mm, l.progress_pct
-                            )),
-                    );
+                for b in heaters {
+                    self.draw_bar(ui, b);
+                }
+                self.section_title(ui, Msg::DevicePrintTitle);
+                if print.is_empty() {
+                    ui.label(egui::RichText::new(Msg::DeviceNoPrint.tr(lang)).color(col(pal.dim)));
+                }
+                for b in print {
+                    self.draw_bar(ui, b);
+                }
+                ui.add_space(10.0);
+                if let Some(at) = self.device_read_at {
+                    let text = device::read_age_text(at.elapsed().as_secs(), lang);
+                    ui.label(egui::RichText::new(text).small().color(col(pal.dim)));
+                    ui.ctx()
+                        .request_repaint_after(std::time::Duration::from_secs(1));
                 }
                 ui.label(
                     egui::RichText::new(Msg::Safety.tr(lang))
@@ -1827,12 +1915,7 @@ impl App {
         let jobs = self.device.queue.clone();
         for (i, j) in jobs.iter().enumerate() {
             ui.push_id(i, |ui| {
-                ui.label(format!("{} - {}", j.name, j.state));
-                ui.add(
-                    egui::ProgressBar::new((j.percent as f32 / 100.0).clamp(0.0, 1.0))
-                        .desired_width(220.0)
-                        .text(format!("{} %", j.percent)),
-                );
+                self.draw_bar(ui, &device::job_bar(j));
                 ui.horizontal(|ui| {
                     if j.waiting() && ui.button(Msg::JobStart.tr(lang)).clicked() {
                         self.device.ask_start(&j.id);
@@ -1861,34 +1944,14 @@ impl App {
             .map(|p| demo_device(p).map_err(|e| e.to_string()));
         match result {
             Some(Ok(st)) => {
-                ui.label(fill(Msg::State.tr(lang), &[state_text(st.state, lang)]));
-                for t in &st.temperatures {
-                    let fraction = if t.target > 0.0 {
-                        (t.actual / t.target) as f32
-                    } else {
-                        0.0
-                    };
-                    ui.add(
-                        egui::ProgressBar::new(fraction.clamp(0.0, 1.0))
-                            .desired_width(320.0)
-                            .text(format!(
-                                "{}: {:.0} / {:.0} C",
-                                t.zone.name(),
-                                t.actual,
-                                t.target
-                            )),
-                    );
-                }
-                if let Some(j) = &st.job {
-                    ui.label(j.file.as_str());
-                    ui.add(
-                        egui::ProgressBar::new((j.progress_pct / 100.0).clamp(0.0, 1.0) as f32)
-                            .desired_width(320.0)
-                            .text(fill(
-                                Msg::Progress.tr(lang),
-                                &[&format!("{:.0}", j.progress_pct)],
-                            )),
-                    );
+                ui.label(
+                    egui::RichText::new(fill(Msg::State.tr(lang), &[state_text(st.state, lang)]))
+                        .strong()
+                        .size(17.0),
+                );
+                self.section_title(ui, Msg::DeviceTemperatures);
+                for b in device::state_bars(&st, lang) {
+                    self.draw_bar(ui, &b);
                 }
             }
             Some(Err(e)) => {
@@ -1905,22 +1968,33 @@ impl App {
 
     fn project_tab(&mut self, ui: &mut egui::Ui) {
         let lang = self.lang();
-        ui.horizontal(|ui| {
-            ui.label(Msg::Path.tr(lang));
-            ui.add(egui::TextEdit::singleline(&mut self.save_text).desired_width(360.0));
-            if ui.button(Msg::Save.tr(lang)).clicked() {
-                let path = self.save_text.trim().to_string();
-                self.state.save_project(&path, false);
-            }
-        });
-        ui.horizontal(|ui| {
-            ui.label(Msg::Path.tr(lang));
-            ui.add(egui::TextEdit::singleline(&mut self.project_text).desired_width(360.0));
-            if ui.button(Msg::Open.tr(lang)).clicked() {
-                let path = self.project_text.trim().to_string();
-                self.state.load_project_info(&path);
-            }
-        });
+        egui::Grid::new("project_files")
+            .num_columns(3)
+            .spacing([10.0, 6.0])
+            .show(ui, |ui| {
+                ui.label(Msg::SaveToLabel.tr(lang));
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.save_text)
+                        .hint_text(Msg::SavePathHint.tr(lang))
+                        .desired_width(360.0),
+                );
+                if ui.button(Msg::Save.tr(lang)).clicked() {
+                    let path = self.save_text.trim().to_string();
+                    self.state.save_project(&path, false);
+                }
+                ui.end_row();
+                ui.label(Msg::OpenFromLabel.tr(lang));
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.project_text)
+                        .hint_text(Msg::OpenPathHint.tr(lang))
+                        .desired_width(360.0),
+                );
+                if ui.button(Msg::Open.tr(lang)).clicked() {
+                    let path = self.project_text.trim().to_string();
+                    self.state.load_project_info(&path);
+                }
+                ui.end_row();
+            });
         for line in self.state.project_info_lines() {
             ui.label(line);
         }
@@ -1988,16 +2062,27 @@ impl App {
             self.scheme = Scheme::of(chosen);
             self.keep_lines(&[("shortcut_scheme", chosen.name().to_string())]);
         }
-        for (action, chord) in self.scheme.rows() {
-            ui.label(format!("{}: {}", action.msg().tr(lang), chord));
+        for line in self.scheme.rows_text(lang) {
+            ui.label(line);
         }
         ui.separator();
-        // the token is never shown: to_text(false) writes it as ***
-        ui.label(
-            egui::RichText::new(self.state.config.to_text(false))
-                .monospace()
-                .color(col(self.look.dim)),
-        );
+        // the token is never shown: to_text(false) writes it as ***; the file is read only here and scrolls inside a box of its own
+        let box_height = look::scroll_box_height(ui.ctx().content_rect().height());
+        egui::CollapsingHeader::new(egui::RichText::new(Msg::SettingsFileTitle.tr(lang)).strong())
+            .id_salt("sec_settings_file")
+            .default_open(true)
+            .show(ui, |ui| {
+                egui::ScrollArea::vertical()
+                    .id_salt("settings_file_scroll")
+                    .max_height(box_height)
+                    .show(ui, |ui| {
+                        ui.label(
+                            egui::RichText::new(self.state.config.to_text(false))
+                                .monospace()
+                                .color(col(self.look.dim)),
+                        );
+                    });
+            });
     }
 
     fn shortcuts_window(&mut self, ctx: &egui::Context) {
@@ -2009,8 +2094,8 @@ impl App {
         egui::Window::new(Msg::ShortcutsTitle.tr(lang))
             .open(&mut open)
             .show(ctx, |ui| {
-                for (action, chord) in self.scheme.rows() {
-                    ui.label(format!("{}: {}", action.msg().tr(lang), chord));
+                for line in self.scheme.rows_text(lang) {
+                    ui.label(line);
                 }
             });
         self.show_shortcuts = open;
@@ -2037,8 +2122,8 @@ impl App {
                     ui.add_space(4.0);
                 }
                 ui.label(egui::RichText::new(Msg::ShortcutsTitle.tr(lang)).strong());
-                for (action, chord) in self.scheme.rows() {
-                    ui.label(format!("{}: {}", action.msg().tr(lang), chord));
+                for line in self.scheme.rows_text(lang) {
+                    ui.label(line);
                 }
             });
         self.show_help = open;
@@ -2143,16 +2228,25 @@ impl eframe::App for App {
             Tab::Device => self.device_panels(ui),
             Tab::Project => {}
         }
-        egui::CentralPanel::no_frame().show(ui, |ui| match tab {
-            Tab::Prepare => self.scene_view(ui),
-            Tab::Preview => self.preview_centre(ui),
-            Tab::Device => self.device_centre(ui),
-            Tab::Project => {
-                egui::ScrollArea::vertical()
-                    .id_salt("project")
-                    .show(ui, |ui| self.project_tab(ui));
-            }
-        });
+        // the pages of the Device and Project tabs have the ground of the 3D views and a margin, so the four tabs look like one program
+        let ground = match tab {
+            Tab::Prepare | Tab::Preview => egui::Frame::NONE,
+            Tab::Device | Tab::Project => egui::Frame::NONE
+                .fill(col(self.look.panel))
+                .inner_margin(egui::Margin::same(12)),
+        };
+        egui::CentralPanel::default()
+            .frame(ground)
+            .show(ui, |ui| match tab {
+                Tab::Prepare => self.scene_view(ui),
+                Tab::Preview => self.preview_centre(ui),
+                Tab::Device => self.device_centre(ui),
+                Tab::Project => {
+                    egui::ScrollArea::vertical()
+                        .id_salt("project")
+                        .show(ui, |ui| self.project_tab(ui));
+                }
+            });
         self.shortcuts_window(&ctx);
         self.help_window(&ctx);
     }

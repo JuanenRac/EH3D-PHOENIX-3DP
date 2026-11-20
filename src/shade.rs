@@ -15,7 +15,10 @@ pub const MAX_GRID_LINES: usize = 400;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ShadedTriangle {
     pub p: [[f32; 2]; 3],
+    /// How lit the polygon is as a whole (the mean of its corners).
     pub light: f32,
+    /// How lit each corner is: on a smooth surface the corners differ, and the polygon is filled blending them, so the facets of a curved part do not show.
+    pub corners: [f32; 3],
     pub object: u32,
 }
 
@@ -42,8 +45,9 @@ pub struct ScreenLine {
 /// The bed seen by the camera.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct BedDrawing {
-    /// The four corners of the bed, in order round it, when all of them are in front of the camera.
-    pub quad: Option<[[f32; 2]; 4]>,
+    /// The corners of the bed, in order round it (four, or up to five when the camera is so near that the bed is cut at the plane in front of it); `None` when the bed is all behind
+    /// the camera.
+    pub quad: Option<Vec<[f32; 2]>>,
     pub lines: Vec<ScreenLine>,
 }
 
@@ -98,15 +102,16 @@ impl StdView {
 
     /// Puts the camera where this view looks at the whole volume of the printer.
     pub fn apply(self, cam: &mut OrbitCamera, volume_mm: [f64; 3], vp: Viewport) {
+        self.apply_to_box(cam, [0.0, 0.0, 0.0], volume_mm, vp);
+    }
+
+    /// Puts the camera where this view looks at a box `(low, high)` of the world (the whole printer, or the part and what is round it).
+    pub fn apply_to_box(self, cam: &mut OrbitCamera, lo: [f64; 3], hi: [f64; 3], vp: Viewport) {
         let (yaw, pitch) = self.angles_deg();
         cam.yaw = yaw.to_radians();
         cam.pitch = pitch.to_radians();
         *cam = cam.sanitized();
-        cam.fit_to_box(
-            [0.0, 0.0, 0.0],
-            [volume_mm[0], volume_mm[1], volume_mm[2]],
-            vp,
-        );
+        cam.fit_to_box(lo, hi, vp);
     }
 }
 
@@ -135,6 +140,122 @@ fn unit(a: [f64; 3]) -> Option<[f64; 3]> {
 pub const LIGHT_MIN: f32 = 0.22;
 pub const LIGHT_MAX: f32 = 1.0;
 
+/// Two faces that meet at a corner are one smooth surface when the angle between them is under this (cosine of 50 degrees); over it the corner is an edge and each face keeps its
+/// own direction, so a cube stays sharp and a goblet is round.
+pub const CREASE_COS: f64 = 0.6428;
+/// The most triangles that meet at one point and still count as a surface; a real mesh has a dozen or so.
+pub const MAX_AROUND: usize = 64;
+
+/// The direction each corner of each triangle is lit from: the mean of the directions of the faces that meet at the corner and bend away from the face by less than the crease angle
+/// (weighted by their area), and the face's own direction when the corner is an edge. A triangle with no area gets the zero vector, and a corner with an index that is not in `pts`
+/// too. The answer has one entry for each triangle, in the order of `tris`.
+pub fn smooth_normals(pts: &[[f64; 3]], tris: &[[u32; 3]]) -> Vec<[[f64; 3]; 3]> {
+    // the face directions, not unit: the length is twice the area, which is the weight
+    let faces: Vec<[f64; 3]> = tris
+        .iter()
+        .map(|t| {
+            let get = |i: u32| pts.get(i as usize).copied();
+            match (get(t[0]), get(t[1]), get(t[2])) {
+                (Some(a), Some(b), Some(c)) => cross(sub(b, a), sub(c, a)),
+                _ => [0.0; 3],
+            }
+        })
+        .collect();
+    // the triangles that touch each point, as one list cut in pieces (no list for each point)
+    let mut start = vec![0usize; pts.len() + 1];
+    for t in tris {
+        for i in t {
+            if let Some(s) = start.get_mut(*i as usize + 1) {
+                *s += 1;
+            }
+        }
+    }
+    let mut running = 0usize;
+    for s in start.iter_mut() {
+        running += *s;
+        *s = running;
+    }
+    let mut next = start.clone();
+    let mut touching = vec![0u32; start[pts.len()]];
+    for (ti, t) in tris.iter().enumerate() {
+        for i in t {
+            if let Some(slot) = next.get_mut(*i as usize) {
+                touching[*slot] = ti as u32;
+                *slot += 1;
+            }
+        }
+    }
+    tris.iter()
+        .enumerate()
+        .map(|(ti, t)| {
+            let own = unit(faces[ti]);
+            let mut out = [[0.0; 3]; 3];
+            for (k, corner) in t.iter().enumerate() {
+                let Some(own) = own else { continue };
+                let i = *corner as usize;
+                if i >= pts.len() {
+                    continue;
+                }
+                let around = &touching[start[i]..start[i + 1]];
+                // a point shared by a crowd of triangles is not a surface (a mesh made of copies): it keeps the direction of its face, and the work stays small
+                if around.len() > MAX_AROUND {
+                    out[k] = own;
+                    continue;
+                }
+                let mut sum = faces[ti];
+                for other in around {
+                    let o = *other as usize;
+                    if o == ti {
+                        continue;
+                    }
+                    if let Some(u) = unit(faces[o]) {
+                        if dot(u, own) >= CREASE_COS {
+                            sum = [
+                                sum[0] + faces[o][0],
+                                sum[1] + faces[o][1],
+                                sum[2] + faces[o][2],
+                            ];
+                        }
+                    }
+                }
+                out[k] = unit(sum).unwrap_or(own);
+            }
+            out
+        })
+        .collect()
+}
+
+/// The box the 3D view is fitted to when the parts on the bed are known: the whole printer when there is no part or the part is as big as the bed, and otherwise a box around the part
+/// (about two and a half times its size, never under a third of the bed), so a small part is not a speck on a large bed. `parts` is the box that holds every part, `(low, high)`.
+/// A box that is not made of real numbers is no part. The answer is `(low, high)`.
+pub fn focus_box(volume_mm: [f64; 3], parts: Option<([f64; 3], [f64; 3])>) -> ([f64; 3], [f64; 3]) {
+    let whole = ([0.0; 3], volume_mm);
+    let Some((lo, hi)) = parts else {
+        return whole;
+    };
+    if !lo.iter().chain(hi.iter()).all(|v| v.is_finite())
+        || !volume_mm.iter().all(|v| v.is_finite() && *v > 0.0)
+    {
+        return whole;
+    }
+    let size = [hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]];
+    if size.iter().any(|s| *s < 0.0) {
+        return whole;
+    }
+    let span = size[0].max(size[1]).max(size[2]);
+    let bed = volume_mm[0].max(volume_mm[1]);
+    if span >= bed * 0.45 {
+        return whole;
+    }
+    let side = (span * 2.5).clamp(bed * 0.33, bed);
+    let (cx, cy) = ((lo[0] + hi[0]) / 2.0, (lo[1] + hi[1]) / 2.0);
+    let top = hi[2].max(side * 0.5);
+    (
+        [cx - side / 2.0, cy - side / 2.0, 0.0],
+        [cx + side / 2.0, cy + side / 2.0, top],
+    )
+}
+
 /// The triangles of the parts as polygons on the screen, farthest first. Each part is `(id, mesh)` with its points already on the bed. A triangle behind the camera or entirely
 /// outside the view is left out; a triangle seen from behind is drawn (a mesh that is turned inside out is still seen), lit from the side it shows.
 pub fn shade(parts: &[(u32, &Mesh)], cam: &OrbitCamera, vp: Viewport) -> Vec<ShadedTriangle> {
@@ -145,12 +266,17 @@ pub fn shade(parts: &[(u32, &Mesh)], cam: &OrbitCamera, vp: Viewport) -> Vec<Sha
     let light_dir =
         unit([0.6 * to_eye[0], 0.6 * to_eye[1], 0.6 * to_eye[2] + 0.4]).unwrap_or([0.0, 0.0, 1.0]);
     let total: usize = parts.iter().map(|(_, m)| m.triangles.len()).sum();
+    let light_of = |n: [f64; 3]| {
+        let lit = dot(n, light_dir).max(0.0) as f32;
+        LIGHT_MIN + (LIGHT_MAX - LIGHT_MIN) * lit.clamp(0.0, 1.0)
+    };
     let thin = total > MAX_TRIANGLES;
     let mut out: Vec<(f64, ShadedTriangle)> = Vec::with_capacity(total.min(MAX_TRIANGLES));
     let mut seen = 0usize;
     for (id, mesh) in parts {
         let pts: Vec<[f64; 3]> = mesh.vertices.iter().map(|v| v.mm()).collect();
-        for t in &mesh.triangles {
+        let corner_normals = smooth_normals(&pts, &mesh.triangles);
+        for (ti, t) in mesh.triangles.iter().enumerate() {
             let get = |i: u32| pts.get(i as usize).copied();
             let (Some(a), Some(b), Some(c)) = (get(t[0]), get(t[1]), get(t[2])) else {
                 continue;
@@ -175,8 +301,12 @@ pub fn shade(parts: &[(u32, &Mesh)], cam: &OrbitCamera, vp: Viewport) -> Vec<Sha
                     continue;
                 }
             }
+            let mut corner_n = corner_normals[ti];
             if facing < 0.0 {
                 n = [-n[0], -n[1], -n[2]];
+                for c in &mut corner_n {
+                    *c = [-c[0], -c[1], -c[2]];
+                }
             }
             let (Some(pa), Some(pb), Some(pc)) =
                 (cam.project(a, vp), cam.project(b, vp), cam.project(c, vp))
@@ -189,8 +319,9 @@ pub fn shade(parts: &[(u32, &Mesh)], cam: &OrbitCamera, vp: Viewport) -> Vec<Sha
             if !(inside(&pa) || inside(&pb) || inside(&pc)) {
                 continue;
             }
-            let lit = dot(n, light_dir).max(0.0) as f32;
-            let light = LIGHT_MIN + (LIGHT_MAX - LIGHT_MIN) * lit.clamp(0.0, 1.0);
+            // a corner with no direction of its own (a bad index) is lit like the face
+            let corners = corner_n.map(|c| light_of(if dot(c, c) > 0.5 { c } else { n }));
+            let light = corners.iter().sum::<f32>() / 3.0;
             let d = sub(centre, eye);
             out.push((
                 dot(d, d),
@@ -201,6 +332,7 @@ pub fn shade(parts: &[(u32, &Mesh)], cam: &OrbitCamera, vp: Viewport) -> Vec<Sha
                         [pc[0] as f32, pc[1] as f32],
                     ],
                     light,
+                    corners,
                     object: *id,
                 },
             ));
@@ -222,7 +354,12 @@ pub fn bed(volume_mm: [f64; 3], grid_mm: f64, cam: &OrbitCamera, vp: Viewport) -
     } else {
         10.0
     };
+    let near = near_distance(cam);
     let mut put = |p: [f64; 3], q: [f64; 3], kind: LineKind| {
+        // a line of the bed that runs behind the camera is drawn as far as the plane in front of it, so a view that is near the bed still has its grid
+        let Some((p, q)) = clip_segment_near(cam, near, p, q) else {
+            return;
+        };
         if let (Some(a), Some(b)) = (cam.project(p, vp), cam.project(q, vp)) {
             drawing.lines.push(ScreenLine {
                 a: [a[0] as f32, a[1] as f32],
@@ -266,15 +403,75 @@ pub fn bed(volume_mm: [f64; 3], grid_mm: f64, cam: &OrbitCamera, vp: Viewport) -
     put([0.0, 0.0, 0.0], [reach, 0.0, 0.0], LineKind::AxisX);
     put([0.0, 0.0, 0.0], [0.0, reach, 0.0], LineKind::AxisY);
     put([0.0, 0.0, 0.0], [0.0, 0.0, reach], LineKind::AxisZ);
-    let screen: Vec<Option<[f64; 2]>> = corners
+    let flat: Vec<[f64; 3]> = corners.iter().map(|c| [c[0], c[1], 0.0]).collect();
+    let screen: Vec<[f32; 2]> = clip_polygon_near(cam, near, &flat)
         .iter()
-        .map(|c| cam.project([c[0], c[1], 0.0], vp))
+        .filter_map(|p| cam.project(*p, vp))
+        .map(|p| [p[0] as f32, p[1] as f32])
         .collect();
-    if screen.iter().all(Option::is_some) {
-        let at = |i: usize| screen[i].map_or([0.0, 0.0], |p| [p[0] as f32, p[1] as f32]);
-        drawing.quad = Some([at(0), at(1), at(2), at(3)]);
+    if screen.len() >= 3 {
+        drawing.quad = Some(screen);
     }
     drawing
+}
+
+/// How far in front of the camera the plane is where what is drawn is cut: a twentieth of the distance to the target, and never under a millimetre.
+fn near_distance(cam: &OrbitCamera) -> f64 {
+    (cam.distance * 0.05).max(1.0)
+}
+
+/// How far in front of the camera a point is, along the direction it looks.
+fn depth_of(cam: &OrbitCamera, p: [f64; 3]) -> f64 {
+    let (forward, _, _) = cam.axes();
+    dot(sub(p, cam.eye()), forward)
+}
+
+/// A segment of the world cut at the plane `near` in front of the camera: whole when both ends are in front of it, shortened to the plane when one is behind, and `None` when both
+/// are.
+pub fn clip_segment_near(
+    cam: &OrbitCamera,
+    near: f64,
+    a: [f64; 3],
+    b: [f64; 3],
+) -> Option<([f64; 3], [f64; 3])> {
+    let (da, db) = (depth_of(cam, a), depth_of(cam, b));
+    if !(da.is_finite() && db.is_finite()) {
+        return None;
+    }
+    if da >= near && db >= near {
+        return Some((a, b));
+    }
+    if da < near && db < near {
+        return None;
+    }
+    let t = (near - da) / (db - da);
+    let cut = [
+        a[0] + (b[0] - a[0]) * t,
+        a[1] + (b[1] - a[1]) * t,
+        a[2] + (b[2] - a[2]) * t,
+    ];
+    Some(if da < near { (cut, b) } else { (a, cut) })
+}
+
+/// A polygon of the world cut at the plane `near` in front of the camera (the part that is in front of it, with the points where it crosses the plane).
+pub fn clip_polygon_near(cam: &OrbitCamera, near: f64, points: &[[f64; 3]]) -> Vec<[f64; 3]> {
+    let mut out = Vec::with_capacity(points.len() + 1);
+    for (i, a) in points.iter().enumerate() {
+        let b = points[(i + 1) % points.len()];
+        let (da, db) = (depth_of(cam, *a), depth_of(cam, b));
+        if da >= near {
+            out.push(*a);
+        }
+        if (da >= near) != (db >= near) && da.is_finite() && db.is_finite() {
+            let t = (near - da) / (db - da);
+            out.push([
+                a[0] + (b[0] - a[0]) * t,
+                a[1] + (b[1] - a[1]) * t,
+                a[2] + (b[2] - a[2]) * t,
+            ]);
+        }
+    }
+    out
 }
 
 /// The parts as a small picture of `size` by `size` pixels, from the corner, filling the picture: the polygons to paint. Nothing when there is nothing to show.
@@ -464,6 +661,71 @@ mod tests {
     }
 
     #[test]
+    fn a_view_near_the_bed_keeps_its_grid_its_edge_and_its_surface() {
+        // the camera is put round a part of 45 mm in the middle of a bed of 256: the far corners of the bed are behind it
+        let volume = [256.0, 256.0, 256.0];
+        let (lo, hi) = focus_box(volume, Some(([105.5, 105.5, 0.0], [150.5, 150.5, 50.0])));
+        let mut cam = OrbitCamera::default();
+        StdView::Corner.apply_to_box(&mut cam, lo, hi, vp());
+        let d = bed(volume, 10.0, &cam, vp());
+        let count = |k: LineKind| d.lines.iter().filter(|l| l.kind == k).count();
+        assert!(
+            count(LineKind::Grid) + count(LineKind::GridMajor) >= 30,
+            "grid"
+        );
+        assert!(count(LineKind::Edge) >= 2, "edge");
+        let q = d.quad.expect("the surface of the bed");
+        assert!((3..=5).contains(&q.len()), "{}", q.len());
+        // and when the whole bed is in view the surface is its four corners
+        let whole = cam_for(volume, StdView::Corner);
+        assert_eq!(bed(volume, 10.0, &whole, vp()).quad.unwrap().len(), 4);
+    }
+
+    #[test]
+    fn a_segment_and_a_polygon_are_cut_at_the_plane_in_front_of_the_camera() {
+        let cam = OrbitCamera {
+            target: [0.0, 0.0, 0.0],
+            distance: 100.0,
+            ..OrbitCamera::default()
+        };
+        let near = near_distance(&cam);
+        assert_eq!(near, 5.0);
+        let eye = cam.eye();
+        let (forward, _, _) = cam.axes();
+        let at = |t: f64| {
+            [
+                eye[0] + forward[0] * t,
+                eye[1] + forward[1] * t,
+                eye[2] + forward[2] * t,
+            ]
+        };
+        // in front: untouched; behind: nothing; across: cut at the plane
+        assert_eq!(
+            clip_segment_near(&cam, near, at(20.0), at(60.0)),
+            Some((at(20.0), at(60.0)))
+        );
+        assert_eq!(clip_segment_near(&cam, near, at(-60.0), at(-20.0)), None);
+        let (a, b) = clip_segment_near(&cam, near, at(-30.0), at(70.0)).unwrap();
+        assert!((depth_of(&cam, a) - near).abs() < 1e-9 && b == at(70.0));
+        let (a, b) = clip_segment_near(&cam, near, at(70.0), at(-30.0)).unwrap();
+        assert!(a == at(70.0) && (depth_of(&cam, b) - near).abs() < 1e-9);
+        assert_eq!(
+            clip_segment_near(&cam, near, [f64::NAN, 0.0, 0.0], at(20.0)),
+            None
+        );
+        // a triangle with one corner behind becomes a quadrilateral all in front, and one that is all behind is nothing
+        let tri = [at(30.0), at(40.0), at(-30.0)];
+        let cut = clip_polygon_near(&cam, near, &tri);
+        assert_eq!(cut.len(), 4);
+        assert!(cut.iter().all(|p| depth_of(&cam, *p) >= near - 1e-9));
+        assert!(clip_polygon_near(&cam, near, &[at(-1.0), at(-2.0), at(-3.0)]).is_empty());
+        assert_eq!(
+            clip_polygon_near(&cam, near, &[at(10.0), at(20.0), at(30.0)]).len(),
+            3
+        );
+    }
+
+    #[test]
     fn a_grid_that_is_too_fine_or_not_a_number_is_held_and_a_bad_bed_gives_nothing() {
         let cam = cam_for([220.0, 220.0, 250.0], StdView::Corner);
         let fine = bed([220.0, 220.0, 250.0], 0.0001, &cam, vp());
@@ -574,6 +836,154 @@ mod tests {
         assert!(thumbnail(&[(1, &Mesh::new())], 96.0).is_empty());
         assert!(thumbnail(&[(1, &a)], 0.0).is_empty());
         assert!(thumbnail(&[(1, &a)], f64::NAN).is_empty());
+    }
+
+    #[test]
+    fn a_cube_keeps_its_edges_sharp_and_a_round_part_is_lit_smoothly() {
+        // the corners of a cube are edges: every corner of a face is lit like the face
+        let cube_part = placed(40.0, [110.0, 110.0]);
+        let cam = cam_for([220.0, 220.0, 250.0], StdView::Corner);
+        for t in shade(&[(1, &cube_part)], &cam, vp()) {
+            for c in t.corners {
+                assert!((c - t.light).abs() < 1e-6, "{c} {}", t.light);
+            }
+        }
+        // a turned part is smooth: the corners of one polygon are lit differently, and the lights stay in the limits
+        let round = crate::demo::goblet();
+        let mut o = PlacedObject::new(1, "g", round);
+        o.pos = [110.0, 110.0];
+        let m = o.world_mesh().unwrap();
+        let tris = shade(&[(1, &m)], &cam, vp());
+        assert!(!tris.is_empty());
+        let mut differ = 0usize;
+        for t in &tris {
+            for c in t.corners {
+                assert!((LIGHT_MIN..=LIGHT_MAX).contains(&c), "{c}");
+            }
+            if t.corners.iter().any(|c| (c - t.corners[0]).abs() > 0.01) {
+                differ += 1;
+            }
+        }
+        assert!(differ * 4 > tris.len(), "{differ} of {}", tris.len());
+        // neighbours on a smooth surface are lit alike at the point they share, so there is no step between facets
+        let pts: Vec<[f64; 3]> = m.vertices.iter().map(|v| v.mm()).collect();
+        let normals = smooth_normals(&pts, &m.triangles);
+        assert_eq!(normals.len(), m.triangles.len());
+        let mut at_point: std::collections::HashMap<u32, Vec<[f64; 3]>> =
+            std::collections::HashMap::new();
+        for (t, n) in m.triangles.iter().zip(&normals) {
+            for k in 0..3 {
+                at_point.entry(t[k]).or_default().push(n[k]);
+            }
+        }
+        let smooth = at_point
+            .values()
+            .filter(|v| v.len() > 1 && v.iter().all(|n| dot(*n, v[0]) > 0.9))
+            .count();
+        assert!(
+            smooth > at_point.len() / 4,
+            "{smooth} of {}",
+            at_point.len()
+        );
+    }
+
+    #[test]
+    fn the_directions_of_the_corners_are_unit_vectors_and_bad_input_gives_zero() {
+        let pts = vec![
+            [0.0, 0.0, 0.0],
+            [10.0, 0.0, 0.0],
+            [0.0, 10.0, 0.0],
+            [10.0, 10.0, 0.0],
+        ];
+        // two triangles of one flat square: every corner looks up
+        let flat = smooth_normals(&pts, &[[0, 1, 2], [1, 3, 2]]);
+        for tri in &flat {
+            for n in tri {
+                assert!((n[2] - 1.0).abs() < 1e-9 && n[0].abs() < 1e-9, "{n:?}");
+            }
+        }
+        // a triangle with no area, one with an index that is not there, and nothing at all
+        let bad = smooth_normals(&pts, &[[0, 0, 1], [0, 1, 9]]);
+        assert_eq!(bad, vec![[[0.0; 3]; 3]; 2]);
+        assert!(smooth_normals(&[], &[]).is_empty());
+        // a fold of 90 degrees is an edge: each face keeps its own direction
+        let fold_pts = vec![
+            [0.0, 0.0, 0.0],
+            [10.0, 0.0, 0.0],
+            [0.0, 10.0, 0.0],
+            [0.0, 0.0, 10.0],
+        ];
+        let fold = smooth_normals(&fold_pts, &[[0, 1, 2], [0, 3, 1]]);
+        assert!((fold[0][0][2] - 1.0).abs() < 1e-9);
+        assert!((fold[1][0][1] - 1.0).abs() < 1e-9, "{:?}", fold[1][0]);
+    }
+
+    #[test]
+    fn a_small_part_gets_a_view_around_it_and_a_big_one_or_none_gets_the_whole_bed() {
+        let volume = [256.0, 256.0, 256.0];
+        let whole = ([0.0; 3], volume);
+        assert_eq!(focus_box(volume, None), whole);
+        // a part as big as half the bed keeps the whole bed in view
+        assert_eq!(
+            focus_box(volume, Some(([60.0, 60.0, 0.0], [200.0, 200.0, 50.0]))),
+            whole
+        );
+        // the goblet of the demonstration: 45 by 45 by 50 on a bed of 256
+        let (lo, hi) = focus_box(volume, Some(([105.5, 105.5, 0.0], [150.5, 150.5, 50.0])));
+        let (w, d) = (hi[0] - lo[0], hi[1] - lo[1]);
+        assert!(
+            (w - d).abs() < 1e-9 && (256.0 * 0.33..160.0).contains(&w),
+            "{w}"
+        );
+        // the part is in the middle of the box and the box starts on the bed
+        assert!(((lo[0] + hi[0]) / 2.0 - 128.0).abs() < 1e-9 && lo[2] == 0.0);
+        assert!(hi[2] >= 50.0);
+        // a speck of a part is held to a third of the bed, and the box never reaches past what the bed is
+        let (l2, h2) = focus_box(volume, Some(([100.0, 100.0, 0.0], [102.0, 102.0, 2.0])));
+        assert!((h2[0] - l2[0] - 256.0 * 0.33).abs() < 1e-9);
+        // numbers that are not numbers give the whole bed
+        for bad in [
+            ([f64::NAN, 0.0, 0.0], [1.0, 1.0, 1.0]),
+            ([0.0, 0.0, 0.0], [f64::INFINITY, 1.0, 1.0]),
+            ([5.0, 5.0, 5.0], [1.0, 1.0, 1.0]),
+        ] {
+            assert_eq!(focus_box(volume, Some(bad)), whole, "{bad:?}");
+        }
+        assert_eq!(
+            focus_box([0.0, 10.0, 10.0], Some(([0.0; 3], [1.0; 3]))),
+            ([0.0; 3], [0.0, 10.0, 10.0])
+        );
+    }
+
+    #[test]
+    fn the_part_is_bigger_on_the_screen_with_the_focus_than_with_the_whole_bed() {
+        let volume = [256.0, 256.0, 256.0];
+        let lo = [105.5, 105.5, 0.0];
+        let hi = [150.5, 150.5, 50.0];
+        let mut whole = OrbitCamera::default();
+        StdView::Corner.apply(&mut whole, volume, vp());
+        let mut near = OrbitCamera::default();
+        let (flo, fhi) = focus_box(volume, Some((lo, hi)));
+        StdView::Corner.apply_to_box(&mut near, flo, fhi, vp());
+        let height = |cam: &OrbitCamera| {
+            let a = cam.project([128.0, 128.0, 0.0], vp()).unwrap();
+            let b = cam.project([128.0, 128.0, 50.0], vp()).unwrap();
+            (a[1] - b[1]).abs()
+        };
+        assert!(
+            height(&near) > height(&whole) * 1.8,
+            "{} {}",
+            height(&near),
+            height(&whole)
+        );
+        // and the part is still inside the view
+        for p in [lo, hi, [lo[0], hi[1], hi[2]], [hi[0], lo[1], 0.0]] {
+            let s = near.project(p, vp()).unwrap();
+            assert!(
+                s[0] > 0.0 && s[0] < 800.0 && s[1] > 0.0 && s[1] < 600.0,
+                "{s:?}"
+            );
+        }
     }
 
     #[test]

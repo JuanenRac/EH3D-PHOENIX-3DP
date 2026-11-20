@@ -8,6 +8,7 @@
 
 use crate::i18n::{fill, Lang, Msg};
 use p3dp_core::TempLimits;
+use p3dp_link::PrinterState;
 use p3dp_server_bridge::{
     stricter, BridgeError, Confirmation, HeaterInfo, JobInfo, LayerInfo, PrinterInfo, QueuePolicy,
     ServerClient,
@@ -29,6 +30,142 @@ pub struct DevicePanel {
     pub done: Option<Done>,
     /// The rules for putting a job in the queue (a repeated name, a full line).
     pub policy: QueuePolicy,
+}
+
+/// The narrowest and the widest a bar of the Device tab is drawn, and its height, in points.
+pub const BAR_MIN_W: f32 = 180.0;
+pub const BAR_MAX_W: f32 = 900.0;
+pub const BAR_H: f32 = 14.0;
+
+/// A gauge of the Device tab: what it measures, the figures that go with it, how full it is from 0 to 1 and, for a heater, where the target is on the same scale.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Bar {
+    pub label: String,
+    pub figures: String,
+    pub fraction: f32,
+    pub marker: Option<f32>,
+    /// One more small line under the bar (the power of a heater, the time left of a print).
+    pub detail: Option<String>,
+}
+
+/// How wide a bar is drawn when `available` points are free: the whole width, held between the narrowest and the widest, so a bar is never a pill and never runs across a huge window.
+pub fn bar_width(available: f32) -> f32 {
+    if !available.is_finite() {
+        return BAR_MIN_W;
+    }
+    available.clamp(BAR_MIN_W, BAR_MAX_W)
+}
+
+/// How full a gauge is: `value` over `scale`, from 0 to 1. A value or a scale that is not a number, a scale of 0 or less and a value of 0 or less give an empty gauge.
+pub fn bar_fraction(value: f64, scale: f64) -> f32 {
+    if !(value.is_finite() && scale.is_finite()) || scale <= 0.0 || value <= 0.0 {
+        return 0.0;
+    }
+    (value / scale).min(1.0) as f32
+}
+
+/// The width of the coloured part of a bar of `width` points that is `fraction` full. A bar that is not empty always shows at least a sliver the height of the bar, so it is not lost.
+pub fn bar_fill_width(width: f32, fraction: f32) -> f32 {
+    if !(width.is_finite() && fraction.is_finite()) || width <= 0.0 || fraction <= 0.0 {
+        return 0.0;
+    }
+    (width * fraction.min(1.0)).max(BAR_H.min(width))
+}
+
+/// The bar of a heater: the scale is the limit the server keeps for it, and the target is marked on that scale.
+pub fn heater_bar(h: &HeaterInfo, lang: Lang) -> Bar {
+    Bar {
+        label: h.name.clone(),
+        figures: format!(
+            "{:.0} / {:.0} C (max {:.0})",
+            h.current_c, h.target_c, h.limit_c
+        ),
+        fraction: bar_fraction(h.current_c, h.limit_c),
+        marker: (h.target_c > 0.0).then(|| bar_fraction(h.target_c, h.limit_c)),
+        detail: (h.power_pct.is_finite() && h.power_pct >= 0.0)
+            .then(|| fill(Msg::DevicePower.tr(lang), &[&format!("{:.0}", h.power_pct)])),
+    }
+}
+
+/// The bar of the layer a print is at.
+pub fn layer_bar(l: &LayerInfo, lang: Lang) -> Bar {
+    let left = l.eta_s.filter(|e| e.is_finite() && *e >= 0.0);
+    Bar {
+        label: Msg::PanelLayers.tr(lang).to_string(),
+        figures: format!(
+            "{}/{} - {:.1} mm - {:.0} %",
+            l.layer, l.layers, l.z_mm, l.progress_pct
+        ),
+        fraction: bar_fraction(l.progress_pct, 100.0),
+        marker: None,
+        detail: left.map(|e| {
+            fill(
+                Msg::DeviceTimeLeft.tr(lang),
+                &[&crate::preview::format_duration(e)],
+            )
+        }),
+    }
+}
+
+/// The bars of a printer that is read with no server (the one that lives in memory): each heater against its target, and the job, if there is one, against 100 %.
+pub fn state_bars(st: &PrinterState, lang: Lang) -> Vec<Bar> {
+    let mut out: Vec<Bar> = st
+        .temperatures
+        .iter()
+        .map(|t| {
+            // the scale is a little over the target, so the bar of a heater that has got there is nearly full; with no target it is the usual top of a heater
+            let scale = if t.target > 0.0 {
+                t.target * 1.15
+            } else {
+                250.0
+            };
+            Bar {
+                label: t.zone.name().to_string(),
+                figures: format!("{:.0} / {:.0} C", t.actual, t.target),
+                fraction: bar_fraction(t.actual, scale),
+                marker: (t.target > 0.0).then(|| bar_fraction(t.target, scale)),
+                detail: None,
+            }
+        })
+        .collect();
+    if let Some(j) = &st.job {
+        out.push(Bar {
+            label: j.file.clone(),
+            figures: format!("{:.0} %", j.progress_pct),
+            fraction: bar_fraction(j.progress_pct, 100.0),
+            marker: None,
+            detail: j.remaining_s.map(|r| {
+                fill(
+                    Msg::DeviceTimeLeft.tr(lang),
+                    &[&crate::preview::format_duration(r as f64)],
+                )
+            }),
+        });
+    }
+    out
+}
+
+/// The bar of a job of the queue: its name and state above, how far it is, and its message when it has one.
+pub fn job_bar(j: &JobInfo) -> Bar {
+    Bar {
+        label: j.name.clone(),
+        figures: j.state.clone(),
+        fraction: bar_fraction(j.percent as f64, 100.0),
+        marker: None,
+        detail: Some(if j.message.trim().is_empty() {
+            format!("{} %", j.percent)
+        } else {
+            format!("{} % - {}", j.percent, j.message.trim())
+        }),
+    }
+}
+
+/// How long ago the machines were read, in words (`Last reading: 3 s ago`).
+pub fn read_age_text(seconds: u64, lang: Lang) -> String {
+    fill(
+        Msg::DeviceReadAgo.tr(lang),
+        &[&crate::preview::format_duration(seconds as f64)],
+    )
 }
 
 /// A thing that was done.
@@ -271,19 +408,44 @@ impl DevicePanel {
             .map(|e| e.text(crate::server_ui::client_lang(lang)))
     }
 
+    /// The one line about the machine chosen: its name, its model and its state.
+    pub fn headline(&self) -> Option<String> {
+        let m = self.machine()?;
+        let state = if m.latched {
+            "latched".to_string()
+        } else if !m.online {
+            "offline".to_string()
+        } else {
+            m.state.clone()
+        };
+        Some(format!("{} ({}): {state}", m.name, m.model))
+    }
+
+    /// The bars of the machine chosen: one for each heater and, when a print is running, one for the layer. Each carries its label and its figures, so the window draws them as they are.
+    pub fn bars(&self, lang: Lang) -> Vec<Bar> {
+        let mut out: Vec<Bar> = self.heaters.iter().map(|h| heater_bar(h, lang)).collect();
+        if let Some(l) = &self.layer {
+            out.push(layer_bar(l, lang));
+        }
+        out
+    }
+
+    /// The time left of the print, in words, when the server gives an estimate.
+    pub fn time_left_text(&self, lang: Lang) -> Option<String> {
+        let eta = self.layer.as_ref()?.eta_s?;
+        if !eta.is_finite() || eta < 0.0 {
+            return None;
+        }
+        Some(fill(
+            Msg::DeviceTimeLeft.tr(lang),
+            &[&crate::preview::format_duration(eta)],
+        ))
+    }
+
     /// The lines under the list of machines: the state of the one chosen, its heaters and the layer.
     pub fn lines(&self, lang: Lang) -> Vec<String> {
         let mut out = Vec::new();
-        if let Some(m) = self.machine() {
-            let state = if m.latched {
-                "latched".to_string()
-            } else if !m.online {
-                "offline".to_string()
-            } else {
-                m.state.clone()
-            };
-            out.push(format!("{} ({}): {state}", m.name, m.model));
-        }
+        out.extend(self.headline());
         for h in &self.heaters {
             out.push(format!(
                 "{}: {:.0} / {:.0} C (max {:.0})",
@@ -519,5 +681,192 @@ mod tests {
             d.error
         );
         assert!(d.error_text(Lang::Es).is_some());
+    }
+
+    #[test]
+    fn a_bar_takes_the_width_there_is_between_its_narrowest_and_its_widest() {
+        assert_eq!(bar_width(50.0), BAR_MIN_W);
+        assert_eq!(bar_width(f32::NAN), BAR_MIN_W);
+        assert_eq!(bar_width(f32::INFINITY), BAR_MIN_W);
+        assert_eq!(bar_width(500.0), 500.0);
+        assert_eq!(bar_width(5000.0), BAR_MAX_W);
+        // a bar that is not empty is never thinner than its height, and a full one fills the track
+        assert_eq!(bar_fill_width(400.0, 0.0), 0.0);
+        assert_eq!(bar_fill_width(400.0, f32::NAN), 0.0);
+        assert_eq!(bar_fill_width(400.0, 0.001), BAR_H);
+        assert_eq!(bar_fill_width(400.0, 1.0), 400.0);
+        assert_eq!(bar_fill_width(400.0, 7.0), 400.0);
+        assert_eq!(bar_fill_width(5.0, 0.5), 5.0);
+        assert_eq!(bar_fill_width(0.0, 0.5), 0.0);
+    }
+
+    #[test]
+    fn a_gauge_is_full_by_value_over_scale_and_nonsense_leaves_it_empty() {
+        assert_eq!(bar_fraction(150.0, 300.0), 0.5);
+        assert_eq!(bar_fraction(300.0, 300.0), 1.0);
+        assert_eq!(bar_fraction(900.0, 300.0), 1.0);
+        for (v, s) in [
+            (-5.0, 300.0),
+            (0.0, 300.0),
+            (10.0, 0.0),
+            (10.0, -1.0),
+            (f64::NAN, 300.0),
+            (10.0, f64::NAN),
+            (10.0, f64::INFINITY),
+        ] {
+            assert_eq!(bar_fraction(v, s), 0.0, "{v} over {s}");
+        }
+    }
+
+    #[test]
+    fn the_bars_of_a_machine_say_each_thing_once_with_the_target_on_the_scale() {
+        let (mut c, _sim) = client(TOKEN);
+        let mut d = DevicePanel::new();
+        d.refresh(Some(&mut c));
+        let bars = d.bars(Lang::En);
+        assert!(!bars.is_empty());
+        for b in &bars {
+            assert!(!b.label.is_empty() && !b.figures.is_empty());
+            assert!((0.0..=1.0).contains(&b.fraction));
+            // the label is not repeated in the figures, which is what made the text appear twice
+            assert!(!b.figures.starts_with(&b.label), "{b:?}");
+        }
+        // the machine line holds no heater and no layer: those are the bars
+        let head = d.headline().unwrap();
+        assert!(d.heaters.iter().all(|h| !head.contains(&h.name)));
+        let h = HeaterInfo {
+            name: "hotend".to_string(),
+            current_c: 150.0,
+            target_c: 210.0,
+            power_pct: 40.0,
+            limit_c: 300.0,
+        };
+        let b = heater_bar(&h, Lang::En);
+        assert_eq!(b.fraction, 0.5);
+        assert_eq!(b.marker, Some(0.7));
+        assert_eq!(b.figures, "150 / 210 C (max 300)");
+        assert_eq!(b.detail.as_deref(), Some("Power: 40 %"));
+        let off = heater_bar(
+            &HeaterInfo {
+                target_c: 0.0,
+                ..h.clone()
+            },
+            Lang::Es,
+        );
+        assert_eq!(off.marker, None);
+        assert_eq!(off.detail.as_deref(), Some("Potencia: 40 %"));
+        let l = LayerInfo {
+            layer: 12,
+            layers: 100,
+            z_mm: 2.4,
+            progress_pct: 12.0,
+            eta_s: Some(3725.0),
+        };
+        let lb = layer_bar(&l, Lang::Pt);
+        assert_eq!(lb.label, "Camadas");
+        assert_eq!(lb.figures, "12/100 - 2.4 mm - 12 %");
+        assert_eq!(lb.fraction, 0.12);
+        assert_eq!(lb.detail.as_deref(), Some("Tempo restante: 1 h 02 min"));
+        let no_eta = layer_bar(&LayerInfo { eta_s: None, ..l }, Lang::En);
+        assert_eq!(no_eta.detail, None);
+    }
+
+    #[test]
+    fn a_job_of_the_queue_has_its_bar_with_the_share_done_and_its_message() {
+        let mut j = JobInfo {
+            id: "j1".to_string(),
+            machine: "p1s-1".to_string(),
+            name: "benchy".to_string(),
+            state: "running".to_string(),
+            percent: 40,
+            message: String::new(),
+            position: None,
+        };
+        let b = job_bar(&j);
+        assert_eq!(
+            (b.label.as_str(), b.figures.as_str()),
+            ("benchy", "running")
+        );
+        assert_eq!(b.fraction, 0.4);
+        assert_eq!(b.detail.as_deref(), Some("40 %"));
+        j.message = " warming up ".to_string();
+        j.percent = 250;
+        let b = job_bar(&j);
+        assert_eq!(b.fraction, 1.0, "a share past the end is the end");
+        assert_eq!(b.detail.as_deref(), Some("250 % - warming up"));
+    }
+
+    #[test]
+    fn the_printer_that_lives_in_memory_has_a_bar_for_each_heater_and_for_the_job() {
+        let cat = p3dp_profiles::Catalog::builtin().unwrap();
+        let st = crate::app_state::demo_device(cat.find("prusa-mk4s").unwrap()).unwrap();
+        let bars = state_bars(&st, Lang::En);
+        assert_eq!(
+            bars.len(),
+            st.temperatures.len() + usize::from(st.job.is_some())
+        );
+        assert!(bars.len() >= 2);
+        for b in &bars {
+            assert!(!b.label.is_empty() && !b.figures.is_empty());
+            assert!((0.0..=1.0).contains(&b.fraction), "{b:?}");
+        }
+        // a heater that is at its target is nearly full and has its target marked on the bar
+        let hot = PrinterState {
+            temperatures: vec![p3dp_link::Temperature {
+                zone: p3dp_core::machine::Zone::Nozzle,
+                actual: 200.0,
+                target: 200.0,
+            }],
+            job: None,
+            ..st.clone()
+        };
+        let b = &state_bars(&hot, Lang::En)[0];
+        assert!(
+            b.fraction > 0.8 && b.marker.is_some_and(|m| m > 0.8 && m <= 1.0),
+            "{b:?}"
+        );
+        assert_eq!(b.figures, "200 / 200 C");
+        // a printer that is cold has no marker
+        let cold = PrinterState {
+            temperatures: vec![p3dp_link::Temperature {
+                zone: p3dp_core::machine::Zone::Bed,
+                actual: 21.0,
+                target: 0.0,
+            }],
+            job: None,
+            ..st
+        };
+        assert_eq!(state_bars(&cold, Lang::En)[0].marker, None);
+    }
+
+    #[test]
+    fn the_time_left_and_the_age_of_the_reading_are_told_in_every_language() {
+        let mut d = DevicePanel::new();
+        assert!(d.time_left_text(Lang::En).is_none());
+        d.layer = Some(LayerInfo {
+            layer: 1,
+            layers: 2,
+            z_mm: 0.2,
+            progress_pct: 50.0,
+            eta_s: Some(3725.0),
+        });
+        assert_eq!(d.time_left_text(Lang::En).unwrap(), "Time left: 1 h 02 min");
+        for l in Lang::ALL {
+            let t = d.time_left_text(l).unwrap();
+            assert!(
+                t.contains("1 h 02 min") && !t.contains("{}"),
+                "{}",
+                l.code()
+            );
+            assert!(read_age_text(3, l).contains("3 s"), "{}", l.code());
+        }
+        assert_eq!(read_age_text(3, Lang::En), "Last reading: 3 s ago");
+        assert_eq!(read_age_text(3, Lang::Pt), "Última leitura: há 3 s");
+        for bad in [None, Some(f64::NAN), Some(-1.0)] {
+            if let Some(l) = d.layer.as_mut() {
+                l.eta_s = bad;
+            }
+            assert!(d.time_left_text(Lang::En).is_none());
+        }
     }
 }

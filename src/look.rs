@@ -120,6 +120,15 @@ pub fn scaled(c: Rgb, k: f32) -> Rgb {
     c.map(|v| (f32::from(v) * k).round().clamp(0.0, 255.0) as u8)
 }
 
+/// The height, in points, of a box that scrolls inside a page of `available` points: under half of what there is, never under 120 (it would show nothing) and never over 360 (a
+/// long text would push everything else out of sight). A height that is not a number gives the least.
+pub fn scroll_box_height(available: f32) -> f32 {
+    if !available.is_finite() {
+        return 120.0;
+    }
+    (available * 0.45).clamp(120.0, 360.0)
+}
+
 /// A text cut into lines of at most `max_chars` letters: at a space when there is one in reach, in the middle of a word when there is none (a language with no spaces). Lines
 /// are never empty, and no letter is lost or repeated.
 pub fn wrap_lines(text: &str, max_chars: usize) -> Vec<String> {
@@ -405,6 +414,38 @@ mod tests {
             assert_ne!(p.model, p.selected);
         }
         assert_ne!(Palette::phoenix(), Palette::daylight());
+    }
+
+    #[test]
+    fn the_track_and_the_fill_of_a_bar_can_be_told_from_the_ground_in_both_looks() {
+        for theme in Theme::ALL {
+            let p = theme.palette();
+            assert!(contrast(p.grid, p.panel) >= 1.5, "{} track", theme.name());
+            assert!(
+                contrast(p.grid, p.background) >= 1.5,
+                "{} track",
+                theme.name()
+            );
+            assert!(contrast(p.accent, p.grid) >= 2.0, "{} fill", theme.name());
+            // the text over the ground of a page is readable, and the text that names a bar sits on that ground
+            assert!(contrast(p.text, p.panel) >= 7.0, "{} text", theme.name());
+            assert!(contrast(p.dim, p.panel) >= 4.5, "{} dim", theme.name());
+        }
+    }
+
+    #[test]
+    fn a_box_that_scrolls_is_between_a_third_of_a_page_and_a_screenful() {
+        assert_eq!(scroll_box_height(f32::NAN), 120.0);
+        assert_eq!(scroll_box_height(f32::INFINITY), 120.0);
+        assert_eq!(scroll_box_height(100.0), 120.0);
+        assert_eq!(scroll_box_height(600.0), 270.0);
+        assert_eq!(scroll_box_height(5000.0), 360.0);
+        let mut last = 0.0;
+        for a in (0..3000).step_by(50) {
+            let h = scroll_box_height(a as f32);
+            assert!(h >= last && (120.0..=360.0).contains(&h));
+            last = h;
+        }
     }
 
     #[test]

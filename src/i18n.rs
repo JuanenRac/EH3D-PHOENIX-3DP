@@ -259,10 +259,30 @@ pub enum Msg {
     PartsCount,
     StalePlan,
     SettingsTitle,
+    NextTab,
+    PreviousTab,
+    LayerUp,
+    LayerDown,
+    SearchHint,
+    OpenModelHint,
+    SaveToLabel,
+    OpenFromLabel,
+    SavePathHint,
+    OpenPathHint,
+    EstimatesPending,
+    ViewPeekInside,
+    DeviceTemperatures,
+    DevicePrintTitle,
+    DeviceNoPrint,
+    DeviceNoHeaters,
+    DeviceReadAgo,
+    DeviceTimeLeft,
+    DevicePower,
+    SettingsFileTitle,
 }
 
 impl Msg {
-    pub const ALL: [Msg; 185] = [
+    pub const ALL: [Msg; 205] = [
         Msg::TabPrepare,
         Msg::TabPreview,
         Msg::TabDevice,
@@ -448,6 +468,26 @@ impl Msg {
         Msg::PartsCount,
         Msg::StalePlan,
         Msg::SettingsTitle,
+        Msg::NextTab,
+        Msg::PreviousTab,
+        Msg::LayerUp,
+        Msg::LayerDown,
+        Msg::SearchHint,
+        Msg::OpenModelHint,
+        Msg::SaveToLabel,
+        Msg::OpenFromLabel,
+        Msg::SavePathHint,
+        Msg::OpenPathHint,
+        Msg::EstimatesPending,
+        Msg::ViewPeekInside,
+        Msg::DeviceTemperatures,
+        Msg::DevicePrintTitle,
+        Msg::DeviceNoPrint,
+        Msg::DeviceNoHeaters,
+        Msg::DeviceReadAgo,
+        Msg::DeviceTimeLeft,
+        Msg::DevicePower,
+        Msg::SettingsFileTitle,
     ];
 
     /// The texts in the order English, Spanish, German, French, Italian, Japanese, Chinese, Portuguese (Portugal).
@@ -647,6 +687,26 @@ impl Msg {
             Msg::PartsCount => ["Parts: {}", "Piezas: {}", "Teile: {}", "Pièces : {}", "Pezzi: {}", "部品: {}", "零件：{}", "Peças: {}"],
             Msg::StalePlan => ["The bed changed after this slice: slice again", "La cama cambió después de este laminado: lamina de nuevo", "Das Druckbett wurde nach diesem Slicing geändert: erneut slicen", "Le plateau a changé après cette découpe : découpez à nouveau", "Il piano è cambiato dopo questa elaborazione: elabora di nuovo", "このスライスの後にベッドが変更されました。もう一度スライスしてください", "此次切片之后热床已更改：请重新切片", "A mesa mudou depois desta fatiagem: fatie de novo"],
             Msg::SettingsTitle => ["Window settings", "Ajustes de la ventana", "Fenstereinstellungen", "Réglages de la fenêtre", "Impostazioni della finestra", "ウィンドウの設定", "窗口设置", "Definições da janela"],
+            Msg::NextTab => ["Next tab", "Pestaña siguiente", "Nächster Tab", "Onglet suivant", "Scheda successiva", "次のタブ", "下一个标签页", "Separador seguinte"],
+            Msg::PreviousTab => ["Previous tab", "Pestaña anterior", "Vorheriger Tab", "Onglet précédent", "Scheda precedente", "前のタブ", "上一个标签页", "Separador anterior"],
+            Msg::LayerUp => ["Layer up", "Capa arriba", "Schicht nach oben", "Couche au-dessus", "Strato su", "上のレイヤー", "上一层", "Camada acima"],
+            Msg::LayerDown => ["Layer down", "Capa abajo", "Schicht nach unten", "Couche en dessous", "Strato giù", "下のレイヤー", "下一层", "Camada abaixo"],
+            Msg::SearchHint => ["Part of a printer name", "Parte del nombre de la impresora", "Teil eines Druckernamens", "Partie du nom d'une imprimante", "Parte del nome di una stampante", "プリンター名の一部", "打印机名称的一部分", "Parte do nome de uma impressora"],
+            Msg::OpenModelHint => ["Path of a model file (STL, OBJ or 3MF)", "Ruta de un fichero de modelo (STL, OBJ o 3MF)", "Pfad einer Modelldatei (STL, OBJ oder 3MF)", "Chemin d'un fichier de modèle (STL, OBJ ou 3MF)", "Percorso di un file di modello (STL, OBJ o 3MF)", "モデルファイルのパス(STL、OBJ、3MF)", "模型文件路径(STL、OBJ 或 3MF)", "Caminho de um ficheiro de modelo (STL, OBJ ou 3MF)"],
+            Msg::SaveToLabel => ["Save the project to", "Guardar el proyecto en", "Projekt speichern unter", "Enregistrer le projet dans", "Salva il progetto in", "プロジェクトの保存先", "项目保存到", "Guardar o projeto em"],
+            Msg::OpenFromLabel => ["Open a project from", "Abrir un proyecto desde", "Projekt öffnen aus", "Ouvrir un projet depuis", "Apri un progetto da", "プロジェクトを開く場所", "从此处打开项目", "Abrir um projeto de"],
+            Msg::SavePathHint => ["Name of the file to write, as project.3mf", "Nombre del fichero que se escribe, como proyecto.3mf", "Name der zu schreibenden Datei, etwa projekt.3mf", "Nom du fichier à écrire, comme projet.3mf", "Nome del file da scrivere, come progetto.3mf", "書き込むファイル名(例: project.3mf)", "要写入的文件名,例如 project.3mf", "Nome do ficheiro a escrever, como projeto.3mf"],
+            Msg::OpenPathHint => ["Path of a project file to read", "Ruta de un fichero de proyecto que leer", "Pfad einer Projektdatei zum Lesen", "Chemin d'un fichier de projet à lire", "Percorso di un file di progetto da leggere", "読み込むプロジェクトファイルのパス", "要读取的项目文件路径", "Caminho de um ficheiro de projeto a ler"],
+            Msg::EstimatesPending => ["Slice to see the time and the material", "Lamina para ver el tiempo y el material", "Slicen Sie, um Zeit und Material zu sehen", "Découpez pour voir la durée et la matière", "Elabora per vedere tempo e materiale", "スライスすると時間と材料が表示されます", "切片后可查看时间与耗材", "Fatie para ver o tempo e o material"],
+            Msg::ViewPeekInside => ["See inside (hide the skins)", "Ver el interior (ocultar las cubiertas)", "Innen ansehen (Außenhaut ausblenden)", "Voir l'intérieur (masquer les peaux)", "Vedi l'interno (nascondi le pelli)", "内部を見る(外殻を隠す)", "查看内部(隐藏表层)", "Ver o interior (ocultar as coberturas)"],
+            Msg::DeviceTemperatures => ["Temperatures", "Temperaturas", "Temperaturen", "Températures", "Temperature", "温度", "温度", "Temperaturas"],
+            Msg::DevicePrintTitle => ["Print", "Impresión", "Druck", "Impression", "Stampa", "印刷", "打印", "Impressão"],
+            Msg::DeviceNoPrint => ["Nothing is printing now", "No se está imprimiendo nada", "Es wird gerade nichts gedruckt", "Aucune impression en cours", "Nessuna stampa in corso", "現在印刷中のジョブはありません", "当前没有在打印", "Não está a imprimir nada neste momento"],
+            Msg::DeviceNoHeaters => ["No temperatures reported (the machine may be offline)", "No hay temperaturas (la máquina puede estar sin conexión)", "Keine Temperaturen gemeldet (die Maschine ist evtl. offline)", "Aucune température reçue (la machine est peut-être hors ligne)", "Nessuna temperatura ricevuta (la macchina potrebbe essere offline)", "温度の報告がありません(マシンがオフラインの可能性があります)", "未收到温度数据(设备可能已离线)", "Sem temperaturas (a máquina pode estar sem ligação)"],
+            Msg::DeviceReadAgo => ["Last reading: {} ago", "Última lectura: hace {}", "Letzte Messung: vor {}", "Dernière lecture : il y a {}", "Ultima lettura: {} fa", "最終読み取り: {}前", "上次读取:{}前", "Última leitura: há {}"],
+            Msg::DeviceTimeLeft => ["Time left: {}", "Tiempo restante: {}", "Verbleibende Zeit: {}", "Temps restant : {}", "Tempo rimanente: {}", "残り時間: {}", "剩余时间:{}", "Tempo restante: {}"],
+            Msg::DevicePower => ["Power: {} %", "Potencia: {} %", "Leistung: {} %", "Puissance : {} %", "Potenza: {} %", "出力: {} %", "功率:{} %", "Potência: {} %"],
+            Msg::SettingsFileTitle => ["Settings file (read only)", "Fichero de ajustes (solo lectura)", "Einstellungsdatei (nur lesen)", "Fichier de réglages (lecture seule)", "File delle impostazioni (sola lettura)", "設定ファイル(読み取り専用)", "设置文件(只读)", "Ficheiro de definições (só de leitura)"],
         }
     }
 
@@ -867,7 +927,7 @@ mod tests {
         seen.sort_by_key(|m| format!("{m:?}"));
         seen.dedup();
         assert_eq!(seen.len(), Msg::ALL.len());
-        assert_eq!(Msg::ALL.len(), 185);
+        assert_eq!(Msg::ALL.len(), 205);
     }
 
     #[test]
@@ -1012,13 +1072,14 @@ mod tests {
     fn the_texts_of_the_studio_window_have_their_places_in_every_language_and_the_words_of_portugal(
     ) {
         let new = &Msg::ALL[123..];
-        assert_eq!(new.len(), 62);
+        assert_eq!(new.len(), 82);
         let places = |m: Msg| match m {
             Msg::WarnOutOfBed
             | Msg::WarnOverlap
             | Msg::WarnLeftOut
             | Msg::SliceFinished
             | Msg::PartsCount => 1,
+            Msg::DeviceReadAgo | Msg::DeviceTimeLeft | Msg::DevicePower => 1,
             Msg::QueueRules => 2,
             Msg::BedSize => 3,
             _ => 0,

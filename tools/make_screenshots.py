@@ -55,7 +55,8 @@ def take(binary: Path, window: str, lang: str, size: str, out: Path) -> None:
         args = [str(exe), "gui", "--shot", "raw.png", "--window", window, "--demo", "--lang", lang,
                 "--size", size, "--wait", "12"]
         if window == "preview":
-            args.append("--slice")
+            # look inside, so the picture shows the walls and the infill and not only the top skin
+            args += ["--slice", "--peek"]
         done = subprocess.run(args, cwd=work, env=env, capture_output=True, text=True, timeout=300,
                               creationflags=0x08000000 if os.name == "nt" else 0)
         raw = work / "raw.png"

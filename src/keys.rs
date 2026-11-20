@@ -2,7 +2,7 @@
 //! of its own, and the changes a person writes in the settings file (`key_open = Ctrl+Alt+O`, `key_slice = none`). Two actions on one chord is an error that names both, a chord
 //! that cannot be read is an error that names the line, and nothing is guessed. `Ctrl` is the command key on a Mac.
 
-use crate::i18n::Msg;
+use crate::i18n::{Lang, Msg};
 
 /// What a shortcut can do.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -78,7 +78,8 @@ impl Action {
             Action::Open => Msg::Open,
             Action::Save => Msg::Save,
             Action::Slice => Msg::SliceNow,
-            Action::NextTab | Action::PreviousTab => Msg::TabPrepare,
+            Action::NextTab => Msg::NextTab,
+            Action::PreviousTab => Msg::PreviousTab,
             Action::GoPrepare => Msg::TabPrepare,
             Action::GoPreview => Msg::TabPreview,
             Action::GoDevice => Msg::TabDevice,
@@ -86,7 +87,8 @@ impl Action {
             Action::Refresh => Msg::Refresh,
             Action::ResetView => Msg::ViewReset,
             Action::FitView => Msg::ViewFit,
-            Action::LayerUp | Action::LayerDown => Msg::PanelLayers,
+            Action::LayerUp => Msg::LayerUp,
+            Action::LayerDown => Msg::LayerDown,
             Action::EmergencyStop => Msg::EmergencyStop,
             Action::ShowShortcuts => Msg::ShortcutsTitle,
         }
@@ -332,6 +334,21 @@ impl Scheme {
             .collect()
     }
 
+    /// The list of shortcuts as lines of text in a language, `Open: Ctrl+O`: the name of each action is its own (no two actions share a name) and an action with no chord shows `-`.
+    pub fn rows_text(&self, lang: Lang) -> Vec<String> {
+        self.rows()
+            .into_iter()
+            .map(|(a, chord)| {
+                let chord = if chord.is_empty() {
+                    "-".to_string()
+                } else {
+                    chord
+                };
+                format!("{}: {chord}", a.msg().tr(lang))
+            })
+            .collect()
+    }
+
     /// The lines of the changes against the scheme it began from, as they are written in the settings file.
     pub fn changes(&self) -> Vec<(String, String)> {
         let base = Scheme::of(self.base);
@@ -490,5 +507,42 @@ mod tests {
                 assert!(!a.msg().tr(l).is_empty());
             }
         }
+    }
+
+    #[test]
+    fn no_two_actions_have_the_same_name_in_the_list_of_shortcuts_in_any_language() {
+        for l in Lang::ALL {
+            let mut names: Vec<&str> = Action::ALL.iter().map(|a| a.msg().tr(l)).collect();
+            names.sort_unstable();
+            let before = names.len();
+            names.dedup();
+            assert_eq!(
+                names.len(),
+                before,
+                "two actions share a name in {}",
+                l.code()
+            );
+        }
+        assert_eq!(Action::NextTab.msg().tr(Lang::En), "Next tab");
+        assert_eq!(Action::PreviousTab.msg().tr(Lang::En), "Previous tab");
+        assert_eq!(Action::PreviousTab.msg().tr(Lang::Pt), "Separador anterior");
+        assert_eq!(Action::LayerDown.msg().tr(Lang::En), "Layer down");
+    }
+
+    #[test]
+    fn the_lines_of_the_list_show_the_name_and_the_chord_and_a_dash_for_no_chord() {
+        let changes = vec![("refresh".to_string(), "none".to_string())];
+        let s = Scheme::with_changes(SchemeId::Family, &changes).unwrap();
+        let en = s.rows_text(Lang::En);
+        assert_eq!(en.len(), 16);
+        assert!(en.contains(&"Open: Ctrl+O".to_string()));
+        assert!(en.contains(&"Previous tab: Ctrl+Shift+Tab".to_string()));
+        assert!(en.contains(&"Next tab: Ctrl+Tab".to_string()));
+        assert!(en.contains(&"Prepare: Ctrl+1".to_string()));
+        assert!(en.contains(&"Refresh: -".to_string()));
+        let mut seen = en.clone();
+        seen.sort();
+        seen.dedup();
+        assert_eq!(seen.len(), 16, "no line twice");
     }
 }
