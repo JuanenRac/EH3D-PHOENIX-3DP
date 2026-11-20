@@ -99,7 +99,7 @@ pub fn parse_window_args(args: &[String]) -> Result<WindowArgs, String> {
             "--window" => {
                 let text = iter.next().ok_or("--window needs the name of a tab")?;
                 parsed.window = Some(
-                    Tab::from_key(text).ok_or("--window is prepare, preview, device or project")?,
+                    Tab::from_key(text).ok_or("--window is prepare, preview, device or project (or the name of the tab in a language of the program, as preparar, vista previa or dispositivo)")?,
                 );
             }
             "--open" => {
@@ -140,8 +140,8 @@ pub fn parse_window_args(args: &[String]) -> Result<WindowArgs, String> {
     if parsed.shot.is_none() && (parsed.window.is_some() || parsed.slice || parsed.demo) {
         return Err("--window, --slice and --demo need --shot".to_owned());
     }
-    if parsed.slice && parsed.model.is_none() {
-        return Err("--slice needs a model: give --open".to_owned());
+    if parsed.slice && parsed.model.is_none() && !parsed.demo {
+        return Err("--slice needs a model: give --open or --demo".to_owned());
     }
     Ok(parsed)
 }
@@ -265,6 +265,19 @@ mod tests {
         assert!(w.slice && w.demo);
         assert_eq!(w.lang, Some(Lang::Pt));
         assert_eq!(w.config, Some(PathBuf::from("my.cfg")));
+    }
+
+    #[test]
+    fn a_demonstration_is_a_model_to_slice_and_the_name_of_a_tab_in_any_language_is_read() {
+        let a =
+            parse_window_args(&args("--shot a.png --slice --demo --window vista-previa")).unwrap();
+        assert!(a.slice && a.demo);
+        assert_eq!(a.window, Some(Tab::Preview));
+        let b = parse_window_args(&args("--shot b.png --window dispositivo --demo")).unwrap();
+        assert_eq!(b.window, Some(Tab::Device));
+        let c = parse_window_args(&args("--shot c.png --window preparar --demo")).unwrap();
+        assert_eq!(c.window, Some(Tab::Prepare));
+        assert!(parse_window_args(&args("--shot a.png --slice")).is_err());
     }
 
     #[test]

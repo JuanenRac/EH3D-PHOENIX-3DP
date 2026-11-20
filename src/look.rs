@@ -19,6 +19,53 @@ pub struct Palette {
     pub danger: Rgb,
     pub line: Rgb,
     pub plate: Rgb,
+    /// The surface of the bed in the 3D view and the lines of its grid.
+    pub bed: Rgb,
+    pub grid: Rgb,
+    /// The colour of a part on the bed, and of the part that is selected.
+    pub model: Rgb,
+    pub selected: Rgb,
+    /// The ground of the side panels and of the bars, a step away from the ground of the work.
+    pub bar: Rgb,
+}
+
+/// The two looks of the window.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Theme {
+    #[default]
+    Dark,
+    Light,
+}
+
+impl Theme {
+    pub const ALL: [Theme; 2] = [Theme::Dark, Theme::Light];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Theme::Dark => "dark",
+            Theme::Light => "light",
+        }
+    }
+
+    pub fn from_name(text: &str) -> Option<Theme> {
+        let t = text.trim().to_ascii_lowercase();
+        Theme::ALL.into_iter().find(|x| x.name() == t)
+    }
+
+    pub fn palette(self) -> Palette {
+        match self {
+            Theme::Dark => Palette::phoenix(),
+            Theme::Light => Palette::daylight(),
+        }
+    }
+
+    /// The other look.
+    pub fn toggled(self) -> Theme {
+        match self {
+            Theme::Dark => Theme::Light,
+            Theme::Light => Theme::Dark,
+        }
+    }
 }
 
 impl Palette {
@@ -34,8 +81,43 @@ impl Palette {
             danger: [0xff, 0x54, 0x70],
             line: [0x4d, 0xd0, 0xe1],
             plate: [0x6a, 0x76, 0x88],
+            bed: [0x2a, 0x26, 0x22],
+            grid: [0x4a, 0x44, 0x3e],
+            model: [0xd9, 0x9a, 0x6c],
+            selected: [0xff, 0xb3, 0x47],
+            bar: [0x1c, 0x19, 0x17],
         }
     }
+
+    /// The light look: a warm paper ground with a darker flame accent, so that the text and the colours keep their contrast.
+    pub const fn daylight() -> Palette {
+        Palette {
+            background: [0xf4, 0xf0, 0xea],
+            panel: [0xfb, 0xf8, 0xf4],
+            text: [0x22, 0x1e, 0x1a],
+            dim: [0x5c, 0x52, 0x48],
+            accent: [0xb3, 0x3a, 0x12],
+            good: [0x2d, 0x6a, 0x12],
+            danger: [0xb0, 0x1c, 0x3c],
+            line: [0x0b, 0x6a, 0x7a],
+            plate: [0x6a, 0x76, 0x88],
+            bed: [0xdd, 0xd6, 0xcc],
+            grid: [0xb8, 0xae, 0xa0],
+            model: [0xc0, 0x6a, 0x3a],
+            selected: [0xe0, 0x8a, 0x00],
+            bar: [0xe9, 0xe3, 0xda],
+        }
+    }
+}
+
+/// A colour made lighter or darker by a factor: 1 leaves it as it is, less is darker, and every channel stays between 0 and 255. A factor that is not a number leaves the colour.
+pub fn scaled(c: Rgb, k: f32) -> Rgb {
+    let k = if k.is_finite() {
+        k.clamp(0.0, 2.0)
+    } else {
+        1.0
+    };
+    c.map(|v| (f32::from(v) * k).round().clamp(0.0, 255.0) as u8)
 }
 
 fn channel(c: u8) -> f64 {
@@ -243,6 +325,64 @@ mod tests {
         // the plate and the lines of the model can be told apart from the ground
         assert!(contrast(p.plate, p.background) >= 3.0);
         assert!(contrast(p.line, p.plate) >= 1.5);
+    }
+
+    #[test]
+    fn the_light_look_reads_as_well_as_the_dark_one_on_every_ground() {
+        for theme in Theme::ALL {
+            let p = theme.palette();
+            for bg in [p.background, p.panel, p.bar] {
+                assert!(
+                    contrast(p.text, bg) >= 7.0,
+                    "{} text on {bg:?}",
+                    theme.name()
+                );
+                assert!(contrast(p.dim, bg) >= 4.5, "{} dim on {bg:?}", theme.name());
+                for (name, c) in [
+                    ("accent", p.accent),
+                    ("good", p.good),
+                    ("danger", p.danger),
+                    ("line", p.line),
+                ] {
+                    assert!(
+                        contrast(c, bg) >= 4.5,
+                        "{} {name} on {bg:?}: {:.2}",
+                        theme.name(),
+                        contrast(c, bg)
+                    );
+                }
+            }
+            // a part, the one selected and the grid can be told from the bed they lie on
+            assert!(contrast(p.model, p.bed) >= 1.5, "{} model", theme.name());
+            assert!(
+                contrast(p.selected, p.bed) >= 1.5,
+                "{} selected",
+                theme.name()
+            );
+            assert!(contrast(p.grid, p.bed) >= 1.15, "{} grid", theme.name());
+            assert_ne!(p.model, p.selected);
+        }
+        assert_ne!(Palette::phoenix(), Palette::daylight());
+    }
+
+    #[test]
+    fn a_colour_is_lit_and_darkened_inside_its_range() {
+        assert_eq!(scaled([100, 200, 250], 1.0), [100, 200, 250]);
+        assert_eq!(scaled([100, 200, 250], 0.5), [50, 100, 125]);
+        assert_eq!(scaled([100, 200, 250], 2.0), [200, 255, 255]);
+        assert_eq!(scaled([100, 200, 250], 9.0), [200, 255, 255]);
+        assert_eq!(scaled([100, 200, 250], -1.0), [0, 0, 0]);
+        assert_eq!(scaled([100, 200, 250], f32::NAN), [100, 200, 250]);
+    }
+
+    #[test]
+    fn the_theme_is_read_by_name_and_toggles() {
+        assert_eq!(Theme::default(), Theme::Dark);
+        assert_eq!(Theme::from_name(" LIGHT "), Some(Theme::Light));
+        assert_eq!(Theme::from_name("dark"), Some(Theme::Dark));
+        assert_eq!(Theme::from_name("sepia"), None);
+        assert_eq!(Theme::Dark.toggled().toggled(), Theme::Dark);
+        assert_eq!(Theme::Light.palette(), Palette::daylight());
     }
 
     #[test]

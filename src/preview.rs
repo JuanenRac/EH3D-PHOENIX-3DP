@@ -254,6 +254,13 @@ impl PreviewState {
         self.camera.orbit(dx_px, dy_px, 0.01);
     }
 
+    /// Slides the view across by the pixels of a drag, in a view of `width` by `height`.
+    pub fn pan(&mut self, dx_px: f64, dy_px: f64, width: f64, height: f64) {
+        if let Some(vp) = Viewport::new(width, height) {
+            self.camera.pan(dx_px, dy_px, vp);
+        }
+    }
+
     /// Moves the camera nearer or farther (a wheel of 1 notch is a factor of about 0.9 or 1.1).
     pub fn zoom(&mut self, factor: f64) {
         self.camera.zoom(factor);
@@ -563,6 +570,22 @@ mod tests {
         let ok = t.slice(&cube(15.0), a1, Some((pa, tiny)));
         if !ok {
             assert!(t.error.is_some() && t.plan.is_none());
+        }
+    }
+
+    #[test]
+    fn sliding_the_view_moves_the_target_and_nonsense_does_nothing() {
+        let mut s = PreviewState::default();
+        let before = s.camera.target;
+        s.pan(40.0, -20.0, 800.0, 600.0);
+        assert_ne!(s.camera.target, before);
+        let moved = s.camera;
+        s.pan(f64::NAN, 1.0, 800.0, 600.0);
+        s.pan(10.0, 10.0, 0.0, 600.0);
+        assert_eq!(s.camera, moved);
+        s.pan(-40.0, 20.0, 800.0, 600.0);
+        for k in 0..3 {
+            assert!((s.camera.target[k] - before[k]).abs() < 1e-6);
         }
     }
 }

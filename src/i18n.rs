@@ -197,10 +197,72 @@ pub enum Msg {
     NoticeVerificationCleared,
     ProgressAtLayer,
     ViewTravel,
+    PanelProcess,
+    PanelObjects,
+    ObjectPlacement,
+    ObjectRotation,
+    ObjectScale,
+    SizeMm,
+    KeepProportions,
+    AutoOrient,
+    Arrange,
+    Duplicate,
+    Remove,
+    ResetObject,
+    ViewCorner,
+    ViewTop,
+    ViewBottom,
+    ViewFront,
+    ViewBack,
+    ViewLeft,
+    ViewRight,
+    WarnOutOfBed,
+    WarnOverlap,
+    WarnLeftOut,
+    Slicing,
+    SliceFinished,
+    NoPlanYet,
+    EstTime,
+    EstMaterial,
+    EstCost,
+    EstLayers,
+    ThemeName,
+    ThemeDark,
+    ThemeLight,
+    HelpTitle,
+    HintPrepare,
+    HintPreview,
+    HintDevice,
+    ShowHints,
+    PanelLimits,
+    LimitNozzle,
+    LimitBed,
+    LimitChamber,
+    ApplyLimits,
+    BackToCatalog,
+    LimitsMine,
+    LimitsSaved,
+    SimBanner,
+    AutoStartOff,
+    AutoStartOn,
+    QueueRules,
+    RuleRefused,
+    RuleAllowed,
+    LoadDemo,
+    EmptyBedHint,
+    BedSize,
+    GridSpacing,
+    ArrangeGap,
+    ArrangeOnAdd,
+    NoFilamentChosen,
+    NothingSelected,
+    PartsCount,
+    StalePlan,
+    SettingsTitle,
 }
 
 impl Msg {
-    pub const ALL: [Msg; 123] = [
+    pub const ALL: [Msg; 185] = [
         Msg::TabPrepare,
         Msg::TabPreview,
         Msg::TabDevice,
@@ -324,6 +386,68 @@ impl Msg {
         Msg::NoticeVerificationCleared,
         Msg::ProgressAtLayer,
         Msg::ViewTravel,
+        Msg::PanelProcess,
+        Msg::PanelObjects,
+        Msg::ObjectPlacement,
+        Msg::ObjectRotation,
+        Msg::ObjectScale,
+        Msg::SizeMm,
+        Msg::KeepProportions,
+        Msg::AutoOrient,
+        Msg::Arrange,
+        Msg::Duplicate,
+        Msg::Remove,
+        Msg::ResetObject,
+        Msg::ViewCorner,
+        Msg::ViewTop,
+        Msg::ViewBottom,
+        Msg::ViewFront,
+        Msg::ViewBack,
+        Msg::ViewLeft,
+        Msg::ViewRight,
+        Msg::WarnOutOfBed,
+        Msg::WarnOverlap,
+        Msg::WarnLeftOut,
+        Msg::Slicing,
+        Msg::SliceFinished,
+        Msg::NoPlanYet,
+        Msg::EstTime,
+        Msg::EstMaterial,
+        Msg::EstCost,
+        Msg::EstLayers,
+        Msg::ThemeName,
+        Msg::ThemeDark,
+        Msg::ThemeLight,
+        Msg::HelpTitle,
+        Msg::HintPrepare,
+        Msg::HintPreview,
+        Msg::HintDevice,
+        Msg::ShowHints,
+        Msg::PanelLimits,
+        Msg::LimitNozzle,
+        Msg::LimitBed,
+        Msg::LimitChamber,
+        Msg::ApplyLimits,
+        Msg::BackToCatalog,
+        Msg::LimitsMine,
+        Msg::LimitsSaved,
+        Msg::SimBanner,
+        Msg::AutoStartOff,
+        Msg::AutoStartOn,
+        Msg::QueueRules,
+        Msg::RuleRefused,
+        Msg::RuleAllowed,
+        Msg::LoadDemo,
+        Msg::EmptyBedHint,
+        Msg::BedSize,
+        Msg::GridSpacing,
+        Msg::ArrangeGap,
+        Msg::ArrangeOnAdd,
+        Msg::NoFilamentChosen,
+        Msg::NothingSelected,
+        Msg::PartsCount,
+        Msg::StalePlan,
+        Msg::SettingsTitle,
     ];
 
     /// The texts in the order English, Spanish, German, French, Italian, Japanese, Chinese, Portuguese (Portugal).
@@ -461,6 +585,68 @@ impl Msg {
             Msg::NoticeVerificationCleared => ["An edited profile has not been tried: it says verified = off", "Un perfil editado no se ha probado: dice verified = off", "Ein bearbeitetes Profil wurde nicht erprobt: es steht auf verified = off", "Un profil modifié n'a pas été essayé : il indique verified = off", "Un profilo modificato non è stato provato: dice verified = off", "編集したプロファイルは試されていません: verified = off になります", "编辑后的配置从未试用过：verified = off", "Um perfil editado não foi testado: indica verified = off"],
             Msg::ProgressAtLayer => ["After this layer: {} gone, {} left ({} %)", "Tras esta capa: {} transcurridos, {} restantes ({} %)", "Nach dieser Schicht: {} vergangen, {} verbleibend ({} %)", "Après cette couche : {} écoulées, {} restantes ({} %)", "Dopo questo strato: {} trascorsi, {} rimanenti ({} %)", "このレイヤーの後: 経過 {}、残り {}（{} %）", "此层之后：已用 {}，剩余 {}（{} %）", "Depois desta camada: {} decorridos, {} em falta ({} %)"],
             Msg::ViewTravel => ["Travel moves", "Desplazamientos", "Leerfahrten", "Déplacements", "Spostamenti", "移動", "空走", "Deslocações"],
+            Msg::PanelProcess => ["Process", "Proceso", "Prozess", "Procédé", "Processo", "プロセス", "工艺", "Processo"],
+            Msg::PanelObjects => ["Objects", "Objetos", "Objekte", "Objets", "Oggetti", "オブジェクト", "对象", "Objetos"],
+            Msg::ObjectPlacement => ["Placement", "Colocación", "Platzierung", "Placement", "Posizionamento", "配置", "位置", "Posicionamento"],
+            Msg::ObjectRotation => ["Rotation", "Rotación", "Drehung", "Rotation", "Rotazione", "回転", "旋转", "Rotação"],
+            Msg::ObjectScale => ["Scale", "Escala", "Skalierung", "Échelle", "Scala", "拡大縮小", "缩放", "Escala"],
+            Msg::SizeMm => ["Size (mm)", "Tamaño (mm)", "Größe (mm)", "Taille (mm)", "Dimensione (mm)", "サイズ (mm)", "尺寸 (mm)", "Tamanho (mm)"],
+            Msg::KeepProportions => ["Keep proportions", "Mantener proporciones", "Proportionen beibehalten", "Garder les proportions", "Mantieni le proporzioni", "比率を保つ", "保持比例", "Manter proporções"],
+            Msg::AutoOrient => ["Auto-orient", "Orientar solo", "Automatisch ausrichten", "Orienter auto", "Orienta in automatico", "自動で向きを決める", "自动摆放方向", "Orientar automaticamente"],
+            Msg::Arrange => ["Arrange", "Organizar", "Anordnen", "Disposer", "Disponi", "整列", "排列", "Organizar"],
+            Msg::Duplicate => ["Duplicate", "Duplicar", "Duplizieren", "Dupliquer", "Duplica", "複製", "复制", "Duplicar"],
+            Msg::Remove => ["Remove", "Quitar", "Entfernen", "Retirer", "Rimuovi", "削除", "移除", "Remover"],
+            Msg::ResetObject => ["Reset turn and scale", "Restablecer giro y escala", "Drehung und Skalierung zurücksetzen", "Réinitialiser rotation et échelle", "Ripristina rotazione e scala", "回転と拡大縮小をリセット", "重置旋转和缩放", "Repor rotação e escala"],
+            Msg::ViewCorner => ["Corner", "Esquina", "Ecke", "Coin", "Angolo", "斜め", "斜角", "Canto"],
+            Msg::ViewTop => ["Top", "Arriba", "Oben", "Dessus", "Alto", "上", "顶部", "Topo"],
+            Msg::ViewBottom => ["Bottom", "Abajo", "Unten", "Dessous", "Basso", "下", "底部", "Fundo"],
+            Msg::ViewFront => ["Front", "Frente", "Vorne", "Face", "Fronte", "前", "正面", "Frente"],
+            Msg::ViewBack => ["Back", "Atrás", "Hinten", "Arrière", "Retro", "後", "背面", "Trás"],
+            Msg::ViewLeft => ["Left", "Izquierda", "Links", "Gauche", "Sinistra", "左", "左侧", "Esquerda"],
+            Msg::ViewRight => ["Right", "Derecha", "Rechts", "Droite", "Destra", "右", "右侧", "Direita"],
+            Msg::WarnOutOfBed => ["{} part(s) go past the edge of the bed", "{} pieza(s) sobresalen del borde de la cama", "{} Teil(e) ragen über den Rand des Druckbetts", "{} pièce(s) dépassent du bord du plateau", "{} pezzo/i oltre il bordo del piano", "{} 個の部品がベッドの端を越えています", "{} 个零件超出了热床边缘", "{} peça(s) passam o limite da mesa"],
+            Msg::WarnOverlap => ["{} pair(s) of parts overlap", "{} par(es) de piezas se solapan", "{} Paar(e) von Teilen überlappen sich", "{} paire(s) de pièces se chevauchent", "{} coppia/e di pezzi si sovrappongono", "{} 組の部品が重なっています", "{} 对零件重叠", "{} par(es) de peças sobrepõem-se"],
+            Msg::WarnLeftOut => ["{} part(s) do not fit on the bed", "{} pieza(s) no caben en la cama", "{} Teil(e) passen nicht auf das Druckbett", "{} pièce(s) ne tiennent pas sur le plateau", "{} pezzo/i non entrano sul piano", "{} 個の部品はベッドに収まりません", "{} 个零件放不进热床", "{} peça(s) não cabem na mesa"],
+            Msg::Slicing => ["Slicing...", "Laminando...", "Slicing läuft ...", "Découpe en cours...", "Elaborazione...", "スライス中...", "切片中...", "A fatiar..."],
+            Msg::SliceFinished => ["Sliced in {} s", "Laminado en {} s", "In {} s geslict", "Découpé en {} s", "Elaborato in {} s", "{} 秒でスライスしました", "切片用时 {} 秒", "Fatiado em {} s"],
+            Msg::NoPlanYet => ["Slice the model to see its layers here", "Lamina el modelo para ver sus capas aquí", "Slicen Sie das Modell, um die Schichten hier zu sehen", "Découpez le modèle pour voir ses couches ici", "Elabora il modello per vedere qui i suoi strati", "モデルをスライスするとレイヤーがここに表示されます", "切片后可在此查看各层", "Fatie o modelo para ver aqui as camadas"],
+            Msg::EstTime => ["Time", "Tiempo", "Zeit", "Durée", "Tempo", "時間", "时间", "Tempo"],
+            Msg::EstMaterial => ["Filament used", "Filamento usado", "Filamentverbrauch", "Filament utilisé", "Filamento usato", "使用量", "耗材用量", "Filamento usado"],
+            Msg::EstCost => ["Cost", "Coste", "Kosten", "Coût", "Costo", "費用", "成本", "Custo"],
+            Msg::EstLayers => ["Layers", "Capas", "Schichten", "Couches", "Strati", "レイヤー", "层数", "Camadas"],
+            Msg::ThemeName => ["Theme", "Tema", "Design", "Thème", "Tema", "テーマ", "主题", "Aspeto"],
+            Msg::ThemeDark => ["Dark", "Oscuro", "Dunkel", "Sombre", "Scuro", "ダーク", "深色", "Escuro"],
+            Msg::ThemeLight => ["Light", "Claro", "Hell", "Clair", "Chiaro", "ライト", "浅色", "Claro"],
+            Msg::HelpTitle => ["Help", "Ayuda", "Hilfe", "Aide", "Aiuto", "ヘルプ", "帮助", "Ajuda"],
+            Msg::HintPrepare => ["1. Choose the printer, the filament and the process at the left. 2. Open a model (STL, 3MF or OBJ) or load the demo. 3. Move, turn and scale it at the right, or use auto-orient and arrange. 4. Slice at the bottom.", "1. Elige impresora, filamento y proceso a la izquierda. 2. Abre un modelo (STL, 3MF u OBJ) o carga la demostración. 3. Muévelo, gíralo y escálalo a la derecha, o usa orientar solo y organizar. 4. Lamina abajo.", "1. Wählen Sie links Drucker, Filament und Prozess. 2. Öffnen Sie ein Modell (STL, 3MF oder OBJ) oder laden Sie die Demo. 3. Verschieben, drehen und skalieren Sie es rechts oder nutzen Sie automatisch ausrichten und anordnen. 4. Unten slicen.", "1. Choisissez l'imprimante, le filament et le procédé à gauche. 2. Ouvrez un modèle (STL, 3MF ou OBJ) ou chargez la démo. 3. Déplacez-le, tournez-le et mettez-le à l'échelle à droite, ou utilisez orienter auto et disposer. 4. Découpez en bas.", "1. Scegli stampante, filamento e processo a sinistra. 2. Apri un modello (STL, 3MF o OBJ) o carica la demo. 3. Spostalo, ruotalo e scalalo a destra, oppure usa orienta in automatico e disponi. 4. Elabora in basso.", "1. 左でプリンター、フィラメント、プロセスを選びます。2. モデル (STL、3MF、OBJ) を開くか、デモを読み込みます。3. 右で移動・回転・拡大縮小するか、自動で向きを決める／整列を使います。4. 下でスライスします。", "1. 在左侧选择打印机、耗材和工艺。2. 打开模型（STL、3MF 或 OBJ）或加载演示模型。3. 在右侧移动、旋转、缩放，或使用自动摆放方向和排列。4. 在底部切片。", "1. Escolha a impressora, o filamento e o processo à esquerda. 2. Abra um modelo (STL, 3MF ou OBJ) ou carregue a demonstração. 3. Mova-o, rode-o e dimensione-o à direita, ou use orientar automaticamente e organizar. 4. Fatie em baixo."],
+            Msg::HintPreview => ["Drag the slider to walk through the layers. The colours tell the kinds of line; the estimates are at the bottom. Nothing here is sent to a printer.", "Arrastra el deslizador para recorrer las capas. Los colores indican el tipo de línea; las estimaciones están abajo. Nada de esto se envía a una impresora.", "Ziehen Sie den Regler, um die Schichten durchzugehen. Die Farben zeigen die Linienarten; die Schätzungen stehen unten. Nichts davon wird an einen Drucker gesendet.", "Faites glisser le curseur pour parcourir les couches. Les couleurs indiquent le type de ligne ; les estimations sont en bas. Rien n'est envoyé à une imprimante.", "Trascina il cursore per scorrere gli strati. I colori indicano il tipo di linea; le stime sono in basso. Nulla viene inviato a una stampante.", "スライダーを動かしてレイヤーを順に見ます。色は線の種類を表し、見積もりは下にあります。ここからプリンターには何も送られません。", "拖动滑块逐层查看。颜色表示线条类型，预估值在底部。此处不会向打印机发送任何内容。", "Arraste o cursor para percorrer as camadas. As cores indicam o tipo de linha; as estimativas estão em baixo. Nada daqui é enviado para uma impressora."],
+            Msg::HintDevice => ["The machines come from the EH3D server. Everything here runs against a simulator: no job starts by itself, and a start always asks first.", "Las máquinas vienen del servidor EH3D. Todo aquí funciona contra un simulador: ningún trabajo arranca solo y un inicio siempre pregunta antes.", "Die Maschinen kommen vom EH3D-Server. Alles hier läuft gegen einen Simulator: kein Auftrag startet von selbst, und ein Start fragt immer vorher.", "Les machines viennent du serveur EH3D. Tout ici tourne sur un simulateur : aucune tâche ne démarre seule et un démarrage demande toujours confirmation.", "Le macchine arrivano dal server EH3D. Tutto qui funziona su un simulatore: nessun lavoro parte da solo e un avvio chiede sempre conferma.", "マシンは EH3D サーバーから取得します。ここはすべてシミュレーター上で動き、ジョブは自動では始まらず、開始の前に必ず確認します。", "设备来自 EH3D 服务器。此处全部在模拟器上运行：任务不会自动开始，开始前一定会先询问。", "As máquinas vêm do servidor EH3D. Tudo aqui corre contra um simulador: nenhum trabalho arranca sozinho e um arranque pergunta sempre primeiro."],
+            Msg::ShowHints => ["Show hints", "Mostrar consejos", "Hinweise anzeigen", "Afficher les conseils", "Mostra suggerimenti", "ヒントを表示", "显示提示", "Mostrar sugestões"],
+            Msg::PanelLimits => ["Temperature limits", "Límites de temperatura", "Temperaturgrenzen", "Limites de température", "Limiti di temperatura", "温度の上限", "温度上限", "Limites de temperatura"],
+            Msg::LimitNozzle => ["Nozzle limit (C)", "Límite de boquilla (C)", "Düsengrenze (C)", "Limite de buse (C)", "Limite ugello (C)", "ノズル上限 (C)", "喷嘴上限 (C)", "Limite do bico (C)"],
+            Msg::LimitBed => ["Bed limit (C)", "Límite de cama (C)", "Druckbettgrenze (C)", "Limite de plateau (C)", "Limite piano (C)", "ベッド上限 (C)", "热床上限 (C)", "Limite da mesa (C)"],
+            Msg::LimitChamber => ["Chamber limit (C), 0 = none", "Límite de cámara (C), 0 = ninguna", "Kammergrenze (C), 0 = keine", "Limite de caisson (C), 0 = aucun", "Limite camera (C), 0 = nessuna", "チャンバー上限 (C)、0 = なし", "腔体上限 (C)，0 = 无", "Limite da câmara (C), 0 = nenhuma"],
+            Msg::ApplyLimits => ["Apply", "Aplicar", "Anwenden", "Appliquer", "Applica", "適用", "应用", "Aplicar"],
+            Msg::BackToCatalog => ["Back to the catalog's figures", "Volver a las cifras del catálogo", "Zurück zu den Werten des Katalogs", "Revenir aux valeurs du catalogue", "Torna ai valori del catalogo", "カタログの値に戻す", "恢复为目录数值", "Voltar aos valores do catálogo"],
+            Msg::LimitsMine => ["These limits are yours, not the maker's", "Estos límites son tuyos, no del fabricante", "Diese Grenzen sind Ihre, nicht die des Herstellers", "Ces limites sont les vôtres, pas celles du fabricant", "Questi limiti sono tuoi, non del produttore", "この上限はメーカーの値ではなく、あなたの設定です", "这些上限是你自己设定的，不是制造商的", "Estes limites são seus, não do fabricante"],
+            Msg::LimitsSaved => ["Limits saved", "Límites guardados", "Grenzen gespeichert", "Limites enregistrées", "Limiti salvati", "上限を保存しました", "上限已保存", "Limites guardados"],
+            Msg::SimBanner => ["SIMULATOR ONLY: the printer plugin of the server is a simulator, so nothing here reaches a real printer", "SOLO SIMULADOR: el complemento de impresoras del servidor es un simulador, así que nada de esto llega a una impresora real", "NUR SIMULATOR: Das Drucker-Plugin des Servers ist ein Simulator, daher erreicht nichts davon einen echten Drucker", "SIMULATEUR SEULEMENT : le module d'imprimantes du serveur est un simulateur, donc rien ici n'atteint une vraie imprimante", "SOLO SIMULATORE: il plugin stampanti del server è un simulatore, quindi nulla qui raggiunge una stampante reale", "シミュレーターのみ：サーバーのプリンタープラグインはシミュレーターのため、ここから実機には何も届きません", "仅模拟器：服务器的打印机插件是模拟器，因此这里的任何操作都不会到达真实打印机", "APENAS SIMULADOR: o plugin de impressoras do servidor é um simulador, por isso nada daqui chega a uma impressora real"],
+            Msg::AutoStartOff => ["Server auto-start: off", "Arranque automático del servidor: apagado", "Autostart des Servers: aus", "Démarrage auto du serveur : désactivé", "Avvio automatico del server: spento", "サーバーの自動開始：オフ", "服务器自动开始：关", "Arranque automático do servidor: desligado"],
+            Msg::AutoStartOn => ["Server auto-start: ON (a policy of the server)", "Arranque automático del servidor: ACTIVO (política del servidor)", "Autostart des Servers: AN (Richtlinie des Servers)", "Démarrage auto du serveur : ACTIF (politique du serveur)", "Avvio automatico del server: ATTIVO (criterio del server)", "サーバーの自動開始：オン（サーバーのポリシー）", "服务器自动开始：开（服务器策略）", "Arranque automático do servidor: LIGADO (política do servidor)"],
+            Msg::QueueRules => ["Queue rules: duplicates {}, at most {} waiting", "Reglas de la cola: duplicados {}, máximo {} en espera", "Regeln der Warteschlange: Duplikate {}, höchstens {} wartend", "Règles de la file : doublons {}, au plus {} en attente", "Regole della coda: duplicati {}, al massimo {} in attesa", "キューの規則: 重複 {}、待機は最大 {} 件", "队列规则：重复任务 {}，最多 {} 个等待", "Regras da fila: duplicados {}, no máximo {} em espera"],
+            Msg::RuleRefused => ["refused", "rechazados", "abgelehnt", "refusés", "rifiutati", "拒否", "拒绝", "recusados"],
+            Msg::RuleAllowed => ["allowed", "permitidos", "erlaubt", "autorisés", "consentiti", "許可", "允许", "permitidos"],
+            Msg::LoadDemo => ["Load demo model", "Cargar modelo de demostración", "Demomodell laden", "Charger le modèle de démo", "Carica modello demo", "デモモデルを読み込む", "加载演示模型", "Carregar modelo de demonstração"],
+            Msg::EmptyBedHint => ["Type the path of a model (STL, 3MF or OBJ) and press Open, or load the demo", "Escribe la ruta de un modelo (STL, 3MF u OBJ) y pulsa Abrir, o carga la demostración", "Geben Sie den Pfad eines Modells (STL, 3MF oder OBJ) ein und drücken Sie Öffnen, oder laden Sie die Demo", "Saisissez le chemin d'un modèle (STL, 3MF ou OBJ) et appuyez sur Ouvrir, ou chargez la démo", "Digita il percorso di un modello (STL, 3MF o OBJ) e premi Apri, oppure carica la demo", "モデル (STL、3MF、OBJ) のパスを入力して「開く」を押すか、デモを読み込みます", "输入模型（STL、3MF 或 OBJ）的路径并点击“打开”，或加载演示模型", "Escreva o caminho de um modelo (STL, 3MF ou OBJ) e prima Abrir, ou carregue a demonstração"],
+            Msg::BedSize => ["Bed {} x {} x {} mm", "Cama {} x {} x {} mm", "Druckbett {} x {} x {} mm", "Plateau {} x {} x {} mm", "Piano {} x {} x {} mm", "ベッド {} x {} x {} mm", "热床 {} x {} x {} mm", "Mesa {} x {} x {} mm"],
+            Msg::GridSpacing => ["Grid (mm)", "Rejilla (mm)", "Raster (mm)", "Grille (mm)", "Griglia (mm)", "グリッド (mm)", "网格 (mm)", "Grelha (mm)"],
+            Msg::ArrangeGap => ["Gap between parts (mm)", "Separación entre piezas (mm)", "Abstand zwischen Teilen (mm)", "Espace entre pièces (mm)", "Distanza tra i pezzi (mm)", "部品の間隔 (mm)", "零件间距 (mm)", "Espaço entre peças (mm)"],
+            Msg::ArrangeOnAdd => ["Arrange when adding", "Organizar al añadir", "Beim Hinzufügen anordnen", "Disposer à l'ajout", "Disponi all'aggiunta", "追加時に整列", "添加时自动排列", "Organizar ao adicionar"],
+            Msg::NoFilamentChosen => ["No filament chosen: a generic PLA is assumed for the estimates", "Sin filamento elegido: se supone un PLA genérico para las estimaciones", "Kein Filament gewählt: für die Schätzungen wird ein generisches PLA angenommen", "Aucun filament choisi : un PLA générique sert aux estimations", "Nessun filamento scelto: per le stime si usa un PLA generico", "フィラメント未選択：見積もりには汎用 PLA を使います", "未选择耗材：预估按通用 PLA 计算", "Nenhum filamento escolhido: assume-se um PLA genérico nas estimativas"],
+            Msg::NothingSelected => ["Nothing selected", "Nada seleccionado", "Nichts ausgewählt", "Rien de sélectionné", "Nulla di selezionato", "選択なし", "未选择", "Nada selecionado"],
+            Msg::PartsCount => ["Parts: {}", "Piezas: {}", "Teile: {}", "Pièces : {}", "Pezzi: {}", "部品: {}", "零件：{}", "Peças: {}"],
+            Msg::StalePlan => ["The bed changed after this slice: slice again", "La cama cambió después de este laminado: lamina de nuevo", "Das Druckbett wurde nach diesem Slicing geändert: erneut slicen", "Le plateau a changé après cette découpe : découpez à nouveau", "Il piano è cambiato dopo questa elaborazione: elabora di nuovo", "このスライスの後にベッドが変更されました。もう一度スライスしてください", "此次切片之后热床已更改：请重新切片", "A mesa mudou depois desta fatiagem: fatie de novo"],
+            Msg::SettingsTitle => ["Window settings", "Ajustes de la ventana", "Fenstereinstellungen", "Réglages de la fenêtre", "Impostazioni della finestra", "ウィンドウの設定", "窗口设置", "Definições da janela"],
         }
     }
 
@@ -681,7 +867,7 @@ mod tests {
         seen.sort_by_key(|m| format!("{m:?}"));
         seen.dedup();
         assert_eq!(seen.len(), Msg::ALL.len());
-        assert_eq!(Msg::ALL.len(), 123);
+        assert_eq!(Msg::ALL.len(), 185);
     }
 
     #[test]
@@ -823,8 +1009,57 @@ mod tests {
     }
 
     #[test]
+    fn the_texts_of_the_studio_window_have_their_places_in_every_language_and_the_words_of_portugal(
+    ) {
+        let new = &Msg::ALL[123..];
+        assert_eq!(new.len(), 62);
+        let places = |m: Msg| match m {
+            Msg::WarnOutOfBed
+            | Msg::WarnOverlap
+            | Msg::WarnLeftOut
+            | Msg::SliceFinished
+            | Msg::PartsCount => 1,
+            Msg::QueueRules => 2,
+            Msg::BedSize => 3,
+            _ => 0,
+        };
+        for m in new {
+            for l in Lang::ALL {
+                assert_eq!(
+                    m.tr(l).matches("{}").count(),
+                    places(*m),
+                    "{m:?} in {}",
+                    l.code()
+                );
+            }
+        }
+        for l in Lang::ALL {
+            let s = fill(Msg::BedSize.tr(l), &["B1", "B2", "B3"]);
+            let order: Vec<usize> = ["B1", "B2", "B3"]
+                .iter()
+                .map(|x| s.find(x).unwrap())
+                .collect();
+            assert!(order.windows(2).all(|w| w[0] < w[1]), "{}: {s}", l.code());
+        }
+        // the Portuguese of Portugal, not the Brazilian one
+        for m in new {
+            let t = m.tr(Lang::Pt);
+            for brazilian in ["você", "arquivo", "tela", "mouse", "usuário", "baixar"] {
+                assert!(!t.to_lowercase().contains(brazilian), "{m:?}: {t}");
+            }
+        }
+        assert_eq!(Msg::ViewRight.tr(Lang::Pt), "Direita");
+        assert!(Msg::HintPreview.tr(Lang::Pt).contains("estão em baixo"));
+        assert!(Msg::Slicing.tr(Lang::Pt).starts_with("A "));
+        // the three hints and the banner say that nothing reaches a real printer
+        for l in Lang::ALL {
+            assert!(Msg::SimBanner.tr(l).len() > 40);
+        }
+    }
+
+    #[test]
     fn the_progress_and_travel_words_keep_the_order_of_their_places_and_the_words_of_portugal() {
-        let new = &Msg::ALL[121..];
+        let new = &Msg::ALL[121..123];
         assert_eq!(new.len(), 2);
         for l in Lang::ALL {
             let s = fill(Msg::ProgressAtLayer.tr(l), &["T1", "R2", "P3"]);

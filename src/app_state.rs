@@ -47,9 +47,24 @@ impl Tab {
         }
     }
 
+    /// The tab for a name: the key (`prepare`), or the name of the tab in any of the eight languages (`preparar`, `vista previa`, `dispositivo`...), in capitals or not and with a
+    /// hyphen or an underscore for a space.
     pub fn from_key(text: &str) -> Option<Tab> {
-        let t = text.trim().to_ascii_lowercase();
-        Tab::ALL.into_iter().find(|tab| tab.key() == t)
+        let norm = |s: &str| {
+            s.trim()
+                .to_lowercase()
+                .replace(['-', '_'], " ")
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ")
+        };
+        let t = norm(text);
+        if t.is_empty() {
+            return None;
+        }
+        Tab::ALL
+            .into_iter()
+            .find(|tab| tab.key() == t || Lang::ALL.iter().any(|l| norm(tab.msg().tr(*l)) == t))
     }
 
     /// The next tab, going round.
@@ -145,22 +160,46 @@ impl AppState {
         }
     }
 
+    /// Reads a model from bytes and checks it, and changes nothing. The answer for a model that cannot be used is the reason.
+    pub fn read_model(&self, bytes: &[u8], name: &str) -> Result<Mesh, String> {
+        let mesh = read_mesh(bytes, Some(name), &self.config.limits).map_err(|e| e.to_string())?;
+        let issues = mesh.validate(&self.config.limits);
+        if let Some(e) = issues.errors().next() {
+            return Err(e.to_string());
+        }
+        Ok(mesh)
+    }
+
+    /// Reads a model from a file (the size is checked before the file is read) and returns it with the name of the file; nothing is changed.
+    pub fn read_model_file(&self, path: &str) -> Result<(String, Mesh), String> {
+        let limit = self.config.limits.max_file_bytes;
+        let size = std::fs::metadata(path)
+            .map_err(|e| format!("{path}: {e}"))?
+            .len();
+        if size > limit {
+            return Err(format!(
+                "{path}: the file is {size} bytes, more than the limit of {limit}"
+            ));
+        }
+        let bytes = std::fs::read(path).map_err(|e| format!("{path}: {e}"))?;
+        let name = std::path::Path::new(path)
+            .file_name()
+            .map_or_else(|| path.to_string(), |n| n.to_string_lossy().into_owned());
+        let mesh = self.read_model(&bytes, &name)?;
+        Ok((name, mesh))
+    }
+
     /// Loads a model from bytes. A model that cannot be read leaves the one that was loaded where it was and says why.
     pub fn load_model(&mut self, bytes: &[u8], name: &str) -> bool {
-        match read_mesh(bytes, Some(name), &self.config.limits) {
+        match self.read_model(bytes, name) {
             Ok(mesh) => {
-                let issues = mesh.validate(&self.config.limits);
-                if let Some(e) = issues.errors().next() {
-                    self.status = Status::Problem(e.to_string());
-                    return false;
-                }
                 self.model = Some(mesh);
                 self.model_name = name.to_string();
                 self.status = Status::Loaded(name.to_string());
                 true
             }
             Err(e) => {
-                self.status = Status::Problem(e.to_string());
+                self.status = Status::Problem(e);
                 false
             }
         }
@@ -468,6 +507,27 @@ mod tests {
     }
 
     #[test]
+    fn a_tab_is_found_by_its_key_or_by_its_name_in_any_language() {
+        assert_eq!(Tab::from_key("prepare"), Some(Tab::Prepare));
+        assert_eq!(Tab::from_key(" Preparar "), Some(Tab::Prepare));
+        assert_eq!(Tab::from_key("vista previa"), Some(Tab::Preview));
+        assert_eq!(Tab::from_key("Vista-Previa"), Some(Tab::Preview));
+        assert_eq!(Tab::from_key("pré-visualização"), Some(Tab::Preview));
+        assert_eq!(Tab::from_key("dispositivo"), Some(Tab::Device));
+        assert_eq!(Tab::from_key("GERÄT"), Some(Tab::Device));
+        assert_eq!(Tab::from_key("プロジェクト"), Some(Tab::Project));
+        assert_eq!(Tab::from_key(""), None);
+        assert_eq!(Tab::from_key("   "), None);
+        assert_eq!(Tab::from_key("settings"), None);
+        // every name of every tab in every language finds its own tab
+        for tab in Tab::ALL {
+            for l in Lang::ALL {
+                assert_eq!(Tab::from_key(tab.msg().tr(l)), Some(tab), "{}", l.code());
+            }
+        }
+    }
+
+    #[test]
     fn it_starts_with_a_printer_of_the_catalog() {
         let s = state();
         assert!(s.printer().is_some());
@@ -532,6 +592,28 @@ mod tests {
         let bytes = write_mesh(&c, Format::Obj, "").unwrap();
         assert!(s.load_model(&bytes, "open.obj"));
         assert!(s.model_report().join("\n").contains("not watertight"));
+    }
+
+    #[test]
+    fn a_model_can_be_read_without_being_loaded() {
+        let s = state();
+        let bytes = write_mesh(&cube(8.0), Format::Stl, "").unwrap();
+        let m = s.read_model(&bytes, "c.stl").unwrap();
+        assert_eq!(m.triangles.len(), 12);
+        assert!(s.model.is_none(), "nothing was loaded");
+        assert!(s.read_model(b"garbage", "bad.stl").is_err());
+        let path = temp_path("read.stl");
+        std::fs::write(&path, &bytes).unwrap();
+        let (name, mesh) = s.read_model_file(&path).unwrap();
+        assert!(name.starts_with("p3dp_test_") && mesh.triangles.len() == 12);
+        assert!(s.read_model_file(&temp_path("nowhere.stl")).is_err());
+        let mut small = state();
+        small.config.limits.max_file_bytes = 10;
+        assert!(small
+            .read_model_file(&path)
+            .unwrap_err()
+            .contains("more than the limit"));
+        let _ = std::fs::remove_file(&path);
     }
 
     #[test]

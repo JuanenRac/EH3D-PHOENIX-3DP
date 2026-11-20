@@ -3,6 +3,7 @@
 
 use crate::i18n::Lang;
 use crate::keys::{Action, Scheme, SchemeId};
+use crate::look::Theme;
 use p3dp_core::kv;
 use p3dp_core::Limits;
 use p3dp_formats::gcode_meta::ScanLimits;
@@ -40,7 +41,69 @@ pub struct AppConfig {
     pub limit_gcode_tail_kib: usize,
     /// The most thumbnails taken from one G-code file.
     pub limit_gcode_thumbnails: usize,
+    /// The look of the window: `dark` or `light`.
+    pub theme: Theme,
+    /// The distance between the lines of the grid of the bed in the 3D view, in millimetres.
+    pub grid_mm: f64,
+    /// The gap that "arrange" leaves between the parts on the bed, in millimetres.
+    pub arrange_gap_mm: f64,
+    /// Arrange the parts by themselves each time one is added.
+    pub arrange_on_add: bool,
+    /// Show the short hints that explain each panel of the window.
+    pub ui_hints: bool,
+    /// The temperature limits a person set for a printer of the catalog; they replace the figures of the catalog and make the limits the person's.
+    pub limit_overrides: Vec<LimitOverride>,
 }
+
+/// The limits of one printer set by the person.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LimitOverride {
+    pub printer_id: String,
+    pub nozzle_c: f64,
+    pub bed_c: f64,
+    pub chamber_c: Option<f64>,
+}
+
+impl LimitOverride {
+    /// Reads `NOZZLE,BED,CHAMBER` where the chamber is a number or `none`.
+    pub fn parse(printer_id: &str, value: &str) -> Result<LimitOverride, String> {
+        let parts: Vec<&str> = value.split(',').map(str::trim).collect();
+        if parts.len() != 3 {
+            return Err(
+                "three values are needed: nozzle,bed,chamber (the chamber may be none)".into(),
+            );
+        }
+        let num = |t: &str, what: &str, max: f64| -> Result<f64, String> {
+            let v: f64 = t
+                .parse()
+                .map_err(|_| format!("{what}: {t:?} is not a number"))?;
+            if v.is_finite() && v > 0.0 && v <= max {
+                Ok(v)
+            } else {
+                Err(format!("{what}: from above 0 to {max} C"))
+            }
+        };
+        let chamber = if parts[2].eq_ignore_ascii_case("none") {
+            None
+        } else {
+            Some(num(parts[2], "chamber", 200.0)?)
+        };
+        Ok(LimitOverride {
+            printer_id: printer_id.to_string(),
+            nozzle_c: num(parts[0], "nozzle", 600.0)?,
+            bed_c: num(parts[1], "bed", 200.0)?,
+            chamber_c: chamber,
+        })
+    }
+
+    pub fn value_text(&self) -> String {
+        let chamber = self.chamber_c.map_or("none".to_string(), |c| c.to_string());
+        format!("{},{},{chamber}", self.nozzle_c, self.bed_c)
+    }
+}
+
+/// The prefix of the keys that hold the limits of a printer.
+pub const LIMITS_KEY_PREFIX: &str = "printer_limits_";
 
 impl Default for AppConfig {
     fn default() -> AppConfig {
@@ -61,6 +124,12 @@ impl Default for AppConfig {
             limit_gcode_head_kib: 1024,
             limit_gcode_tail_kib: 64,
             limit_gcode_thumbnails: 8,
+            theme: Theme::default(),
+            grid_mm: 10.0,
+            arrange_gap_mm: 5.0,
+            arrange_on_add: true,
+            ui_hints: true,
+            limit_overrides: Vec::new(),
         }
     }
 }
@@ -151,6 +220,41 @@ impl AppConfig {
                     c.limit_gcode_thumbnails =
                         kv::int_in(&e.key, &e.value, 0, 64).map_err(|x| at(x.to_string()))? as usize
                 }
+                "theme" => {
+                    c.theme = Theme::from_name(&e.value)
+                        .ok_or_else(|| at("theme: dark or light".to_string()))?
+                }
+                "grid_mm" => {
+                    c.grid_mm =
+                        kv::float_in(&e.key, &e.value, 1.0, 100.0).map_err(|x| at(x.to_string()))?
+                }
+                "arrange_gap_mm" => {
+                    c.arrange_gap_mm =
+                        kv::float_in(&e.key, &e.value, 0.0, 100.0).map_err(|x| at(x.to_string()))?
+                }
+                "arrange_on_add" => {
+                    c.arrange_on_add =
+                        kv::on_off(&e.key, &e.value).map_err(|x| at(x.to_string()))?
+                }
+                "ui_hints" => {
+                    c.ui_hints = kv::on_off(&e.key, &e.value).map_err(|x| at(x.to_string()))?
+                }
+                other if other.starts_with(LIMITS_KEY_PREFIX) => {
+                    let id = &other[LIMITS_KEY_PREFIX.len()..];
+                    if id.is_empty()
+                        || !id
+                            .bytes()
+                            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+                    {
+                        return Err(at(format!(
+                            "{other}: the printer id is lower case letters, digits and hyphens"
+                        )));
+                    }
+                    let o = LimitOverride::parse(id, &e.value)
+                        .map_err(|m| at(format!("{other}: {m}")))?;
+                    c.limit_overrides.retain(|x| x.printer_id != id);
+                    c.limit_overrides.push(o);
+                }
                 other if other.starts_with("key_") => {
                     let name = &other[4..];
                     if Action::from_name(name).is_none() {
@@ -213,6 +317,21 @@ impl AppConfig {
             self.limit_gcode_tail_kib,
             self.limit_gcode_thumbnails
         ));
+        s.push_str(&format!(
+            "theme = {}\ngrid_mm = {}\narrange_gap_mm = {}\narrange_on_add = {}\nui_hints = {}\n",
+            self.theme.name(),
+            self.grid_mm,
+            self.arrange_gap_mm,
+            if self.arrange_on_add { "on" } else { "off" },
+            if self.ui_hints { "on" } else { "off" },
+        ));
+        for o in &self.limit_overrides {
+            s.push_str(&format!(
+                "{LIMITS_KEY_PREFIX}{} = {}\n",
+                o.printer_id,
+                o.value_text()
+            ));
+        }
         s.push_str(&self.limits.to_text());
         s.push_str(&self.server.to_text(reveal));
         s
@@ -319,6 +438,63 @@ mod tests {
             ("limit_gcode_head_kib = 0\n", "limit_gcode_head_kib"),
             ("limit_gcode_tail_kib = 5000\n", "limit_gcode_tail_kib"),
             ("limit_gcode_thumbnails = 65\n", "limit_gcode_thumbnails"),
+        ] {
+            let e = AppConfig::from_text(text).unwrap_err();
+            assert!(e.contains(want) && e.contains("line 1"), "{text:?} -> {e}");
+        }
+    }
+
+    #[test]
+    fn the_look_the_grid_the_arrangement_and_the_limits_of_a_printer_are_read_checked_and_written_back(
+    ) {
+        let d = AppConfig::default();
+        assert_eq!(
+            (
+                d.theme,
+                d.grid_mm,
+                d.arrange_gap_mm,
+                d.arrange_on_add,
+                d.ui_hints
+            ),
+            (Theme::Dark, 10.0, 5.0, true, true)
+        );
+        assert!(d.limit_overrides.is_empty());
+        let c = AppConfig::from_text(
+            "theme = light\ngrid_mm = 20\narrange_gap_mm = 0\narrange_on_add = off\nui_hints = off\nprinter_limits_prusa-mk4s = 290, 110, none\nprinter_limits_qidi-plus4 = 300,120,65\nprinter_limits_prusa-mk4s = 280,100,none\n",
+        )
+        .unwrap();
+        assert_eq!(c.theme, Theme::Light);
+        assert_eq!((c.grid_mm, c.arrange_gap_mm), (20.0, 0.0));
+        assert!(!c.arrange_on_add && !c.ui_hints);
+        assert_eq!(
+            c.limit_overrides.len(),
+            2,
+            "a second line of the same printer wins"
+        );
+        let mk4 = c
+            .limit_overrides
+            .iter()
+            .find(|o| o.printer_id == "prusa-mk4s")
+            .unwrap();
+        assert_eq!(
+            (mk4.nozzle_c, mk4.bed_c, mk4.chamber_c),
+            (280.0, 100.0, None)
+        );
+        assert_eq!(AppConfig::from_text(&c.to_text(true)).unwrap(), c);
+        for (text, want) in [
+            ("theme = sepia\n", "dark or light"),
+            ("grid_mm = 0\n", "grid_mm"),
+            ("grid_mm = 101\n", "grid_mm"),
+            ("arrange_gap_mm = -1\n", "arrange_gap_mm"),
+            ("arrange_on_add = perhaps\n", "arrange_on_add"),
+            ("ui_hints = 2\n", "ui_hints"),
+            ("printer_limits_ = 1,2,none\n", "printer id"),
+            ("printer_limits_BadId = 1,2,none\n", "printer id"),
+            ("printer_limits_x = 1,2\n", "three values"),
+            ("printer_limits_x = hot,2,none\n", "nozzle"),
+            ("printer_limits_x = 300,0,none\n", "bed"),
+            ("printer_limits_x = 300,100,250\n", "chamber"),
+            ("printer_limits_x = 700,100,none\n", "nozzle"),
         ] {
             let e = AppConfig::from_text(text).unwrap_err();
             assert!(e.contains(want) && e.contains("line 1"), "{text:?} -> {e}");
