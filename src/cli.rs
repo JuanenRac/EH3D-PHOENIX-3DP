@@ -1,12 +1,14 @@
-//! The command line: `printers`, `info`, `check-profile`, `convert` and `version`. `run` returns what to print and the exit code, so it is tested without a terminal.
+//! The command line: `printers`, `info`, `check-profile`, `convert`, `slice`, `project` and `version`. `run` returns what to print and the exit code, so it is tested without a terminal.
 //! Exit code 0 is success, 1 is a failure of the thing that was asked (a check that did not pass, a file that could not be read) and 2 is a mistake in the command.
 
 use crate::app_state::{profile_report, AppState};
 use crate::config::AppConfig;
 use crate::i18n::{Lang, Msg};
+use p3dp_formats::project3mf::read_project;
 use p3dp_formats::{write_mesh, Format};
 use p3dp_gcode::check_program;
 use p3dp_profiles::{PrinterProfile, Technology};
+use p3dp_slicer::{Machine, SliceConfig};
 use std::collections::HashMap;
 
 /// What a run produced.
@@ -51,10 +53,14 @@ pub const USAGE: &str = "phoenix-3dp: prepare and send 3D prints (simulators onl
   phoenix-3dp check-profile ID [--gcode FILE]
   phoenix-3dp check-profile --file PROFILE [--gcode FILE]
   phoenix-3dp convert IN OUT [--printer ID] [--force]
+  phoenix-3dp slice MODEL --printer ID [--settings FILE] [--out FILE.gcode] [--force]
+  phoenix-3dp project FILE.3mf
   phoenix-3dp version
 
 Every command also takes --config FILE (the settings) and --lang CODE (en, es, de, fr, it, ja, zh, pt).
-The models are STL, OBJ and 3MF; OUT is chosen by its extension (.stl, .obj, .3mf).";
+The models are STL, OBJ and 3MF; OUT is chosen by its extension (.stl, .obj, .3mf).
+`slice` makes the layers and the G-code of a closed model for a printer of the catalog and refuses, never cuts down, what does not fit or goes past a limit;
+without --out it only reports. `project` reads the objects, plates and settings of a 3MF project saved by another program (read only).";
 
 struct Parsed {
     positional: Vec<String>,
@@ -123,6 +129,8 @@ pub fn run(args: &[String], env_lang: Option<&str>) -> Outcome {
         "info" => info(rest, env_lang),
         "check-profile" => check_profile(rest, env_lang),
         "convert" => convert(rest, env_lang),
+        "slice" => slice(rest, env_lang),
+        "project" => project(rest, env_lang),
         other => Outcome::usage(&format!("{other:?} is not a command")),
     }
 }
@@ -362,6 +370,178 @@ fn convert(args: &[String], env_lang: Option<&str>) -> Outcome {
         mesh.triangles.len(),
         bytes.len()
     ))
+}
+
+fn read_limited(path: &str, max: u64) -> Result<Vec<u8>, String> {
+    let size = std::fs::metadata(path)
+        .map_err(|e| format!("{path}: {e}"))?
+        .len();
+    if size > max {
+        return Err(format!(
+            "{path}: the file is {size} bytes, more than the limit"
+        ));
+    }
+    std::fs::read(path).map_err(|e| format!("{path}: {e}"))
+}
+
+fn slice(args: &[String], env_lang: Option<&str>) -> Outcome {
+    let p = match parse(
+        args,
+        &["printer", "settings", "out", "config", "lang"],
+        &["force"],
+    ) {
+        Ok(p) => p,
+        Err(e) => return Outcome::usage(&e),
+    };
+    let [model] = p.positional.as_slice() else {
+        return Outcome::usage("slice takes one model file");
+    };
+    let Some(id) = p.flags.get("printer") else {
+        return Outcome::usage("slice needs --printer ID (see `phoenix-3dp printers`)");
+    };
+    let mut state = match state_of(&p, env_lang) {
+        Ok(s) => s,
+        Err(e) => return Outcome::fail(e),
+    };
+    if !state.select_printer(id) {
+        return Outcome::fail(state.status.text(state.lang));
+    }
+    let Some(profile) = state.printer().cloned() else {
+        return Outcome::fail(format!("{id}: no such printer in the catalog"));
+    };
+    let machine = match Machine::from_profile(&profile) {
+        Ok(m) => m,
+        Err(e) => return Outcome::fail(e.to_string()),
+    };
+    let config = match p.flags.get("settings") {
+        None => SliceConfig::default(),
+        Some(path) => match read_limited(path, p3dp_core::kv::MAX_BYTES as u64)
+            .and_then(|b| String::from_utf8(b).map_err(|_| format!("{path}: not UTF-8")))
+            .and_then(|t| SliceConfig::from_text(&t).map_err(|e| format!("{path}: {e}")))
+        {
+            Ok(c) => c,
+            Err(e) => return Outcome::fail(e),
+        },
+    };
+    if let Some(out) = p.flags.get("out") {
+        if !p.flags.contains_key("force") && std::path::Path::new(out).exists() {
+            return Outcome::fail(format!(
+                "{out}: the file exists (use --force to replace it)"
+            ));
+        }
+        let same = match (std::fs::canonicalize(model), std::fs::canonicalize(out)) {
+            (Ok(a), Ok(b)) => a == b,
+            _ => model == out,
+        };
+        if same {
+            return Outcome::fail("the output is the model file".to_string());
+        }
+    }
+    if !state.load_model_file(model) {
+        return Outcome::fail(state.status.text(state.lang));
+    }
+    let Some(mesh) = state.model.as_ref() else {
+        return Outcome::fail("no model".to_string());
+    };
+    let (plan, gcode) = match p3dp_slicer::slice(mesh, &machine, &config) {
+        Ok(r) => r,
+        Err(e) => return Outcome::fail(format!("{model}: {e}")),
+    };
+    let secs = plan.estimated_seconds();
+    let mut out = format!(
+        "{model} for {}: {} layers, {:.1} mm high, {:.2} m of filament, about {}h{:02}m (at the speeds of the settings, without the slowing at corners)\n",
+        profile.title(),
+        plan.layer_count(),
+        plan.height_mm(),
+        plan.filament_mm() / 1000.0,
+        (secs / 3600.0) as u64,
+        ((secs % 3600.0) / 60.0) as u64
+    );
+    for w in &plan.warnings {
+        let p3dp_slicer::Warning::ThinRegion { layer } = w;
+        out.push_str(&format!(
+            "warning: layer {layer} has a part thinner than the perimeters; it has fewer of them or none\n"
+        ));
+    }
+    out.push_str(&format!("{}\n", Msg::SimulatorOnly.tr(state.lang)));
+    let Some(target) = p.flags.get("out") else {
+        return Outcome::ok(out);
+    };
+    let tmp = format!("{target}.tmp-{}", std::process::id());
+    if let Err(e) = std::fs::write(&tmp, gcode.as_bytes()) {
+        return Outcome::fail(format!("{tmp}: {e}"));
+    }
+    if let Err(e) = std::fs::rename(&tmp, target) {
+        let _ = std::fs::remove_file(&tmp);
+        return Outcome::fail(format!("{target}: {e}"));
+    }
+    out.push_str(&format!("{target} ({} lines)\n", gcode.lines().count()));
+    Outcome::ok(out)
+}
+
+fn project(args: &[String], env_lang: Option<&str>) -> Outcome {
+    let p = match parse(args, &["config", "lang"], &[]) {
+        Ok(p) => p,
+        Err(e) => return Outcome::usage(&e),
+    };
+    let [file] = p.positional.as_slice() else {
+        return Outcome::usage("project takes one 3MF file");
+    };
+    let state = match state_of(&p, env_lang) {
+        Ok(s) => s,
+        Err(e) => return Outcome::fail(e),
+    };
+    let bytes = match read_limited(file, state.config.limits.max_file_bytes) {
+        Ok(b) => b,
+        Err(e) => return Outcome::fail(e),
+    };
+    let info = match read_project(&bytes, &state.config.limits) {
+        Ok(i) => i,
+        Err(e) => return Outcome::fail(format!("{file}: {e}")),
+    };
+    let mut out = format!(
+        "{file}: a project of the {} family ({}), {} entries, {} items on the build\n",
+        info.producer.name(),
+        if info.application.is_empty() {
+            "no application named"
+        } else {
+            &info.application
+        },
+        info.entries,
+        info.build_items
+    );
+    for o in &info.objects {
+        out.push_str(&format!(
+            "object {}: {}{}\n",
+            o.id,
+            o.name,
+            o.extruder
+                .map_or(String::new(), |e| format!(" (extruder {e})"))
+        ));
+    }
+    for pl in &info.plates {
+        out.push_str(&format!(
+            "plate {}{}: objects {}{}{}\n",
+            pl.id,
+            if pl.name.is_empty() {
+                String::new()
+            } else {
+                format!(" ({})", pl.name)
+            },
+            pl.object_ids.join(", "),
+            pl.predicted_seconds
+                .map_or(String::new(), |s| format!(", predicted {s} s")),
+            pl.weight_g.map_or(String::new(), |g| format!(", {g} g"))
+        ));
+    }
+    for (k, v) in &info.settings {
+        out.push_str(&format!("{k} = {v}\n"));
+    }
+    if info.has_gcode {
+        out.push_str("the package carries G-code\n");
+    }
+    out.push_str("read only: nothing was changed and the model itself was not read\n");
+    Outcome::ok(out)
 }
 
 #[cfg(test)]
@@ -701,5 +881,137 @@ mod tests {
         );
         assert!(!std::path::Path::new(&tmp("never.obj")).exists());
         let _ = std::fs::remove_file(&bad);
+    }
+    #[test]
+    fn slice_reports_writes_and_refuses() {
+        let model = write_cube("slice_cube.stl", Format::Stl);
+        // without --out it only reports
+        let r = run(
+            &args(&format!("slice {model} --printer bambu-lab-a1")),
+            None,
+        );
+        assert_eq!(r.code, 0, "{}", r.err);
+        assert!(
+            r.out.contains("50 layers")
+                && r.out.contains("Bambu Lab A1")
+                && r.out.contains("Simulator only"),
+            "{}",
+            r.out
+        );
+        // with --out it writes G-code that the checker of the program accepts
+        let out = tmp("slice_cube.gcode");
+        let w = run(
+            &args(&format!("slice {model} --printer bambu-lab-a1 --out {out}")),
+            None,
+        );
+        assert_eq!(w.code, 0, "{}", w.err);
+        let text = std::fs::read_to_string(&out).unwrap();
+        assert!(text.contains("M73 P0 R") && text.contains("; layer_num: 49"));
+        let limits = p3dp_profiles::Catalog::builtin()
+            .unwrap()
+            .find("bambu-lab-a1")
+            .unwrap()
+            .limits
+            .unwrap();
+        assert!(check_program(&text, &limits).is_empty());
+        // it does not replace a file without --force
+        assert_eq!(
+            run(
+                &args(&format!("slice {model} --printer bambu-lab-a1 --out {out}")),
+                None
+            )
+            .code,
+            1
+        );
+        assert_eq!(
+            run(
+                &args(&format!(
+                    "slice {model} --printer bambu-lab-a1 --out {out} --force"
+                )),
+                None
+            )
+            .code,
+            0
+        );
+        assert_eq!(
+            run(
+                &args(&format!(
+                    "slice {model} --printer bambu-lab-a1 --out {model} --force"
+                )),
+                None
+            )
+            .code,
+            1
+        );
+        // a temperature over the limit in the settings is refused
+        let cfg = tmp("slice_hot.cfg");
+        std::fs::write(&cfg, "nozzle_c = 400\n").unwrap();
+        let hot = run(
+            &args(&format!(
+                "slice {model} --printer bambu-lab-a1 --settings {cfg}"
+            )),
+            None,
+        );
+        assert_eq!(hot.code, 1);
+        assert!(
+            hot.err.contains("400") && hot.err.contains("above the limit"),
+            "{}",
+            hot.err
+        );
+        // a setting out of its range is refused with the line
+        std::fs::write(&cfg, "perimeters = 2\ninfill_percent = 500\n").unwrap();
+        let bad = run(
+            &args(&format!(
+                "slice {model} --printer bambu-lab-a1 --settings {cfg}"
+            )),
+            None,
+        );
+        assert!(bad.code == 1 && bad.err.contains("line 2"), "{}", bad.err);
+        // mistakes of the command
+        assert_eq!(run(&args(&format!("slice {model}")), None).code, 2);
+        assert_eq!(run(&args("slice --printer bambu-lab-a1"), None).code, 2);
+        assert_eq!(
+            run(&args(&format!("slice {model} --printer nope")), None).code,
+            1
+        );
+        // a resin printer takes no G-code
+        let resin = run(
+            &args(&format!("slice {model} --printer elegoo-mars-4")),
+            None,
+        );
+        assert!(
+            resin.code == 1 && resin.err.contains("not a filament printer"),
+            "{}",
+            resin.err
+        );
+        for f in [&model, &out, &cfg] {
+            let _ = std::fs::remove_file(f);
+        }
+    }
+
+    #[test]
+    fn project_reads_a_package_and_refuses_what_is_not_one() {
+        let own = tmp("project_own.3mf");
+        std::fs::write(
+            &own,
+            write_mesh(&cube(10.0), Format::ThreeMf, "mine").unwrap(),
+        )
+        .unwrap();
+        let r = run(&args(&format!("project {own}")), None);
+        assert_eq!(r.code, 0, "{}", r.err);
+        assert!(
+            r.out.contains("phoenix family") && r.out.contains("read only"),
+            "{}",
+            r.out
+        );
+        let junk = tmp("project_junk.3mf");
+        std::fs::write(&junk, b"not a package").unwrap();
+        assert_eq!(run(&args(&format!("project {junk}")), None).code, 1);
+        assert_eq!(run(&args("project"), None).code, 2);
+        assert_eq!(run(&args("project a b"), None).code, 2);
+        assert_eq!(run(&args("project /no/such/file.3mf"), None).code, 1);
+        for f in [&own, &junk] {
+            let _ = std::fs::remove_file(f);
+        }
     }
 }

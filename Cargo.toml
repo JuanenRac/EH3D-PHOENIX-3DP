@@ -7,6 +7,7 @@ members = [
     "crates/p3dp-gcode",
     "crates/p3dp-link",
     "crates/p3dp-server-bridge",
+    "crates/p3dp-slicer",
 ]
 resolver = "2"
 
@@ -47,6 +48,7 @@ p3dp-profiles = { path = "crates/p3dp-profiles" }
 p3dp-gcode = { path = "crates/p3dp-gcode" }
 p3dp-link = { path = "crates/p3dp-link" }
 p3dp-server-bridge = { path = "crates/p3dp-server-bridge" }
+p3dp-slicer = { path = "crates/p3dp-slicer" }
 
 # the window
 eframe = { version = "0.37.0", default-features = false, features = ["glow", "default_fonts"], optional = true }

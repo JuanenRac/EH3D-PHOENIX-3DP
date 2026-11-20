@@ -1,0 +1,18 @@
+[package]
+name = "p3dp-slicer"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "A minimal slicer written from the geometry: flat layers of a mesh, perimeters, rectilinear infill, solid skins, G-code for the dialects of the program, with every limit refused and never cut down"
+
+[lib]
+name = "p3dp_slicer"
+path = "src/lib.rs"
+
+[dependencies]
+p3dp-core = { path = "../p3dp-core" }
+p3dp-formats = { path = "../p3dp-formats" }
+p3dp-profiles = { path = "../p3dp-profiles" }
+p3dp-gcode = { path = "../p3dp-gcode" }
