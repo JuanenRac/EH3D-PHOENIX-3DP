@@ -4,6 +4,8 @@
 use crate::error::SliceError;
 use p3dp_core::kv;
 use p3dp_core::CoreError;
+use p3dp_profiles::filament::{Compatibility, FilamentProfile, Nozzle};
+use p3dp_profiles::PrinterProfile;
 
 /// What to do with a part of a layer that is thinner than the perimeters.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -548,6 +550,41 @@ impl SliceConfig {
         Ok(())
     }
 
+    /// Sets the temperatures, the fan, the diameter of the filament and the nozzle from a filament profile, for a printer and a nozzle. A pair that does not fit (a temperature the
+    /// printer cannot reach, a nozzle it does not have, a nozzle too small or too soft) is an error that lists the reasons and changes nothing, and so are settings that no longer
+    /// go together once the nozzle is changed (the layer height and the line width are the person's to change). Returns the advice that does not stop the slice.
+    pub fn apply_filament(
+        &mut self,
+        filament: &FilamentProfile,
+        printer: &PrinterProfile,
+        nozzle: Nozzle,
+    ) -> Result<Compatibility, SliceError> {
+        let compat = filament.check(printer, nozzle);
+        if !compat.ok() {
+            let reasons: Vec<String> = compat.issues.iter().map(|i| i.text()).collect();
+            return Err(SliceError::Config(format!(
+                "{} does not go with {}: {}",
+                filament.name,
+                printer.title(),
+                reasons.join("; ")
+            )));
+        }
+        let (Some(nozzle_c), Some(bed_c)) = (compat.nozzle_c, compat.bed_c) else {
+            return Err(SliceError::Config(
+                "the filament gave no temperatures".to_string(),
+            ));
+        };
+        let mut next = self.clone();
+        next.nozzle_c = nozzle_c;
+        next.bed_c = bed_c;
+        next.fan_percent = compat.fan_percent;
+        next.filament_diameter_mm = filament.diameter_mm;
+        next.nozzle_diameter_mm = nozzle.diameter_mm;
+        next.check()?;
+        *self = next;
+        Ok(compat)
+    }
+
     /// The cross-section of a line of a layer of this height, in square millimetres: a rectangle with rounded ends, as the plastic lies when it is pressed.
     pub fn line_area_mm2(&self, layer_height: f64) -> f64 {
         self.line_area_for(self.line_width_mm, layer_height)
@@ -689,6 +726,40 @@ mod tests {
         let mut d = SliceConfig::default();
         d.set("bridge_speed_mm_s", "250").unwrap();
         assert!(d.check().is_err(), "above max_speed_mm_s");
+    }
+
+    #[test]
+    fn a_filament_sets_the_temperatures_and_a_pair_that_does_not_fit_changes_nothing() {
+        use p3dp_profiles::{Catalog, FilamentCatalog};
+        let cat = Catalog::builtin().unwrap();
+        let fil = FilamentCatalog::builtin().unwrap();
+        let a1 = cat.find("bambu-lab-a1").unwrap();
+        let n = |d| Nozzle {
+            diameter_mm: d,
+            hardened: false,
+        };
+        let mut c = SliceConfig::default();
+        let petg = fil.find("generic-petg").unwrap();
+        let advice = c.apply_filament(petg, a1, n(0.4)).unwrap();
+        assert!(advice.advice.is_empty());
+        assert_eq!((c.nozzle_c, c.bed_c, c.fan_percent), (235.0, 80.0, 40.0));
+        // the temperatures it sets are within the limits of the printer
+        let l = a1.limits.unwrap();
+        assert!(c.nozzle_c <= l.nozzle_c && c.bed_c <= l.bed_c);
+        // a bed that stops at 80 does not print ABS: the error says why and the settings stay as they were
+        let mini = cat.find("bambu-lab-a1-mini").unwrap();
+        let before = c.clone();
+        let abs = fil.find("generic-abs").unwrap();
+        let e = c.apply_filament(abs, mini, n(0.4)).unwrap_err().to_string();
+        assert!(e.contains("Generic ABS") && e.contains("bed"), "{e}");
+        assert_eq!(c, before);
+        // a nozzle the printer lists but whose size does not go with the layers of the settings is refused too
+        let e = c.apply_filament(petg, a1, n(0.2)).unwrap_err().to_string();
+        assert!(e.contains("layer_height_mm"), "{e}");
+        assert_eq!(c, before);
+        // a resin printer takes no filament
+        let resin = cat.find("elegoo-mars-4").unwrap();
+        assert!(c.apply_filament(petg, resin, n(0.4)).is_err());
     }
 
     #[test]

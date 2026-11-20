@@ -3,7 +3,9 @@
 #![forbid(unsafe_code)]
 
 pub mod catalog;
+pub mod filament;
 pub mod profile;
 
 pub use catalog::Catalog;
-pub use profile::{Connectivity, PrinterProfile, ProfileError, Technology};
+pub use filament::{FilamentCatalog, FilamentProfile, Material, Nozzle};
+pub use profile::{Connectivity, LimitSource, PrinterProfile, ProfileError, Technology};

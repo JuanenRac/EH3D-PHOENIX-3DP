@@ -8,6 +8,7 @@ use p3dp_formats::project3mf::read_project;
 use p3dp_formats::{bgcode, resin};
 use p3dp_formats::{write_mesh, Format};
 use p3dp_gcode::check_program;
+use p3dp_profiles::filament::{FilamentCatalog, Nozzle};
 use p3dp_profiles::{PrinterProfile, Technology};
 use p3dp_slicer::{Machine, SliceConfig};
 use std::collections::HashMap;
@@ -54,7 +55,8 @@ pub const USAGE: &str = "phoenix-3dp: prepare and send 3D prints (simulators onl
   phoenix-3dp check-profile ID [--gcode FILE]
   phoenix-3dp check-profile --file PROFILE [--gcode FILE]
   phoenix-3dp convert IN OUT [--printer ID] [--force]
-  phoenix-3dp slice MODEL --printer ID [--settings FILE] [--out FILE.gcode] [--force]
+  phoenix-3dp filaments [--printer ID] [--nozzle MM] [--hardened]
+  phoenix-3dp slice MODEL --printer ID [--settings FILE] [--filament ID] [--nozzle MM] [--hardened] [--out FILE.gcode] [--force]
   phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.sl1 [--bottom-layers N] [--lift MM]
   phoenix-3dp version
 
@@ -131,10 +133,112 @@ pub fn run(args: &[String], env_lang: Option<&str>) -> Outcome {
         "info" => info(rest, env_lang),
         "check-profile" => check_profile(rest, env_lang),
         "convert" => convert(rest, env_lang),
+        "filaments" => filaments(rest, env_lang),
         "slice" => slice(rest, env_lang),
         "project" => project(rest, env_lang),
         other => Outcome::usage(&format!("{other:?} is not a command")),
     }
+}
+
+/// The nozzle that `--nozzle` and `--hardened` name: the first one the printer lists when none is named.
+fn nozzle_of(p: &Parsed, printer: &PrinterProfile) -> Result<Nozzle, String> {
+    let diameter_mm = match p.flags.get("nozzle") {
+        Some(v) => v
+            .parse::<f64>()
+            .ok()
+            .filter(|d| d.is_finite() && *d > 0.0)
+            .ok_or_else(|| "--nozzle takes a number of millimetres".to_string())?,
+        None => printer
+            .nozzles_mm
+            .iter()
+            .copied()
+            .find(|d| (d - 0.4).abs() < 1e-9)
+            .or_else(|| printer.nozzles_mm.first().copied())
+            .unwrap_or(0.4),
+    };
+    Ok(Nozzle {
+        diameter_mm,
+        hardened: p.flags.contains_key("hardened"),
+    })
+}
+
+/// The filaments of the program, and what each one comes to on a printer when one is named.
+fn filaments(args: &[String], env_lang: Option<&str>) -> Outcome {
+    let p = match parse(
+        args,
+        &["printer", "nozzle", "config", "lang"],
+        &["hardened"],
+    ) {
+        Ok(p) => p,
+        Err(e) => return Outcome::usage(&e),
+    };
+    if !p.positional.is_empty() {
+        return Outcome::usage("filaments takes no file");
+    }
+    let mut state = match state_of(&p, env_lang) {
+        Ok(s) => s,
+        Err(e) => return Outcome::fail(e),
+    };
+    let printer = match p.flags.get("printer") {
+        None => None,
+        Some(id) => {
+            if !state.select_printer(id) {
+                return Outcome::fail(state.status.text(state.lang));
+            }
+            state.printer().cloned()
+        }
+    };
+    let catalog = match FilamentCatalog::builtin() {
+        Ok(c) => c,
+        Err(e) => return Outcome::fail(e.to_string()),
+    };
+    let nozzle = match printer.as_ref().map(|pr| nozzle_of(&p, pr)) {
+        Some(Err(e)) => return Outcome::usage(&e),
+        Some(Ok(n)) => Some(n),
+        None => None,
+    };
+    let mut out = String::new();
+    for f in &catalog.profiles {
+        out.push_str(&format!(
+            "{:<14} {:<18} nozzle {}-{} C (best {}), bed {}-{} C (best {}), fan {} %, {} g/cm3, {} mm, not verified\n",
+            f.id,
+            f.name,
+            f.nozzle_c.lowest,
+            f.nozzle_c.highest,
+            f.nozzle_c.best,
+            f.bed_c.lowest,
+            f.bed_c.highest,
+            f.bed_c.best,
+            f.fan_percent.best,
+            f.density_g_cm3,
+            f.diameter_mm
+        ));
+        if let (Some(pr), Some(n)) = (printer.as_ref(), nozzle) {
+            let c = f.check(pr, n);
+            if c.ok() {
+                out.push_str(&format!(
+                    "    on {} with a {} mm nozzle: nozzle {} C, bed {} C\n",
+                    pr.title(),
+                    n.diameter_mm,
+                    c.nozzle_c.unwrap_or(0.0),
+                    c.bed_c.unwrap_or(0.0)
+                ));
+            } else {
+                for i in &c.issues {
+                    out.push_str(&format!(
+                        "    on {}: NOT POSSIBLE, {}\n",
+                        pr.title(),
+                        i.text()
+                    ));
+                }
+            }
+            for a in &c.advice {
+                out.push_str(&format!("    note: {}\n", a.text()));
+            }
+        }
+    }
+    out.push_str("the ranges are typical for each family of material, not the figures of a spool, and none has been tried on a machine\n");
+    Outcome::ok(out)
 }
 
 fn printers(args: &[String], env_lang: Option<&str>) -> Outcome {
@@ -389,8 +493,10 @@ fn read_limited(path: &str, max: u64) -> Result<Vec<u8>, String> {
 fn slice(args: &[String], env_lang: Option<&str>) -> Outcome {
     let p = match parse(
         args,
-        &["printer", "settings", "out", "config", "lang"],
-        &["force"],
+        &[
+            "printer", "settings", "out", "config", "lang", "filament", "nozzle",
+        ],
+        &["force", "hardened"],
     ) {
         Ok(p) => p,
         Err(e) => return Outcome::usage(&e),
@@ -415,7 +521,7 @@ fn slice(args: &[String], env_lang: Option<&str>) -> Outcome {
         Ok(m) => m,
         Err(e) => return Outcome::fail(e.to_string()),
     };
-    let config = match p.flags.get("settings") {
+    let mut config = match p.flags.get("settings") {
         None => SliceConfig::default(),
         Some(path) => match read_limited(path, p3dp_core::kv::MAX_BYTES as u64)
             .and_then(|b| String::from_utf8(b).map_err(|_| format!("{path}: not UTF-8")))
@@ -425,6 +531,34 @@ fn slice(args: &[String], env_lang: Option<&str>) -> Outcome {
             Err(e) => return Outcome::fail(e),
         },
     };
+    let mut notes = String::new();
+    if let Some(fid) = p.flags.get("filament") {
+        let nozzle = match nozzle_of(&p, &profile) {
+            Ok(n) => n,
+            Err(e) => return Outcome::usage(&e),
+        };
+        let filaments = match FilamentCatalog::builtin() {
+            Ok(c) => c,
+            Err(e) => return Outcome::fail(e.to_string()),
+        };
+        let Some(f) = filaments.find(fid) else {
+            return Outcome::fail(format!(
+                "{fid}: no such filament (see `phoenix-3dp filaments`)"
+            ));
+        };
+        match config.apply_filament(f, &profile, nozzle) {
+            Ok(compat) => {
+                notes.push_str(&format!(
+                    "filament {}: nozzle {} C, bed {} C, fan {} %\n",
+                    f.name, config.nozzle_c, config.bed_c, config.fan_percent
+                ));
+                for a in compat.advice {
+                    notes.push_str(&format!("note: {}\n", a.text()));
+                }
+            }
+            Err(e) => return Outcome::fail(e.to_string()),
+        }
+    }
     if let Some(out) = p.flags.get("out") {
         if !p.flags.contains_key("force") && std::path::Path::new(out).exists() {
             return Outcome::fail(format!(
@@ -451,7 +585,7 @@ fn slice(args: &[String], env_lang: Option<&str>) -> Outcome {
     };
     let secs = plan.estimated_seconds();
     let mut out = format!(
-        "{model} for {}: {} layers, {:.1} mm high, {:.2} m of filament, about {}h{:02}m (at the speeds of the settings, without the slowing at corners)\n",
+        "{model} for {}: {} layers, {:.1} mm high, {:.2} m of filament, about {}h{:02}m (an estimate with the acceleration of the settings, not the planner of the printer)\n",
         profile.title(),
         plan.layer_count(),
         plan.height_mm(),
@@ -459,6 +593,7 @@ fn slice(args: &[String], env_lang: Option<&str>) -> Outcome {
         (secs / 3600.0) as u64,
         ((secs % 3600.0) / 60.0) as u64
     );
+    out.push_str(&notes);
     for w in &plan.warnings {
         let p3dp_slicer::Warning::ThinRegion { layer } = w;
         out.push_str(&format!(
@@ -697,7 +832,7 @@ mod tests {
         let resin = run(&args("printers --tech msla"), None);
         assert!(resin.out.contains("elegoo-mars-4") && !resin.out.contains("bambu-lab-a1"));
         let bambu = run(&args("printers --vendor bambu"), None);
-        assert!(bambu.out.contains("5 printers"), "{}", bambu.out);
+        assert!(bambu.out.contains("11 printers"), "{}", bambu.out);
         let none = run(&args("printers --search zzzz"), None);
         assert!(none.out.contains("0 printers"));
         assert_eq!(run(&args("printers --tech sls"), None).code, 2);
@@ -1080,6 +1215,109 @@ mod tests {
         for f in [&model, &out, &cfg] {
             let _ = std::fs::remove_file(f);
         }
+    }
+
+    #[test]
+    fn filaments_are_listed_and_checked_against_a_printer_and_a_nozzle() {
+        let r = run(&args("filaments"), None);
+        assert_eq!(r.code, 0, "{}", r.err);
+        for id in [
+            "generic-pla",
+            "generic-petg",
+            "generic-abs",
+            "generic-asa",
+            "generic-tpu",
+            "generic-pa",
+        ] {
+            assert!(r.out.contains(id), "{id}");
+        }
+        assert!(r.out.contains("none has been tried on a machine"));
+        let r = run(&args("filaments --printer bambu-lab-a1-mini"), None);
+        assert_eq!(r.code, 0);
+        assert!(
+            r.out.contains("Generic ABS")
+                && r.out.contains("NOT POSSIBLE")
+                && r.out.contains("the limit of the printer is 80")
+        );
+        assert!(r
+            .out
+            .contains("on Bambu Lab A1 mini with a 0.4 mm nozzle: nozzle 210 C, bed 60 C"));
+        assert!(r.out.contains("direct drive"));
+        let r = run(&args("filaments --printer bambu-lab-a1 --nozzle 0.5"), None);
+        assert!(r.out.contains("does not list a nozzle of 0.5"));
+        assert_eq!(
+            run(&args("filaments --nozzle x --printer bambu-lab-a1"), None).code,
+            2
+        );
+        assert_eq!(run(&args("filaments extra"), None).code, 2);
+        assert_eq!(run(&args("filaments --printer nope"), None).code, 1);
+    }
+
+    #[test]
+    fn slice_takes_the_temperatures_from_a_filament_and_refuses_a_pair_that_does_not_fit() {
+        let model = tmp("filament_cube.stl");
+        std::fs::write(&model, write_mesh(&cube(10.0), Format::Stl, "").unwrap()).unwrap();
+        let r = run(
+            &args(&format!(
+                "slice {model} --printer bambu-lab-a1 --filament generic-petg"
+            )),
+            None,
+        );
+        assert_eq!(r.code, 0, "{}", r.err);
+        assert!(
+            r.out
+                .contains("filament Generic PETG: nozzle 235 C, bed 80 C, fan 40 %"),
+            "{}",
+            r.out
+        );
+        let r = run(
+            &args(&format!(
+                "slice {model} --printer bambu-lab-a1 --filament generic-tpu"
+            )),
+            None,
+        );
+        assert_eq!(r.code, 0, "{}", r.err);
+        assert!(r.out.contains("note: it is soft"), "{}", r.out);
+        let r = run(
+            &args(&format!(
+                "slice {model} --printer bambu-lab-a1-mini --filament generic-abs"
+            )),
+            None,
+        );
+        assert_eq!(r.code, 1);
+        assert!(
+            r.err.contains("does not go with") && r.err.contains("bed"),
+            "{}",
+            r.err
+        );
+        let r = run(
+            &args(&format!(
+                "slice {model} --printer bambu-lab-a1 --filament nope"
+            )),
+            None,
+        );
+        assert_eq!(r.code, 1);
+        assert!(r.err.contains("no such filament"));
+        // the nozzle is part of the check: a 0.6 nozzle needs wider lines than the default settings have
+        let r = run(
+            &args(&format!(
+                "slice {model} --printer bambu-lab-a1 --filament generic-pla --nozzle 0.6"
+            )),
+            None,
+        );
+        assert_eq!(r.code, 1);
+        assert!(r.err.contains("line_width_mm"), "{}", r.err);
+        assert_eq!(
+            run(
+                &args(&format!(
+                    "slice {model} --printer bambu-lab-a1 --filament generic-pla --nozzle big"
+                )),
+                None
+            )
+            .code,
+            2
+        );
+        let _ = std::fs::remove_file(&model);
     }
 
     #[test]

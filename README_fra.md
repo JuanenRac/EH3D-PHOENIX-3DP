@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.2-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-349-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-362-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Contrôle d'honnêteté - ce qui fonctionne vraiment aujourd'hui :** un espace de travail Rust de sept bibliothèques et un programme en ligne de commande (`phoenix-3dp`) avec 349 tests qui s'exécutent sur un ordinateur. Il lit et vérifie des modèles STL, OBJ et 3MF, contient un catalogue de 46 profils d'imprimante construits à partir de données publiques (aucun essayé sur une machine), écrit du G-code pour les dialectes Marlin, Klipper, RepRapFirmware et Bambu avec des limites de température qui refusent une valeur au lieu de la rogner, et pilote des imprimantes Moonraker et OctoPrint et le serveur EH3D, mais seulement contre des simulateurs (en mémoire et sur un socket de cet ordinateur). Il découpe un modèle fermé en couches planes avec des périmètres, un remplissage rectiligne et des peaux pleines (un premier trancheur minimal, encore sans supports, largeur variable ni ponts) ; la fenêtre n'a pas été compilée ni vue sur un écran ; rien n'a tourné sur une vraie imprimante.
+**Contrôle d'honnêteté - ce qui fonctionne vraiment aujourd'hui :** un espace de travail Rust de sept bibliothèques et un programme en ligne de commande (`phoenix-3dp`) avec 362 tests qui s'exécutent sur un ordinateur. Il lit et vérifie des modèles STL, OBJ et 3MF, contient un catalogue de 120 profils d'imprimante construits à partir de données publiques (aucun essayé sur une machine), écrit du G-code pour les dialectes Marlin, Klipper, RepRapFirmware et Bambu avec des limites de température qui refusent une valeur au lieu de la rogner, et pilote des imprimantes Moonraker et OctoPrint et le serveur EH3D, mais seulement contre des simulateurs (en mémoire et sur un socket de cet ordinateur). Il découpe un modèle fermé en couches planes avec des périmètres, un remplissage rectiligne et des peaux pleines (un premier trancheur minimal, encore sans supports, largeur variable ni ponts) ; la fenêtre n'a pas été compilée ni vue sur un écran ; rien n'a tourné sur une vraie imprimante.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Version | `0.0.2` |
 | Maturité | Échafaudage |
-| Tests | 349 |
+| Tests | 362 |
 | Pile technique | Rust |
 | Sur du matériel réel | Pas essayé : rien de tout cela n'a tourné sur une imprimante, pas même sur une Bambu Lab A1 ou une P1S. |
 
@@ -49,13 +49,13 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 |---|---|---|
 | Cœur | 🟡 | unités en nanomètres, le maillage et ses vérifications, les limites des lecteurs, un petit lecteur JSON et un secret qui ne s'affiche jamais ; testé sur ordinateur avec des entrées normales et abîmées. |
 | Modèles et fichiers | 🟡 | STL (texte et binaire), OBJ et 3MF de base sont lus avec des limites de taille et des refus qui disent ce qu'ils ont trouvé ; le paquet 3MF propre, le STL binaire, l'OBJ et le fichier de G-code sont écrits ; des projets 3MF d'autres programmes on lit les objets, les plateaux et quelques réglages (lecture seule) ; vérifié avec des tests de fuzzing, pas avec une collection de vrais fichiers d'autres programmes. |
-| Profils d'imprimante | 🟠 | 46 modèles à partir de données publiques (volume, buses, dialecte, modes de connexion, limites du fabricant, dont les Bambu Lab A1 et P1S) ; tous disent `verified = false`, car aucun n'a été essayé sur une machine. |
+| Profils d'imprimante | 🟠 | 120 modèles à partir de données publiques (volume, buses, dialecte, modes de connexion, limites du fabricant, dont les Bambu Lab A1 et P1S) ; tous disent `verified = false`, car aucun n'a été essayé sur une machine. |
 | G-code | 🟡 | écrivains pour les quatre dialectes avec un début et une fin sûrs ; une température au-dessus de la limite est refusée et rien n'est écrit ; un vérificateur trouve les lignes d'un programme qui dépassent une limite ; jamais exécuté sur une imprimante. |
 | Pilotes d'imprimante | 🟠 | Moonraker et OctoPrint sur un transport, essayés seulement contre des simulateurs de leurs protocoles ; Bambu LAN est une conception marquée expérimentale qui ne se connecte pas. |
 | Liaison avec le serveur | 🟠 | les réglages de la liaison et un client du greffon d'imprimantes du serveur au-dessus du client commun de la suite (connexion, renouvellement, nouvelles tentatives, erreurs en huit langues), essayé contre un serveur en mémoire ; jamais contre le vrai serveur. |
 | Trancheur | 🟡 | couches planes d'un maillage fermé, périmètres, remplissage rectiligne, peaux pleines, G-code par dialecte et un aperçu par couches sous forme de données ; vérifié par des propriétés sur des formes à graine fixe (le plastique déposé est le volume de la pièce, rien ne sort du plateau, aucune température ne dépasse une limite) ; aucune impression n'en est sortie sur une imprimante. |
 | Ligne de commande | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `slice`, `project`, `version`) exécute les fonctions des bibliothèques et affiche le résultat ; chaque erreur revient sous forme de message et d'un code de sortie non nul. |
-| Tests | 🟡 | 349 tests réussissent (`cargo test --workspace`), avec des cas normaux, des cas limites, des entrées abîmées et une graine fixe là où il y a du hasard. |
+| Tests | 🟡 | 362 tests réussissent (`cargo test --workspace`), avec des cas normaux, des cas limites, des entrées abîmées et une graine fixe là où il y a du hasard. |
 | Sécurité | 🟡 | Rust sûr et simple (`forbid(unsafe_code)`) : une limite est un refus et jamais une coupe ; le jeton ne s'affiche jamais ; rien ne panique sur les fichiers reçus ; pas de revue indépendante. |
 | Fenêtre | 🔴 | Une première version des quatre onglets (Préparer, Aperçu, Appareil, Projet) est écrite avec `--features gui` ; sa logique est testée, mais elle n'a pas encore été compilée ni vue sur un écran. |
 | Matériel réel | 🔴 | Pas essayé : rien de tout cela n'a tourné sur une imprimante, pas même sur une Bambu Lab A1 ou une P1S. |
@@ -65,7 +65,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 
 * **L'idée :** PHOENIX-3DP est le programme d'impression 3D de la famille PHOENIX. Le serveur EH3D et ses clients sont le centre de la suite : ce programme est un client de plus du serveur, et le mode autonome qui parle directement à une imprimante est une option désactivée par défaut.
 * **Les modèles** (`p3dp-formats`) : STL (texte et binaire), OBJ et 3MF de base sont lus avec des limites de taille, de nombre de triangles et de contenu d'un paquet ZIP ; ce qui ne peut pas être lu est refusé avec le nom de ce qui a été trouvé. Il écrit du STL binaire, de l'OBJ, son propre paquet 3MF et des fichiers de G-code. Les projets enregistrés en 3MF par d'autres programmes sont lus pour leurs objets, plateaux et quelques réglages (lecture seule, avec des limites contre les paquets conçus pour nuire).
-* **Les profils** (`p3dp-profiles`) : un catalogue de 46 modèles d'imprimante, FDM et résine, écrit à partir de faits publics : volume, buses, dialecte, modes de connexion, système multi-matériaux et températures maximales annoncées par le fabricant. Chaque profil dit s'il a été essayé sur une machine ; aucun ne l'a été.
+* **Les profils** (`p3dp-profiles`) : un catalogue de 120 modèles d'imprimante, FDM et résine, écrit à partir de faits publics : volume, buses, dialecte, modes de connexion, système multi-matériaux et températures maximales annoncées par le fabricant. Chaque profil dit s'il a été essayé sur une machine ; aucun ne l'a été.
 * **Le G-code** (`p3dp-gcode`) : des écrivains pour Marlin, Klipper, RepRapFirmware et Bambu, chacun avec un en-tête, un début et une fin sûrs ; une température ou un mouvement non permis est refusé, jamais rogné. Un vérificateur lit n'importe quel programme et trouve les lignes qui dépassent les limites d'un modèle.
 * **La liaison** (`p3dp-link`) : un trait de pilote, un état normalisé (quinze états, températures, travail, alertes) et une liste de commandes ; Moonraker et OctoPrint sont implémentés sur un transport (un HTTP simple écrit avec la bibliothèque standard, avec des limites de temps et de taille, essayé sur un socket de cet ordinateur) et testés contre un simulateur en mémoire de chaque protocole ; Bambu LAN est la conception de ses sujets et messages, marquée expérimentale.
 * **Le serveur** (`p3dp-server-bridge`) : les réglages `server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries` et `server_mdns`, et un client du greffon `printer3d` du serveur au-dessus du client commun de la suite (`eh3d-serverclient`) : les travaux entrent dans la file et attendent qu'une personne les lance, les limites de température sont vérifiées avant tout envoi, et il y a l'arrêt ; testé contre un serveur en mémoire.
@@ -147,7 +147,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Tests
 
-La suite compte 349 tests (`cargo test --workspace`, exécutés sous Windows et Linux dans la CI), avec une graine fixe là où il y a du hasard. Ils vérifient les cas normaux, les cas limites et les entrées abîmées : des fichiers coupés, du bruit et des en-têtes hostiles ne font jamais paniquer, et aucune température d'aucune imprimante du catalogue ne dépasse sa limite. La CI exécute aussi `cargo fmt --all --check`, `cargo clippy` avec les avertissements en erreurs et `python -I tools/ci_validate.py`.
+La suite compte 362 tests (`cargo test --workspace`, exécutés sous Windows et Linux dans la CI), avec une graine fixe là où il y a du hasard. Ils vérifient les cas normaux, les cas limites et les entrées abîmées : des fichiers coupés, du bruit et des en-têtes hostiles ne font jamais paniquer, et aucune température d'aucune imprimante du catalogue ne dépasse sa limite. La CI exécute aussi `cargo fmt --all --check`, `cargo clippy` avec les avertissements en erreurs et `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilation et publication
 

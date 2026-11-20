@@ -85,6 +85,7 @@ fn the_readmes_show_only_commands_the_program_has() {
         "check-profile",
         "convert",
         "slice",
+        "filaments",
         "project",
         "version",
         "gui",

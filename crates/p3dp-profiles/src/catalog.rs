@@ -1,6 +1,6 @@
 //! The catalog: the printers that come with the program, read from a table of facts that is part of the source.
 
-use crate::profile::{Connectivity, PrinterProfile, ProfileError, Technology};
+use crate::profile::{Connectivity, LimitSource, PrinterProfile, ProfileError, Technology};
 use p3dp_core::{Dialect, TempLimits};
 
 /// The table, one printer per line (see the comments at its top for the columns).
@@ -36,9 +36,9 @@ impl Catalog {
                 continue;
             }
             let c: Vec<&str> = line.split('|').collect();
-            if c.len() != 15 {
+            if c.len() != 16 {
                 return Err(ProfileError(format!(
-                    "line {ln}: {} columns, expected 15",
+                    "line {ln}: {} columns, expected 16",
                     c.len()
                 )));
             }
@@ -83,6 +83,15 @@ impl Catalog {
                     )))
                 }
             };
+            let limit_source = match c[15].trim() {
+                "maker" => LimitSource::Maker,
+                "default" => LimitSource::Conservative,
+                other => {
+                    return Err(ProfileError(format!(
+                        "line {ln}: the source of the limits {other:?} is not maker or default"
+                    )))
+                }
+            };
             let p = PrinterProfile {
                 id: c[0].trim().to_string(),
                 vendor: c[1].trim().to_string(),
@@ -98,6 +107,7 @@ impl Catalog {
                 connectivity,
                 multimaterial: Some(c[10].trim().to_string()).filter(|m| !m.is_empty()),
                 limits,
+                limit_source,
                 verified,
             };
             p.validate()
@@ -177,7 +187,7 @@ mod tests {
     #[test]
     fn the_catalog_reads_and_has_the_machines_of_the_owner() {
         let c = cat();
-        assert!(c.len() >= 30 && c.len() <= 60, "{}", c.len());
+        assert!(c.len() == 120, "{}", c.len());
         let a1 = c.find("bambu-lab-a1").unwrap();
         assert_eq!(a1.dialect, Dialect::Bambu);
         assert!(a1.has(Connectivity::BambuLan));
@@ -198,6 +208,65 @@ mod tests {
         ] {
             assert!(c.find(id).is_some(), "{id}");
         }
+    }
+
+    #[test]
+    fn the_two_printers_of_the_owner_have_the_limits_the_maker_publishes() {
+        let c = cat();
+        for id in ["bambu-lab-a1", "bambu-lab-p1s"] {
+            let p = c.find(id).unwrap();
+            assert_eq!(p.limit_source, LimitSource::Maker, "{id}");
+            let l = p.limits.unwrap();
+            assert_eq!(
+                (l.nozzle_c, l.bed_c, l.chamber_c),
+                (300.0, 100.0, None),
+                "{id}"
+            );
+            assert!(p.has(Connectivity::BambuLan) && p.dialect == Dialect::Bambu);
+            assert!(!p.verified);
+        }
+        // the profiles whose limits are not the maker's figure are the conservative ones, and say so
+        let mut conservative = 0;
+        for p in &c.profiles {
+            match (p.limit_source, p.limits) {
+                (LimitSource::Conservative, Some(l)) => {
+                    conservative += 1;
+                    assert_eq!(
+                        (l.nozzle_c, l.bed_c, l.chamber_c),
+                        (260.0, 100.0, None),
+                        "{}",
+                        p.id
+                    );
+                }
+                (_, None) => assert_eq!(p.technology, Technology::Msla, "{}", p.id),
+                (LimitSource::Maker, Some(_)) => {}
+                (other, _) => panic!("{}: {other:?}", p.id),
+            }
+        }
+        assert!(conservative >= 70, "{conservative}");
+    }
+
+    #[test]
+    fn the_catalog_has_a_hundred_and_twenty_models_of_both_technologies() {
+        let c = cat();
+        assert_eq!(c.len(), 120);
+        assert_eq!(c.technology(Technology::Msla).len(), 8);
+        assert_eq!(c.technology(Technology::Fdm).len(), 112);
+        let mut ids: Vec<&str> = c.profiles.iter().map(|p| p.id.as_str()).collect();
+        ids.sort_unstable();
+        ids.dedup();
+        assert_eq!(ids.len(), 120, "an id is used twice");
+        // the models that come from the study are there, with the volume it gives
+        for (id, volume) in [
+            ("bambu-lab-x1e", [256.0, 256.0, 250.0]),
+            ("creality-k2-plus", [350.0, 350.0, 350.0]),
+            ("prusa-core-one-l", [300.0, 300.0, 331.0]),
+            ("voron-trident-350", [350.0, 350.0, 250.0]),
+            ("qidi-q2", [270.0, 270.0, 256.0]),
+        ] {
+            assert_eq!(c.find(id).unwrap().volume_mm, volume, "{id}");
+        }
+        assert!(c.vendors().len() >= 25);
     }
 
     #[test]
@@ -255,32 +324,36 @@ mod tests {
 
     #[test]
     fn a_bad_table_is_refused_with_its_line() {
-        let row = "a-1|V|M|fdm|10|10|10|0.4|marlin|serial||250|100|-|false";
+        let row = "a-1|V|M|fdm|10|10|10|0.4|marlin|serial||250|100|-|false|maker";
         assert!(Catalog::parse(row).is_ok());
         for (bad, want) in [
-            ("a-1|V|M|fdm|10|10|10|0.4|marlin|serial||250|100|-", "15"),
+            ("a-1|V|M|fdm|10|10|10|0.4|marlin|serial||250|100|-", "16"),
             (
-                "a-1|V|M|sls|10|10|10|0.4|marlin|serial||250|100|-|false",
+                "a-1|V|M|fdm|10|10|10|0.4|marlin|serial||250|100|-|false|guess",
+                "source of the limits",
+            ),
+            (
+                "a-1|V|M|sls|10|10|10|0.4|marlin|serial||250|100|-|false|maker",
                 "technology",
             ),
             (
-                "a-1|V|M|fdm|10|10|10|0.4|grbl|serial||250|100|-|false",
+                "a-1|V|M|fdm|10|10|10|0.4|grbl|serial||250|100|-|false|maker",
                 "dialect",
             ),
             (
-                "a-1|V|M|fdm|10|10|10|0.4|marlin|pigeon||250|100|-|false",
+                "a-1|V|M|fdm|10|10|10|0.4|marlin|pigeon||250|100|-|false|maker",
                 "pigeon",
             ),
             (
-                "a-1|V|M|fdm|10|10|ten|0.4|marlin|serial||250|100|-|false",
+                "a-1|V|M|fdm|10|10|ten|0.4|marlin|serial||250|100|-|false|maker",
                 "number",
             ),
             (
-                "a-1|V|M|fdm|10|10|10|0.4|marlin|serial||250|100|-|maybe",
+                "a-1|V|M|fdm|10|10|10|0.4|marlin|serial||250|100|-|maybe|maker",
                 "verified",
             ),
             (
-                "a-1|V|M|fdm|0|10|10|0.4|marlin|serial||250|100|-|false",
+                "a-1|V|M|fdm|0|10|10|0.4|marlin|serial||250|100|-|false|maker",
                 "volume",
             ),
         ] {

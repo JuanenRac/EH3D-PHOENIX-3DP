@@ -89,6 +89,36 @@ impl fmt::Display for ProfileError {
 
 impl std::error::Error for ProfileError {}
 
+/// Where the temperature limits of a profile come from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LimitSource {
+    /// The figure that the maker publishes for the model.
+    Maker,
+    /// The conservative limits of the program, used where the figure of the maker was not taken: they refuse more than the printer could take, and a profile file can raise them.
+    Conservative,
+    /// The owner wrote them in a profile file.
+    Owner,
+}
+
+impl LimitSource {
+    pub fn name(self) -> &'static str {
+        match self {
+            LimitSource::Maker => "maker",
+            LimitSource::Conservative => "default",
+            LimitSource::Owner => "owner",
+        }
+    }
+
+    pub fn from_name(name: &str) -> Option<LimitSource> {
+        match name.trim().to_ascii_lowercase().as_str() {
+            "maker" => Some(LimitSource::Maker),
+            "default" | "conservative" => Some(LimitSource::Conservative),
+            "owner" => Some(LimitSource::Owner),
+            _ => None,
+        }
+    }
+}
+
 /// A printer model.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PrinterProfile {
@@ -106,6 +136,8 @@ pub struct PrinterProfile {
     pub multimaterial: Option<String>,
     /// The temperature limits of the model (`None` for resin printers).
     pub limits: Option<TempLimits>,
+    /// Where those limits come from.
+    pub limit_source: LimitSource,
     /// Whether the profile has been tried on a machine. Every profile of the catalog starts as false.
     pub verified: bool,
 }
@@ -249,6 +281,7 @@ impl PrinterProfile {
                 s.push_str(&format!("chamber_max_c = {c}\n"));
             }
         }
+        s.push_str(&format!("limit_source = {}\n", self.limit_source.name()));
         s.push_str(&format!(
             "verified = {}\n",
             if self.verified { "on" } else { "off" }
@@ -261,7 +294,7 @@ impl PrinterProfile {
     pub fn from_text(text: &str) -> Result<PrinterProfile, ProfileError> {
         let entries = kv::parse(text).map_err(|e| ProfileError(e.to_string()))?;
         let get = |k: &str| entries.iter().find(|e| e.key == k).map(|e| e.value.clone());
-        const KNOWN: [&str; 14] = [
+        const KNOWN: [&str; 15] = [
             "id",
             "vendor",
             "model",
@@ -276,6 +309,7 @@ impl PrinterProfile {
             "nozzle_max_c",
             "bed_max_c",
             "chamber_max_c",
+            "limit_source",
         ];
         for e in &entries {
             if e.key != "verified" && !KNOWN.contains(&e.key.as_str()) {
@@ -334,6 +368,11 @@ impl PrinterProfile {
             Some(v) => kv::on_off("verified", &v).map_err(|e| ProfileError(e.to_string()))?,
             None => false,
         };
+        let limit_source = match get("limit_source") {
+            Some(v) => LimitSource::from_name(&v)
+                .ok_or_else(|| bad(&id, "limit_source must be maker, default or owner"))?,
+            None => LimitSource::Owner,
+        };
         let p = PrinterProfile {
             id: id.clone(),
             vendor: need("vendor")?,
@@ -349,6 +388,7 @@ impl PrinterProfile {
             connectivity,
             multimaterial: get("multimaterial").filter(|m| !m.is_empty()),
             limits,
+            limit_source,
             verified,
         };
         p.validate()?;
@@ -377,8 +417,34 @@ mod tests {
                 bed_c: 100.0,
                 chamber_c: Some(50.0),
             }),
+            limit_source: LimitSource::Owner,
             verified: false,
         }
+    }
+
+    #[test]
+    fn the_source_of_the_limits_is_named_and_a_file_without_it_is_the_owners() {
+        for s in [
+            LimitSource::Maker,
+            LimitSource::Conservative,
+            LimitSource::Owner,
+        ] {
+            assert_eq!(LimitSource::from_name(s.name()), Some(s));
+        }
+        assert_eq!(
+            LimitSource::from_name(" CONSERVATIVE "),
+            Some(LimitSource::Conservative)
+        );
+        assert_eq!(LimitSource::from_name("guess"), None);
+        let text = sample().to_text().replace("limit_source = owner\n", "");
+        assert_eq!(
+            PrinterProfile::from_text(&text).unwrap().limit_source,
+            LimitSource::Owner
+        );
+        let bad = sample()
+            .to_text()
+            .replace("limit_source = owner", "limit_source = guess");
+        assert!(PrinterProfile::from_text(&bad).is_err());
     }
 
     #[test]
@@ -392,6 +458,7 @@ mod tests {
         });
         q.multimaterial = Some("AMS".into());
         q.verified = true;
+        q.limit_source = LimitSource::Maker;
         assert_eq!(PrinterProfile::from_text(&q.to_text()).unwrap(), q);
     }
 

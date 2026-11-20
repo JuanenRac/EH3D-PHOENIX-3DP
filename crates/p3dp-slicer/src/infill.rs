@@ -180,7 +180,11 @@ pub fn gyroid_polylines(
     let point = |id: u64| -> P {
         let node = (id / 2) as usize;
         let (i, j) = (node % w, node / w);
-        let other = if id.is_multiple_of(2) { node + 1 } else { node + w };
+        let other = if id.is_multiple_of(2) {
+            node + 1
+        } else {
+            node + w
+        };
         let (a, b) = (vals[node], vals[other]);
         let t = if (a - b).abs() < 1e-15 {
             0.5
