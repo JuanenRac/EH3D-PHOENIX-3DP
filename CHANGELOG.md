@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- The four pictures of the window in the READMEs are taken again with the 0.0.7 program, so they show the full-width gauges, the framed and smooth part, the bed under the plan and the inside of the print.
+
 ## [0.0.7] - The device tab, the preparation view and the preview of the window fixed: full-width bars, framing of the part, smooth shading and clearer shortcuts
 
 - Device tab: every figure is said once. The machine line no longer repeats the heaters and the layer; each heater and the print have a gauge as wide as the page (a track you can see, the fill, and the target marked on it) with its name and figures above, the power of the heater and the time left under it, a line when no temperatures or no print are reported, and how long ago the machines were read. The gauges were thin pills because the track was the colour of the ground and the text was drawn twice.
