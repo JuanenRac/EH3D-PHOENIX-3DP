@@ -234,6 +234,15 @@ pub fn profile_report(p: &PrinterProfile, lang: Lang) -> Vec<String> {
     match p.limits {
         Some(l) => {
             out.push(Msg::Limits.tr(lang).to_string());
+            out.push(
+                match p.limit_source {
+                    p3dp_profiles::LimitSource::Maker => Msg::LimitsFromMaker,
+                    p3dp_profiles::LimitSource::Conservative => Msg::LimitsConservative,
+                    p3dp_profiles::LimitSource::Owner => Msg::LimitsOwner,
+                }
+                .tr(lang)
+                .to_string(),
+            );
             out.push(format!("{}: {} C", Msg::Nozzle.tr(lang), l.nozzle_c));
             out.push(format!("{}: {} C", Msg::Bed.tr(lang), l.bed_c));
             out.push(match l.chamber_c {

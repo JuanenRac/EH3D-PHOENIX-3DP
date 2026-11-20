@@ -111,10 +111,46 @@ pub enum Msg {
     Saved,
     Problem,
     Safety,
+    PanelFilament,
+    PanelInfill,
+    PanelSupports,
+    PanelSeam,
+    PanelBridges,
+    PanelLayers,
+    PanelEstimate,
+    PanelResin,
+    PanelGcodeFile,
+    PatternRectilinear,
+    PatternGrid,
+    PatternGyroid,
+    SeamNearest,
+    SeamAligned,
+    SeamRear,
+    SupportsOff,
+    SupportsBed,
+    SupportsEverywhere,
+    BridgeTooLong,
+    ZHop,
+    FanRamp,
+    WidthVariation,
+    EstimateAbout,
+    ResinExposure,
+    ResinLayers,
+    ClosedFormat,
+    LimitsFromMaker,
+    LimitsConservative,
+    LimitsOwner,
+    ViewOrbit,
+    ViewPan,
+    ViewZoom,
+    ViewSelectBox,
+    ViewLayerRange,
+    ViewReset,
+    ViewFit,
 }
 
 impl Msg {
-    pub const ALL: [Msg; 37] = [
+    pub const ALL: [Msg; 73] = [
         Msg::TabPrepare,
         Msg::TabPreview,
         Msg::TabDevice,
@@ -152,6 +188,42 @@ impl Msg {
         Msg::Saved,
         Msg::Problem,
         Msg::Safety,
+        Msg::PanelFilament,
+        Msg::PanelInfill,
+        Msg::PanelSupports,
+        Msg::PanelSeam,
+        Msg::PanelBridges,
+        Msg::PanelLayers,
+        Msg::PanelEstimate,
+        Msg::PanelResin,
+        Msg::PanelGcodeFile,
+        Msg::PatternRectilinear,
+        Msg::PatternGrid,
+        Msg::PatternGyroid,
+        Msg::SeamNearest,
+        Msg::SeamAligned,
+        Msg::SeamRear,
+        Msg::SupportsOff,
+        Msg::SupportsBed,
+        Msg::SupportsEverywhere,
+        Msg::BridgeTooLong,
+        Msg::ZHop,
+        Msg::FanRamp,
+        Msg::WidthVariation,
+        Msg::EstimateAbout,
+        Msg::ResinExposure,
+        Msg::ResinLayers,
+        Msg::ClosedFormat,
+        Msg::LimitsFromMaker,
+        Msg::LimitsConservative,
+        Msg::LimitsOwner,
+        Msg::ViewOrbit,
+        Msg::ViewPan,
+        Msg::ViewZoom,
+        Msg::ViewSelectBox,
+        Msg::ViewLayerRange,
+        Msg::ViewReset,
+        Msg::ViewFit,
     ];
 
     /// The texts in the order English, Spanish, German, French, Italian, Japanese, Chinese, Portuguese (Portugal).
@@ -203,6 +275,42 @@ impl Msg {
                 "本程序不会单独控制机器，也不是安全系统：运行任何内容之前请先检查其输出",
                 "Este programa não controla uma máquina sozinho e não é um sistema de segurança: verifique o que produz antes de executar seja o que for",
             ],
+            Msg::PanelFilament => ["Filament", "Filamento", "Filament", "Filament", "Filamento", "フィラメント", "耗材", "Filamento"],
+            Msg::PanelInfill => ["Infill", "Relleno", "Füllung", "Remplissage", "Riempimento", "インフィル", "填充", "Preenchimento"],
+            Msg::PanelSupports => ["Supports", "Soportes", "Stützen", "Supports", "Supporti", "サポート", "支撑", "Suportes"],
+            Msg::PanelSeam => ["Seam", "Costura", "Naht", "Couture", "Cucitura", "シーム", "接缝", "Costura"],
+            Msg::PanelBridges => ["Bridges", "Puentes", "Brücken", "Ponts", "Ponti", "ブリッジ", "桥接", "Pontes"],
+            Msg::PanelLayers => ["Layers", "Capas", "Schichten", "Couches", "Strati", "レイヤー", "层", "Camadas"],
+            Msg::PanelEstimate => ["Time estimate", "Estimación del tiempo", "Zeitschätzung", "Estimation du temps", "Stima del tempo", "時間の見積もり", "时间估算", "Estimativa do tempo"],
+            Msg::PanelResin => ["Resin", "Resina", "Harz", "Résine", "Resina", "レジン", "树脂", "Resina"],
+            Msg::PanelGcodeFile => ["G-code file", "Archivo G-code", "G-Code-Datei", "Fichier G-code", "File G-code", "G-code ファイル", "G-code 文件", "Ficheiro G-code"],
+            Msg::PatternRectilinear => ["Lines", "Líneas", "Linien", "Lignes", "Linee", "直線", "直线", "Linhas"],
+            Msg::PatternGrid => ["Grid", "Rejilla", "Gitter", "Grille", "Griglia", "グリッド", "网格", "Grelha"],
+            Msg::PatternGyroid => ["Gyroid", "Giroide", "Gyroid", "Gyroïde", "Giroide", "ジャイロイド", "螺旋体", "Giroide"],
+            Msg::SeamNearest => ["Nearest", "Más cercana", "Nächste", "La plus proche", "Più vicina", "最寄り", "最近处", "Mais próxima"],
+            Msg::SeamAligned => ["Aligned", "Alineada", "Ausgerichtet", "Alignée", "Allineata", "整列", "对齐", "Alinhada"],
+            Msg::SeamRear => ["Rear", "Trasera", "Hinten", "Arrière", "Posteriore", "背面", "后方", "Traseira"],
+            Msg::SupportsOff => ["No supports", "Sin soportes", "Keine Stützen", "Sans supports", "Senza supporti", "サポートなし", "无支撑", "Sem suportes"],
+            Msg::SupportsBed => ["Only from the bed", "Solo desde la cama", "Nur vom Druckbett", "Seulement depuis le plateau", "Solo dal piano", "ベッドからのみ", "仅从热床", "Só a partir da base"],
+            Msg::SupportsEverywhere => ["Everywhere", "En todas partes", "Überall", "Partout", "Ovunque", "どこでも", "所有位置", "Em todo o lado"],
+            Msg::BridgeTooLong => ["A bridge of {} mm is longer than the limit", "Un puente de {} mm supera el límite", "Eine Brücke von {} mm ist länger als die Grenze", "Un pont de {} mm dépasse la limite", "Un ponte di {} mm supera il limite", "{} mm のブリッジは上限を超えています", "{} mm 的桥接超过了上限", "Uma ponte de {} mm excede o limite"],
+            Msg::ZHop => ["Lift on travel", "Elevar al desplazarse", "Anheben beim Verfahren", "Lever en déplacement", "Solleva negli spostamenti", "移動時に持ち上げ", "移动时抬升", "Elevar nas deslocações"],
+            Msg::FanRamp => ["Fan ramp", "Rampa del ventilador", "Lüfterrampe", "Rampe du ventilateur", "Rampa della ventola", "ファンの段階変化", "风扇渐变", "Rampa da ventoinha"],
+            Msg::WidthVariation => ["Variable width", "Ancho variable", "Variable Breite", "Largeur variable", "Larghezza variabile", "可変幅", "可变线宽", "Largura variável"],
+            Msg::EstimateAbout => ["About {}", "Aprox. {}", "Etwa {}", "Environ {}", "Circa {}", "約 {}", "约 {}", "Cerca de {}"],
+            Msg::ResinExposure => ["Exposure: {} s ({} s at the bottom)", "Exposición: {} s ({} s en la base)", "Belichtung: {} s ({} s unten)", "Exposition : {} s ({} s en bas)", "Esposizione: {} s ({} s alla base)", "露光: {} 秒（底面 {} 秒）", "曝光：{} 秒（底层 {} 秒）", "Exposição: {} s ({} s na base)"],
+            Msg::ResinLayers => ["{} layers of {} mm", "{} capas de {} mm", "{} Schichten zu {} mm", "{} couches de {} mm", "{} strati da {} mm", "{} 層（{} mm）", "{} 层，每层 {} mm", "{} camadas de {} mm"],
+            Msg::ClosedFormat => ["This resin format is closed and is not read", "Este formato de resina es cerrado y no se lee", "Dieses Harzformat ist geschlossen und wird nicht gelesen", "Ce format de résine est fermé et n'est pas lu", "Questo formato per resina è chiuso e non viene letto", "このレジン形式は非公開のため読み込みません", "此树脂格式不公开，不予读取", "Este formato de resina é fechado e não é lido"],
+            Msg::LimitsFromMaker => ["Limits stated by the maker", "Límites que indica el fabricante", "Vom Hersteller angegebene Grenzen", "Limites indiquées par le fabricant", "Limiti dichiarati dal produttore", "メーカー公表の上限", "制造商标明的上限", "Limites indicados pelo fabricante"],
+            Msg::LimitsConservative => ["Conservative limits of the program (not the maker's figure)", "Límites prudentes del programa (no son los del fabricante)", "Vorsichtige Grenzen des Programms (nicht die des Herstellers)", "Limites prudentes du programme (pas celles du fabricant)", "Limiti prudenti del programma (non quelli del produttore)", "プログラムの安全側の上限（メーカー値ではありません）", "程序的保守上限（并非制造商数值）", "Limites prudentes do programa (não são as do fabricante)"],
+            Msg::LimitsOwner => ["Limits written by the owner", "Límites escritos por el dueño", "Vom Besitzer festgelegte Grenzen", "Limites écrites par le propriétaire", "Limiti scritti dal proprietario", "所有者が設定した上限", "由所有者设定的上限", "Limites escritos pelo dono"],
+            Msg::ViewOrbit => ["Orbit", "Orbitar", "Drehen", "Orbiter", "Orbita", "回転", "旋转", "Orbitar"],
+            Msg::ViewPan => ["Pan", "Desplazar", "Verschieben", "Déplacer", "Sposta", "移動", "平移", "Deslocar"],
+            Msg::ViewZoom => ["Zoom", "Zoom", "Zoom", "Zoom", "Zoom", "ズーム", "缩放", "Zoom"],
+            Msg::ViewSelectBox => ["Selection box", "Caja de selección", "Auswahlrahmen", "Cadre de sélection", "Riquadro di selezione", "選択ボックス", "选择框", "Caixa de seleção"],
+            Msg::ViewLayerRange => ["Layers {} to {} of {}", "Capas {} a {} de {}", "Schichten {} bis {} von {}", "Couches {} à {} sur {}", "Strati da {} a {} di {}", "レイヤー {}〜{}（全 {}）", "第 {} 至 {} 层，共 {} 层", "Camadas {} a {} de {}"],
+            Msg::ViewReset => ["Reset view", "Restablecer vista", "Ansicht zurücksetzen", "Réinitialiser la vue", "Ripristina vista", "表示をリセット", "重置视图", "Repor vista"],
+            Msg::ViewFit => ["Fit to bed", "Ajustar a la cama", "An Druckbett anpassen", "Ajuster au plateau", "Adatta al piano", "ベッドに合わせる", "适合热床", "Ajustar à base"],
         }
     }
 
@@ -423,7 +531,7 @@ mod tests {
         seen.sort_by_key(|m| format!("{m:?}"));
         seen.dedup();
         assert_eq!(seen.len(), Msg::ALL.len());
-        assert_eq!(Msg::ALL.len(), 37);
+        assert_eq!(Msg::ALL.len(), 73);
     }
 
     #[test]
@@ -440,12 +548,49 @@ mod tests {
     fn translations_are_really_different_from_english_where_they_should_be() {
         // a message left in English by mistake in the other languages would be the same text eight times
         for m in Msg::ALL {
-            if matches!(m, Msg::Save | Msg::Path | Msg::Volume) {
+            if matches!(
+                m,
+                Msg::Save | Msg::Path | Msg::Volume | Msg::ViewZoom | Msg::PanelFilament
+            ) {
                 continue;
             }
             let en = m.tr(Lang::En);
             let same = Lang::ALL.iter().filter(|l| m.tr(**l) == en).count();
             assert!(same <= 2, "{m:?} is the same text in {same} languages");
+        }
+    }
+
+    #[test]
+    fn the_panels_and_the_controls_of_the_new_parts_have_their_eight_values_and_the_words_of_portugal(
+    ) {
+        let new = &Msg::ALL[37..];
+        assert_eq!(new.len(), 36);
+        let mut values = 0;
+        for m in new {
+            for l in Lang::ALL {
+                assert!(!m.tr(l).trim().is_empty(), "{m:?} in {}", l.code());
+                values += 1;
+            }
+        }
+        assert_eq!(values, 36 * 8);
+        assert_eq!(Msg::SupportsEverywhere.tr(Lang::Pt), "Em todo o lado");
+        assert_eq!(Msg::ViewSelectBox.tr(Lang::Pt), "Caixa de seleção");
+        assert_eq!(Msg::PanelGcodeFile.tr(Lang::Pt), "Ficheiro G-code");
+        assert!(Msg::ZHop.tr(Lang::Pt).contains("deslocações"));
+        // the places for values: the layer range has three, the exposure and the size of a resin job two
+        for l in Lang::ALL {
+            assert_eq!(
+                fill(Msg::ViewLayerRange.tr(l), &["1", "2", "3"])
+                    .matches(|c: char| c.is_ascii_digit())
+                    .count(),
+                3
+            );
+            assert_eq!(
+                fill(Msg::ResinExposure.tr(l), &["7", "8"])
+                    .matches(['7', '8'])
+                    .count(),
+                2
+            );
         }
     }
 
