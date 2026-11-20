@@ -46,6 +46,8 @@ pub enum SliceError {
     UnsupportedOverhang { layer: usize },
     /// The decision on the supports would take more samples than the limit.
     TooManySupportSamples { samples: u64, max: u64 },
+    /// A vase is one outline on every layer above its base.
+    VaseNeedsOneOutline { layer: usize, outlines: usize },
     /// The head would be lifted past the height of the printer.
     LiftPastTop { needed_mm: f64, height_mm: f64 },
     /// The writer of G-code refused something.
@@ -105,6 +107,10 @@ impl fmt::Display for SliceError {
             } => write!(
                 f,
                 "the print and the z hop need {needed_mm:.2} mm of height and the printer has {height_mm} mm"
+            ),
+            SliceError::VaseNeedsOneOutline { layer, outlines } => write!(
+                f,
+                "layer {layer} has {outlines} outlines: a vase is one wall round one outline (vase_mode = off prints the part as it is)"
             ),
             SliceError::Gcode(e) => write!(f, "{e}"),
             SliceError::Core(e) => write!(f, "{e}"),

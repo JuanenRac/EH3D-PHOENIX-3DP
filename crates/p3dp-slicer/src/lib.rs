@@ -8,6 +8,7 @@
 //! a travel that retracts; the time is estimated with the acceleration of the machine. There is no multi-material yet; the document of the roadmap says so.
 #![forbid(unsafe_code)]
 
+pub mod adhesion;
 pub mod config;
 pub mod cut;
 pub mod emit;
@@ -18,8 +19,8 @@ pub mod plan;
 pub mod support;
 pub mod timing;
 
-pub use config::{InfillPattern, Placement, Seam, SliceConfig, Supports, ThinRegions};
-pub use emit::{LayerSummary, Move};
+pub use config::{Adhesion, InfillPattern, Placement, Seam, SliceConfig, Supports, ThinRegions};
+pub use emit::{LayerSummary, Move, TimeCheck};
 pub use error::SliceError;
 pub use plan::{plan, Kind, Layer, Machine, Path, Plan, Warning};
 

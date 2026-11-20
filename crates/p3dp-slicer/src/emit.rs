@@ -10,10 +10,10 @@ use p3dp_gcode::{JobParams, Writer};
 /// What the head does.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Move {
-    /// Pull the filament back.
-    Retract,
-    /// Push it forward again.
-    Unretract,
+    /// Pull the filament back by this many millimetres.
+    Retract(f64),
+    /// Push it forward again by this many millimetres.
+    Unretract(f64),
     /// Go to this height.
     Z(f64),
     /// Go to this point without extruding.
@@ -39,19 +39,55 @@ pub struct LayerSummary {
     pub solid_mm: f64,
     pub bridge_mm: f64,
     pub support_mm: f64,
+    /// The skirt, the brim and the raft.
+    pub adhesion_mm: f64,
     pub travel_mm: f64,
     pub extrusion_mm3: f64,
     /// The time of the layer with the head speeding up and slowing down.
     pub time_s: f64,
     /// The time of the layer with every move at its top speed.
     pub flat_time_s: f64,
+    /// The time of the layer if the head stopped at every joint.
+    pub stop_go_time_s: f64,
+}
+
+/// The three times of a print and whether they agree: the plain time is the least, the stop-and-go time is the most, and the estimate lies between them.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct TimeCheck {
+    pub flat_s: f64,
+    pub estimate_s: f64,
+    pub stop_go_s: f64,
+}
+
+impl TimeCheck {
+    /// Whether the estimate lies between the least and the most (to a millionth, for the rounding of the sums).
+    pub fn is_consistent(&self) -> bool {
+        let slack = 1e-6 * self.stop_go_s.max(1.0);
+        self.flat_s.is_finite()
+            && self.estimate_s.is_finite()
+            && self.stop_go_s.is_finite()
+            && self.flat_s <= self.estimate_s + slack
+            && self.estimate_s <= self.stop_go_s + slack
+    }
 }
 
 impl Plan {
-    /// The speed of a line of this kind on this layer, in millimetres per second.
+    /// The speed of a line of this kind on this layer, in millimetres per second: the speed of its kind, slowed down on a layer that would take less than `min_layer_time_s`
+    /// (never below `min_speed_mm_s`, unless the kind was slower than that already).
     pub fn speed_mm_s(&self, layer: usize, kind: Kind) -> f64 {
+        let base = self.base_speed_mm_s(layer, kind);
+        let scale = self.layer_scales.get(layer).copied().unwrap_or(1.0);
+        if scale < 1.0 {
+            (base * scale).max(self.config.min_speed_mm_s.min(base))
+        } else {
+            base
+        }
+    }
+
+    /// The speed of a line of this kind on this layer before a short layer is slowed down.
+    pub fn base_speed_mm_s(&self, layer: usize, kind: Kind) -> f64 {
         let c = &self.config;
-        if layer == 0 {
+        if layer == 0 || (self.raft_layers > 0 && layer == self.raft_layers) {
             return c.first_layer_speed_mm_s;
         }
         match kind {
@@ -61,7 +97,45 @@ impl Plan {
             Kind::SolidInfill => c.solid_infill_speed_mm_s,
             Kind::Bridge => c.bridge_speed_mm_s,
             Kind::Support => c.support_speed_mm_s,
+            Kind::Adhesion => c.perimeter_speed_mm_s,
+            Kind::Raft => c.solid_infill_speed_mm_s,
         }
+    }
+
+    /// How much each layer is slowed down so that no layer takes less than `min_layer_time_s` (1 is not at all): the time of the lines of the layer at their own speeds against
+    /// the time asked for. The first layer and the first layer on a raft are slow already and are left alone.
+    pub(crate) fn compute_layer_scales(&self) -> Vec<f64> {
+        let c = &self.config;
+        self.layers
+            .iter()
+            .map(|l| {
+                let first = l.index == 0 || (self.raft_layers > 0 && l.index == self.raft_layers);
+                if c.min_layer_time_s <= 0.0 || first {
+                    return 1.0;
+                }
+                let t: f64 = l
+                    .paths
+                    .iter()
+                    .map(|p| p.length_mm() / self.base_speed_mm_s(l.index, p.kind))
+                    .sum();
+                if t > 0.0 && t < c.min_layer_time_s {
+                    t / c.min_layer_time_s
+                } else {
+                    1.0
+                }
+            })
+            .collect()
+    }
+
+    /// The filament pulled back for a travel of this length: all of `retract_mm`, or less for a short travel when `retract_adaptive` is on.
+    pub fn retract_for_travel(&self, travel_mm: f64) -> f64 {
+        let c = &self.config;
+        if !c.retract_adaptive {
+            return c.retract_mm;
+        }
+        let least = c.retract_min_percent / 100.0;
+        let share = (travel_mm / c.retract_full_travel_mm).clamp(0.0, 1.0);
+        c.retract_mm * (least + (1.0 - least) * share)
     }
 
     /// The part fan on a layer, in per cent: nothing before `fan_from_layer`, then `fan_percent`, climbing over `fan_ramp_layers` when that is set.
@@ -78,15 +152,16 @@ impl Plan {
         c.fan_percent * done.min(1.0)
     }
 
-    /// The moves of a layer from where the head is. `retracted` says whether the filament is pulled back, and is left as the layer ends. Returns the moves and where the head is.
-    pub fn layer_moves(&self, layer: &Layer, from: P, retracted: &mut bool) -> (Vec<Move>, P) {
+    /// The moves of a layer from where the head is. `pulled` is how many millimetres of filament are pulled back (0 when none), and is left as the layer ends. Returns the moves
+    /// and where the head is.
+    pub fn layer_moves(&self, layer: &Layer, from: P, pulled: &mut f64) -> (Vec<Move>, P) {
         let c = &self.config;
         let mut moves = Vec::new();
         let mut at = from;
         // at the very start the head is parked and the filament is where the start of the program left it
-        if layer.index > 0 && c.retract_mm > 0.0 && !*retracted {
-            moves.push(Move::Retract);
-            *retracted = true;
+        if layer.index > 0 && c.retract_mm > 0.0 && *pulled <= 0.0 {
+            moves.push(Move::Retract(c.retract_mm));
+            *pulled = c.retract_mm;
         }
         moves.push(Move::Z(layer.z_mm));
         for path in &layer.paths {
@@ -96,9 +171,12 @@ impl Plan {
             let d = dist(at, start);
             if d > 1e-6 {
                 let long = d >= c.retract_min_travel_mm;
-                if c.retract_mm > 0.0 && !*retracted && long {
-                    moves.push(Move::Retract);
-                    *retracted = true;
+                if c.retract_mm > 0.0 && *pulled <= 0.0 && long {
+                    let mm = self.retract_for_travel(d);
+                    if mm > 1e-9 {
+                        moves.push(Move::Retract(mm));
+                        *pulled = mm;
+                    }
                 }
                 let hop = c.z_hop_mm > 0.0 && long;
                 if hop {
@@ -110,9 +188,9 @@ impl Plan {
                     moves.push(Move::Z(layer.z_mm));
                 }
             }
-            if *retracted {
-                moves.push(Move::Unretract);
-                *retracted = false;
+            if *pulled > 0.0 {
+                moves.push(Move::Unretract(*pulled));
+                *pulled = 0.0;
             }
             let rest = path.points.iter().skip(1).copied();
             let closing = path.closed.then_some(start);
@@ -134,10 +212,10 @@ impl Plan {
         let c = &self.config;
         let mut out = Vec::with_capacity(self.layers.len());
         let mut at: P = [0.0, 0.0];
-        let mut retracted = false;
+        let mut pulled = 0.0f64;
         let mut z_now = 0.0f64;
         for l in &self.layers {
-            let (moves, end) = self.layer_moves(l, at, &mut retracted);
+            let (moves, end) = self.layer_moves(l, at, &mut pulled);
             let mut here = at;
             at = end;
             let mut s = LayerSummary {
@@ -150,16 +228,18 @@ impl Plan {
                 solid_mm: 0.0,
                 bridge_mm: 0.0,
                 support_mm: 0.0,
+                adhesion_mm: 0.0,
                 travel_mm: 0.0,
                 extrusion_mm3: 0.0,
                 time_s: 0.0,
                 flat_time_s: 0.0,
+                stop_go_time_s: 0.0,
             };
             let mut blocks: Vec<Block> = Vec::with_capacity(moves.len());
             for m in moves {
                 match m {
-                    Move::Retract | Move::Unretract => {
-                        blocks.push(Block::stop(c.retract_mm, c.retract_speed_mm_s))
+                    Move::Retract(mm) | Move::Unretract(mm) => {
+                        blocks.push(Block::stop(mm, c.retract_speed_mm_s))
                     }
                     Move::Z(z) => {
                         blocks.push(Block::stop((z - z_now).abs(), c.z_speed_mm_s));
@@ -184,6 +264,7 @@ impl Plan {
                             Kind::SolidInfill => s.solid_mm += length_mm,
                             Kind::Bridge => s.bridge_mm += length_mm,
                             Kind::Support => s.support_mm += length_mm,
+                            Kind::Adhesion | Kind::Raft => s.adhesion_mm += length_mm,
                         }
                         s.extrusion_mm3 +=
                             length_mm * self.line_area_mm2(l.height_mm, kind, width_mm);
@@ -194,6 +275,7 @@ impl Plan {
             }
             s.time_s = timing::seconds(&blocks, c.accel_mm_s2, c.corner_speed_mm_s);
             s.flat_time_s = timing::flat_seconds(&blocks);
+            s.stop_go_time_s = timing::stop_and_go_seconds(&blocks, c.accel_mm_s2);
             out.push(s);
         }
         out
@@ -202,6 +284,16 @@ impl Plan {
     /// The time the print takes, in seconds, with the head speeding up and slowing down at the acceleration of the settings. It is an estimate: the planner of the printer is its own.
     pub fn estimated_seconds(&self) -> f64 {
         self.summaries().iter().map(|s| s.time_s).sum()
+    }
+
+    /// The least, the estimate and the most of the time of the print, to be compared with one another.
+    pub fn time_check(&self) -> TimeCheck {
+        let s = self.summaries();
+        TimeCheck {
+            flat_s: s.iter().map(|x| x.flat_time_s).sum(),
+            estimate_s: s.iter().map(|x| x.time_s).sum(),
+            stop_go_s: s.iter().map(|x| x.stop_go_time_s).sum(),
+        }
     }
 
     /// The time with every move at its top speed and no acceleration: the least the print can take.
@@ -250,7 +342,7 @@ impl Plan {
         let area_filament = c.filament_area_mm2();
         let mut carry = 0.0f64;
         let mut at: P = [0.0, 0.0];
-        let mut retracted = false;
+        let mut pulled = 0.0f64;
         let mut kind_now: Option<Kind> = None;
         let mut last_z = 0.0;
         // the preamble switches the fan off
@@ -262,22 +354,22 @@ impl Plan {
                 w.set_fan(layer_fan)?;
                 fan_now = layer_fan;
             }
-            let (moves, end) = self.layer_moves(l, at, &mut retracted);
+            let (moves, end) = self.layer_moves(l, at, &mut pulled);
             at = end;
             for mv in moves {
                 match mv {
-                    Move::Retract => w.linear_move(
+                    Move::Retract(mm) => w.linear_move(
                         None,
                         None,
                         None,
-                        Some(-c.retract_mm),
+                        Some(-mm),
                         Some(c.retract_speed_mm_s * 60.0),
                     )?,
-                    Move::Unretract => w.linear_move(
+                    Move::Unretract(mm) => w.linear_move(
                         None,
                         None,
                         None,
-                        Some(c.retract_mm),
+                        Some(mm),
                         Some(c.retract_speed_mm_s * 60.0),
                     )?,
                     Move::Z(z) => {

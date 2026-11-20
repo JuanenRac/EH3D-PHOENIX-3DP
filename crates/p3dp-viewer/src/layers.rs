@@ -93,6 +93,8 @@ pub fn colour_of(kind: Kind) -> [f32; 3] {
         Kind::SolidInfill => [0.62, 0.20, 0.62],
         Kind::Bridge => [0.15, 0.62, 0.78],
         Kind::Support => [0.30, 0.72, 0.38],
+        Kind::Adhesion => [0.90, 0.85, 0.30],
+        Kind::Raft => [0.55, 0.55, 0.60],
     }
 }
 
@@ -140,6 +142,8 @@ pub struct KindFilter {
     pub solid: bool,
     pub bridges: bool,
     pub supports: bool,
+    /// The skirt, the brim and the raft.
+    pub adhesion: bool,
 }
 
 impl Default for KindFilter {
@@ -150,6 +154,7 @@ impl Default for KindFilter {
             solid: true,
             bridges: true,
             supports: true,
+            adhesion: true,
         }
     }
 }
@@ -162,6 +167,7 @@ impl KindFilter {
             Kind::SolidInfill => self.solid,
             Kind::Bridge => self.bridges,
             Kind::Support => self.supports,
+            Kind::Adhesion | Kind::Raft => self.adhesion,
         }
     }
 }
@@ -323,6 +329,7 @@ mod tests {
             solid: false,
             bridges: false,
             supports: false,
+            adhesion: false,
         };
         assert!(lines_of(&p, &all, &nothing).is_empty());
     }

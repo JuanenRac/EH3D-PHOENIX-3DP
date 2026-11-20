@@ -4,6 +4,12 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- The slicer can help the first layer to hold: a skirt (`skirt_loops`, `skirt_distance_mm`), a brim that touches the part (`brim_width_mm`) or a raft under it (`raft_layers`, `raft_margin_mm`, `raft_air_gap_mm`), chosen with `adhesion`. They are paths like the rest, so the preview shows them (with their own colour and a switch), the time counts them and the G-code writes them; a loop that would leave the bed or a raft that makes the print taller than the printer is refused with the reason, never cut down. The part keeps the plastic of its volume; the extras are counted apart.
+- A layer that would take less than `min_layer_time_s` is slowed down so that it takes that long, and no line goes below `min_speed_mm_s` unless its own speed was lower already; the first layer and the first layer on a raft are left alone.
+- Retraction can follow the travel (`retract_adaptive`): a short travel pulls the filament back less than a long one, between `retract_min_percent` of `retract_mm` and all of it at `retract_full_travel_mm`; what is pulled back is pushed again, so the plastic of the file is still the plastic of the plan.
+- A vase (`vase_mode`): one wall round one outline, a solid base of `bottom_layers` and nothing inside or on top; a part with a hole or more than one outline above the base is refused with the layer and the number of outlines, and a vase with supports or on a raft is refused.
+- The time with acceleration is checked against a least and a most: the plain time (every move at its top speed) is the least and the time if the head stopped at every joint is the most, and `time_check` says whether the estimate lies between them; property tests of both over blocks and over sliced shapes from a fixed seed, and of the minutes written in the file.
+
 ## [0.0.3] - Richer slicer, 120 printer profiles and generic filaments, bgcode and resin package readers and the model of the 3D viewer
 
 - The README in the eight languages, the architecture, the roadmap, the list of what is not done, the manifest and the two pictures describe the new parts and no longer say that the slicer has no supports, bridges, seams or variable width; the tree of files lists the new crate.

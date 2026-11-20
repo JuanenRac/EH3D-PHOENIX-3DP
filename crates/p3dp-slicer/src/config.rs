@@ -88,6 +88,30 @@ impl Supports {
     }
 }
 
+/// What helps the first layer to hold to the bed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Adhesion {
+    /// Nothing (the default).
+    None,
+    /// Loops round the part, apart from it: they prime the nozzle and show whether the first layer is level.
+    Skirt,
+    /// Loops that touch the part and widen its first layer.
+    Brim,
+    /// Layers printed under the part, which stands on them.
+    Raft,
+}
+
+impl Adhesion {
+    pub fn name(self) -> &'static str {
+        match self {
+            Adhesion::None => "none",
+            Adhesion::Skirt => "skirt",
+            Adhesion::Brim => "brim",
+            Adhesion::Raft => "raft",
+        }
+    }
+}
+
 /// The settings.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SliceConfig {
@@ -164,6 +188,31 @@ pub struct SliceConfig {
     pub accel_mm_s2: f64,
     /// The speed at a corner that turns all the way back, for the estimate of the time.
     pub corner_speed_mm_s: f64,
+    pub adhesion: Adhesion,
+    /// The loops of a skirt.
+    pub skirt_loops: u32,
+    /// The gap between the part and the first loop of a skirt.
+    pub skirt_distance_mm: f64,
+    /// How far a brim reaches from the part.
+    pub brim_width_mm: f64,
+    /// The layers of a raft.
+    pub raft_layers: u32,
+    /// The extra height between the top of a raft and the part, so the part can be pulled off.
+    pub raft_air_gap_mm: f64,
+    /// How far a raft reaches beyond the first layer of the part.
+    pub raft_margin_mm: f64,
+    /// A layer that would take less than this many seconds is slowed down (0 is off).
+    pub min_layer_time_s: f64,
+    /// The slowing down of a short layer never takes a line below this speed (unless it was slower already).
+    pub min_speed_mm_s: f64,
+    /// A short travel pulls the filament back less than a long one.
+    pub retract_adaptive: bool,
+    /// The travel from which the whole `retract_mm` is used.
+    pub retract_full_travel_mm: f64,
+    /// The part of `retract_mm` that a travel of the shortest kind that retracts uses, in per cent.
+    pub retract_min_percent: f64,
+    /// One wall, no infill and no top: a vase. The bottom layers stay solid.
+    pub vase_mode: bool,
 }
 
 impl Default for SliceConfig {
@@ -220,12 +269,25 @@ impl Default for SliceConfig {
             fan_ramp_layers: 0,
             accel_mm_s2: 3000.0,
             corner_speed_mm_s: 8.0,
+            adhesion: Adhesion::None,
+            skirt_loops: 2,
+            skirt_distance_mm: 3.0,
+            brim_width_mm: 5.0,
+            raft_layers: 2,
+            raft_air_gap_mm: 0.1,
+            raft_margin_mm: 3.0,
+            min_layer_time_s: 0.0,
+            min_speed_mm_s: 10.0,
+            retract_adaptive: false,
+            retract_full_travel_mm: 20.0,
+            retract_min_percent: 30.0,
+            vase_mode: false,
         }
     }
 }
 
 /// The keys, in the order of the file.
-pub const KEYS: [&str; 51] = [
+pub const KEYS: [&str; 64] = [
     "layer_height_mm",
     "first_layer_height_mm",
     "nozzle_diameter_mm",
@@ -277,10 +339,27 @@ pub const KEYS: [&str; 51] = [
     "fan_ramp_layers",
     "accel_mm_s2",
     "corner_speed_mm_s",
+    "adhesion",
+    "skirt_loops",
+    "skirt_distance_mm",
+    "brim_width_mm",
+    "raft_layers",
+    "raft_air_gap_mm",
+    "raft_margin_mm",
+    "min_layer_time_s",
+    "min_speed_mm_s",
+    "retract_adaptive",
+    "retract_full_travel_mm",
+    "retract_min_percent",
+    "vase_mode",
 ];
 
 fn invalid(msg: String) -> CoreError {
     CoreError::Invalid(msg)
+}
+
+fn on_off(v: bool) -> String {
+    if v { "on" } else { "off" }.to_string()
 }
 
 impl SliceConfig {
@@ -381,6 +460,31 @@ impl SliceConfig {
             "fan_ramp_layers" => self.fan_ramp_layers = n(0, 1_000)? as u32,
             "accel_mm_s2" => self.accel_mm_s2 = f(50.0, 100_000.0)?,
             "corner_speed_mm_s" => self.corner_speed_mm_s = f(0.5, 100.0)?,
+            "adhesion" => {
+                self.adhesion = match value.trim().to_ascii_lowercase().as_str() {
+                    "none" => Adhesion::None,
+                    "skirt" => Adhesion::Skirt,
+                    "brim" => Adhesion::Brim,
+                    "raft" => Adhesion::Raft,
+                    _ => {
+                        return Err(invalid(format!(
+                            "{key}: expected none, skirt, brim or raft"
+                        )))
+                    }
+                }
+            }
+            "skirt_loops" => self.skirt_loops = n(1, 20)? as u32,
+            "skirt_distance_mm" => self.skirt_distance_mm = f(0.0, 30.0)?,
+            "brim_width_mm" => self.brim_width_mm = f(0.0, 30.0)?,
+            "raft_layers" => self.raft_layers = n(1, 10)? as u32,
+            "raft_air_gap_mm" => self.raft_air_gap_mm = f(0.0, 1.0)?,
+            "raft_margin_mm" => self.raft_margin_mm = f(0.0, 20.0)?,
+            "min_layer_time_s" => self.min_layer_time_s = f(0.0, 600.0)?,
+            "min_speed_mm_s" => self.min_speed_mm_s = f(1.0, 1000.0)?,
+            "retract_adaptive" => self.retract_adaptive = kv::on_off(key, value)?,
+            "retract_full_travel_mm" => self.retract_full_travel_mm = f(1.0, 500.0)?,
+            "retract_min_percent" => self.retract_min_percent = f(0.0, 100.0)?,
+            "vase_mode" => self.vase_mode = kv::on_off(key, value)?,
             other => return Err(invalid(format!("{other}: not a setting of the slicer"))),
         }
         Ok(())
@@ -446,6 +550,19 @@ impl SliceConfig {
             "fan_ramp_layers" => self.fan_ramp_layers.to_string(),
             "accel_mm_s2" => self.accel_mm_s2.to_string(),
             "corner_speed_mm_s" => self.corner_speed_mm_s.to_string(),
+            "skirt_loops" => self.skirt_loops.to_string(),
+            "skirt_distance_mm" => self.skirt_distance_mm.to_string(),
+            "brim_width_mm" => self.brim_width_mm.to_string(),
+            "raft_layers" => self.raft_layers.to_string(),
+            "raft_air_gap_mm" => self.raft_air_gap_mm.to_string(),
+            "raft_margin_mm" => self.raft_margin_mm.to_string(),
+            "min_layer_time_s" => self.min_layer_time_s.to_string(),
+            "min_speed_mm_s" => self.min_speed_mm_s.to_string(),
+            "retract_full_travel_mm" => self.retract_full_travel_mm.to_string(),
+            "retract_min_percent" => self.retract_min_percent.to_string(),
+            "retract_adaptive" => on_off(self.retract_adaptive),
+            "vase_mode" => on_off(self.vase_mode),
+            "adhesion" => self.adhesion.name().to_string(),
             "placement" => match self.placement {
                 Placement::Center => "center",
                 Placement::Origin => "origin",
@@ -546,6 +663,27 @@ impl SliceConfig {
         }
         if self.z_hop_mm > 0.0 && self.z_hop_mm < self.layer_height_mm * 0.5 {
             return bad("z_hop_mm is under half a layer: it would not clear the print".to_string());
+        }
+        if self.adhesion == Adhesion::Brim && self.brim_width_mm < self.line_width_mm {
+            return bad(format!(
+                "brim_width_mm {} is narrower than a line ({}): a brim of that width would be nothing",
+                self.brim_width_mm, self.line_width_mm
+            ));
+        }
+        if self.min_layer_time_s > 0.0 && self.min_speed_mm_s > self.max_speed_mm_s {
+            return bad(format!(
+                "min_speed_mm_s {} is above max_speed_mm_s {}",
+                self.min_speed_mm_s, self.max_speed_mm_s
+            ));
+        }
+        if self.vase_mode && self.supports != Supports::Off {
+            return bad(
+                "a vase is one wall with nothing inside: it cannot have supports (supports = off)"
+                    .to_string(),
+            );
+        }
+        if self.vase_mode && self.adhesion == Adhesion::Raft {
+            return bad("a vase cannot stand on a raft: use a skirt or a brim".to_string());
         }
         Ok(())
     }
@@ -772,6 +910,88 @@ mod tests {
             SliceConfig::from_text("# a comment\nperimeters = 3 # three\nplacement = origin\n")
                 .unwrap();
         assert_eq!((ok.perimeters, ok.placement), (3, Placement::Origin));
+    }
+
+    #[test]
+    fn the_keys_of_adhesion_speed_retraction_and_vase_are_read_checked_and_written_back() {
+        let c = SliceConfig::from_text(
+            "adhesion = brim
+brim_width_mm = 6
+skirt_loops = 3
+raft_layers = 4
+min_layer_time_s = 8
+min_speed_mm_s = 15
+retract_adaptive = on
+retract_min_percent = 40
+vase_mode = off
+",
+        )
+        .unwrap();
+        assert_eq!(
+            (c.adhesion, c.skirt_loops, c.raft_layers),
+            (Adhesion::Brim, 3, 4)
+        );
+        assert!(c.retract_adaptive && !c.vase_mode);
+        assert_eq!(SliceConfig::from_text(&c.to_text()).unwrap(), c);
+        assert_eq!(KEYS.len(), 64);
+        for k in KEYS {
+            assert!(c.value_of(k).is_some(), "{k}");
+        }
+        for (text, want) in [
+            (
+                "adhesion = glue
+",
+                "adhesion",
+            ),
+            (
+                "skirt_loops = 0
+",
+                "skirt_loops",
+            ),
+            (
+                "raft_layers = 11
+",
+                "raft_layers",
+            ),
+            (
+                "retract_min_percent = 101
+",
+                "retract_min_percent",
+            ),
+            (
+                "vase_mode = maybe
+",
+                "vase_mode",
+            ),
+            (
+                "adhesion = brim
+brim_width_mm = 0.2
+",
+                "brim_width_mm",
+            ),
+            (
+                "vase_mode = on
+supports = buildplate
+",
+                "vase",
+            ),
+            (
+                "vase_mode = on
+adhesion = raft
+",
+                "raft",
+            ),
+            (
+                "min_layer_time_s = 5
+min_speed_mm_s = 300
+max_speed_mm_s = 200
+",
+                "min_speed_mm_s",
+            ),
+        ] {
+            let e = SliceConfig::from_text(text).unwrap_err().to_string();
+            assert!(e.contains(want), "{text:?} -> {e}");
+        }
     }
 
     #[test]

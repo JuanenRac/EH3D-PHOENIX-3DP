@@ -88,6 +88,15 @@ pub fn seconds(blocks: &[Block], accel_mm_s2: f64, corner_speed_mm_s: f64) -> f6
     total
 }
 
+/// The time if the head stopped at every joint: each block a trapezoid (or a triangle) from rest to rest. It is the most the estimate with the planner can be, as the plain time is the
+/// least.
+pub fn stop_and_go_seconds(blocks: &[Block], accel_mm_s2: f64) -> f64 {
+    blocks
+        .iter()
+        .map(|b| seconds(std::slice::from_ref(b), accel_mm_s2, 0.0))
+        .sum()
+}
+
 /// The time with no acceleration at all: every block at its top speed.
 pub fn flat_seconds(blocks: &[Block]) -> f64 {
     blocks
@@ -103,6 +112,44 @@ mod tests {
 
     fn line(x0: f64, x1: f64, v: f64) -> Block {
         Block::planar([x0, 0.0], [x1, 0.0], v)
+    }
+
+    #[test]
+    fn the_estimate_lies_between_the_plain_time_and_the_stop_and_go_time() {
+        let mut rng = p3dp_core::rng::Rng::new(0x71_3E);
+        for case in 0..200 {
+            let mut at = [0.0f64, 0.0];
+            let mut blocks = Vec::new();
+            for _ in 0..(1 + rng.below(30)) {
+                let to = [rng.range(0.0, 200.0), rng.range(0.0, 200.0)];
+                blocks.push(Block::planar(at, to, rng.range(5.0, 200.0)));
+                at = to;
+            }
+            let a = rng.range(100.0, 20_000.0);
+            let corner = rng.range(0.5, 20.0);
+            let (flat, est, stop) = (
+                flat_seconds(&blocks),
+                seconds(&blocks, a, corner),
+                stop_and_go_seconds(&blocks, a),
+            );
+            assert!(
+                flat <= est + 1e-9 && est <= stop + 1e-9,
+                "case {case}: {flat} {est} {stop}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_triangle_and_a_trapezoid_are_told_apart_by_the_top_speed() {
+        // 10 mm at 1000 mm/s2: the head could reach 100 mm/s at the middle, so a top speed of 200 changes nothing and one of 50 does
+        let slow = stop_and_go_seconds(&[line(0.0, 10.0, 50.0)], 1000.0);
+        let fast = stop_and_go_seconds(&[line(0.0, 10.0, 200.0)], 1000.0);
+        assert!(
+            (fast - 2.0 * (10.0f64 / 1000.0).sqrt()).abs() < 1e-9,
+            "{fast}"
+        );
+        // 50 mm/s: 0.05 s up (1.25 mm), 0.05 s down, 7.5 mm at 50 mm/s = 0.15 s
+        assert!((slow - 0.25).abs() < 1e-9, "{slow}");
     }
 
     #[test]

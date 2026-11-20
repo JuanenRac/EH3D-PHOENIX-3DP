@@ -7,7 +7,8 @@ use p3dp_core::rng::Rng;
 use p3dp_core::{Dialect, Limits, Mesh, TempLimits};
 use p3dp_gcode::check_program;
 use p3dp_slicer::{
-    plan, slice, InfillPattern, Kind, Machine, Placement, Seam, SliceConfig, SliceError, Supports,
+    plan, slice, Adhesion, InfillPattern, Kind, Machine, Placement, Seam, SliceConfig, SliceError,
+    Supports,
 };
 
 const BED: [f64; 3] = [220.0, 220.0, 250.0];
@@ -579,4 +580,374 @@ fn a_table_is_printed_with_a_bridge_or_with_supports_and_refused_when_neither_ca
     assert!(g.contains("TYPE:support") && !g.contains("TYPE:bridge"));
     let w = walk(&g);
     assert!(w.outside_bed.is_empty());
+}
+
+/// The plastic of the lines that are not the skirt, the brim or the raft.
+fn part_mm3(p: &p3dp_slicer::Plan) -> f64 {
+    p.layers
+        .iter()
+        .map(|l| {
+            l.paths
+                .iter()
+                .filter(|x| !matches!(x.kind, Kind::Adhesion | Kind::Raft))
+                .map(|x| x.length_mm() * p.line_area_mm2(l.height_mm, x.kind, x.width_mm))
+                .sum::<f64>()
+        })
+        .sum()
+}
+
+fn kind_mm(p: &p3dp_slicer::Plan, kind: Kind) -> f64 {
+    p.layers
+        .iter()
+        .flat_map(|l| &l.paths)
+        .filter(|x| x.kind == kind)
+        .map(|x| x.length_mm())
+        .sum()
+}
+
+#[test]
+fn skirt_brim_and_raft_keep_to_the_properties_on_shapes_from_a_fixed_seed() {
+    let mut rng = Rng::new(0xAD4E_5104);
+    let kinds = [Adhesion::Skirt, Adhesion::Brim, Adhesion::Raft];
+    for case in 0..18 {
+        let adhesion = kinds[case % 3];
+        let cfg = SliceConfig {
+            adhesion,
+            skirt_loops: 1 + rng.below(3) as u32,
+            skirt_distance_mm: rng.range(1.0, 6.0),
+            brim_width_mm: rng.range(2.0, 8.0),
+            raft_layers: 1 + rng.below(3) as u32,
+            raft_margin_mm: rng.range(0.0, 6.0),
+            raft_air_gap_mm: [0.0, 0.1, 0.2][rng.below(3) as usize],
+            infill_percent: 100.0,
+            ..SliceConfig::default()
+        };
+        let tall = rng.range(3.0, 7.0);
+        let mesh = match case % 2 {
+            0 => block(rng.range(14.0, 40.0), rng.range(14.0, 40.0), tall),
+            _ => prism(12 + rng.below(24) as usize, rng.range(8.0, 25.0), 0.0, tall),
+        };
+        let what = format!("case {case}: {adhesion:?}");
+        let m = machine(Dialect::Klipper);
+        let (p, g) = slice(&mesh, &m, &cfg).unwrap_or_else(|e| panic!("{what}: {e}"));
+        // the part is the part: the skirt, the brim and the raft are extra
+        let ratio = part_mm3(&p) / mesh.volume_mm3();
+        assert!((0.93..=1.07).contains(&ratio), "{what}: {ratio}");
+        let w = walk(&g);
+        assert!(
+            w.outside_bed.is_empty(),
+            "{what}: {:?}",
+            w.outside_bed.first()
+        );
+        assert!(!w.z_goes_down, "{what}");
+        assert_eq!(w.layers, p.layer_count(), "{what}");
+        let from_file = w.filament_mm * cfg.filament_area_mm2();
+        assert!(
+            (from_file - p.extrusion_mm3()).abs() / p.extrusion_mm3() < 0.003,
+            "{what}"
+        );
+        assert!(check_program(&g, &m.limits).is_empty(), "{what}");
+        match adhesion {
+            Adhesion::Skirt | Adhesion::Brim => {
+                assert_eq!(p.raft_layers, 0);
+                assert!(
+                    kind_mm(&p, Kind::Adhesion) > 0.0 && kind_mm(&p, Kind::Raft) == 0.0,
+                    "{what}"
+                );
+                // only the first layer has them
+                assert!(
+                    p.layers[1..]
+                        .iter()
+                        .all(|l| l.paths.iter().all(|x| x.kind != Kind::Adhesion)),
+                    "{what}"
+                );
+                assert_eq!(p.layer_count() as f64, (tall / 0.2).ceil(), "{what}");
+            }
+            Adhesion::Raft => {
+                let r = cfg.raft_layers as usize;
+                assert_eq!(p.raft_layers, r, "{what}");
+                assert!(
+                    p.layers[..r]
+                        .iter()
+                        .all(|l| l.paths.iter().all(|x| x.kind == Kind::Raft)),
+                    "{what}"
+                );
+                assert!(
+                    p.layers[r..]
+                        .iter()
+                        .all(|l| l.paths.iter().all(|x| x.kind != Kind::Raft)),
+                    "{what}"
+                );
+                // the part stands above the raft by its height and the air gap
+                let raft_top = p.layers[r - 1].z_mm;
+                let first = &p.layers[r];
+                assert!(
+                    (first.z_mm - (raft_top + cfg.raft_air_gap_mm + first.height_mm)).abs() < 1e-9,
+                    "{what}"
+                );
+                assert!(
+                    (p.height_mm() - (tall + raft_top + cfg.raft_air_gap_mm)).abs() < 2e-3,
+                    "{what}"
+                );
+            }
+            Adhesion::None => unreachable!(),
+        }
+    }
+}
+
+#[test]
+fn the_skirt_or_the_raft_that_does_not_fit_is_refused() {
+    let m = machine(Dialect::Klipper);
+    // a part 200 mm wide on a bed 220 mm wide: a skirt 20 mm away cannot be laid
+    let wide = block(200.0, 40.0, 5.0);
+    let skirt = SliceConfig {
+        adhesion: Adhesion::Skirt,
+        skirt_distance_mm: 20.0,
+        ..SliceConfig::default()
+    };
+    match plan(&wide, &m, &skirt) {
+        Err(SliceError::DoesNotFit { what }) => assert!(what.contains("leaves the bed"), "{what}"),
+        other => panic!("{other:?}"),
+    }
+    // a part as tall as the printer cannot stand on a raft
+    let tall = block(20.0, 20.0, 249.5);
+    let raft = SliceConfig {
+        adhesion: Adhesion::Raft,
+        raft_layers: 3,
+        ..SliceConfig::default()
+    };
+    match plan(&tall, &m, &raft) {
+        Err(SliceError::DoesNotFit { what }) => assert!(what.contains("with the raft"), "{what}"),
+        other => panic!("{other:?}"),
+    }
+    // the same settings without the adhesion print
+    assert!(plan(&tall, &m, &SliceConfig::default()).is_ok());
+}
+
+#[test]
+fn a_vase_is_one_wall_with_a_solid_base_and_nothing_inside() {
+    let m = machine(Dialect::Marlin);
+    let cfg = SliceConfig {
+        vase_mode: true,
+        bottom_layers: 3,
+        perimeters: 3,
+        top_layers: 5,
+        infill_percent: 20.0,
+        ..SliceConfig::default()
+    };
+    let mesh = prism(48, 20.0, 0.0, 12.0);
+    let (p, g) = slice(&mesh, &m, &cfg).unwrap();
+    for l in &p.layers {
+        let walls = l
+            .paths
+            .iter()
+            .filter(|x| matches!(x.kind, Kind::ExternalPerimeter | Kind::Perimeter))
+            .count();
+        assert_eq!(walls, 1, "layer {}", l.index);
+        let fill = l
+            .paths
+            .iter()
+            .any(|x| matches!(x.kind, Kind::Infill | Kind::SolidInfill | Kind::Bridge));
+        assert_eq!(fill, l.index < 3, "layer {}", l.index);
+    }
+    // the base is solid and the wall is a thin shell of the volume
+    let ratio = p.extrusion_mm3() / mesh.volume_mm3();
+    assert!(ratio < 0.2, "{ratio}");
+    assert!(check_program(&g, &m.limits).is_empty());
+    assert!(walk(&g).outside_bed.is_empty());
+    // a part with a hole has two outlines: refused with the layer, and the plain print is not
+    let ring = prism(32, 20.0, 8.0, 12.0);
+    match plan(&ring, &m, &cfg) {
+        Err(SliceError::VaseNeedsOneOutline { layer, outlines }) => {
+            assert_eq!((layer, outlines), (3, 2));
+        }
+        other => panic!("{other:?}"),
+    }
+    assert!(plan(&ring, &m, &SliceConfig::default()).is_ok());
+    // it cannot be asked for with supports or on a raft
+    for bad in [
+        SliceConfig {
+            vase_mode: true,
+            supports: Supports::Everywhere,
+            ..SliceConfig::default()
+        },
+        SliceConfig {
+            vase_mode: true,
+            adhesion: Adhesion::Raft,
+            ..SliceConfig::default()
+        },
+    ] {
+        assert!(matches!(plan(&mesh, &m, &bad), Err(SliceError::Config(_))));
+    }
+}
+
+#[test]
+fn a_short_layer_is_slowed_down_to_the_time_asked_and_never_below_the_floor() {
+    let m = machine(Dialect::Klipper);
+    let base = SliceConfig::default();
+    let slow = SliceConfig {
+        min_layer_time_s: 15.0,
+        min_speed_mm_s: 12.0,
+        ..SliceConfig::default()
+    };
+    // a small tower: its layers are short
+    let mesh = block(12.0, 12.0, 6.0);
+    let (p0, _) = slice(&mesh, &m, &base).unwrap();
+    let (p1, g1) = slice(&mesh, &m, &slow).unwrap();
+    assert!(p0.layer_scales.iter().all(|s| *s == 1.0));
+    assert!(p1.layer_scales[1..].iter().any(|s| *s < 1.0));
+    assert_eq!(p1.layer_scales[0], 1.0, "the first layer is slow already");
+    for l in &p1.layers {
+        let line_time: f64 = l
+            .paths
+            .iter()
+            .map(|x| x.length_mm() / p1.speed_mm_s(l.index, x.kind))
+            .sum();
+        // a slow kind raised to the floor takes the time of the others back: the layer is then as slow as the floor lets it be
+        let at_floor = l.paths.iter().any(|x| {
+            let b = p1.base_speed_mm_s(l.index, x.kind);
+            b * p1.layer_scales[l.index] < slow.min_speed_mm_s.min(b) - 1e-12
+        });
+        if p1.layer_scales[l.index] < 1.0 {
+            assert!(
+                line_time >= slow.min_layer_time_s - 1e-6 || at_floor,
+                "layer {}: {line_time}",
+                l.index
+            );
+        }
+        for x in &l.paths {
+            let (v0, v1) = (
+                p0.speed_mm_s(l.index, x.kind),
+                p1.speed_mm_s(l.index, x.kind),
+            );
+            assert!(v1 <= v0 + 1e-12 && v1 >= slow.min_speed_mm_s.min(v0) - 1e-12);
+        }
+    }
+    assert!(p1.estimated_seconds() > p0.estimated_seconds());
+    // the file says what the plan says
+    let (max_feed, _) = feeds_and_fans(&g1);
+    assert!(max_feed <= slow.max_speed_mm_s * 60.0 + 1e-6);
+    // a layer that is long enough is left alone
+    let big = block(60.0, 60.0, 2.0);
+    let (p2, _) = slice(
+        &big,
+        &m,
+        &SliceConfig {
+            min_layer_time_s: 5.0,
+            ..SliceConfig::default()
+        },
+    )
+    .unwrap();
+    assert!(
+        p2.layer_scales.iter().all(|s| *s == 1.0),
+        "{:?}",
+        p2.layer_scales
+    );
+}
+
+#[test]
+fn the_retraction_follows_the_travel_when_it_is_adaptive_and_the_plastic_is_the_same() {
+    let m = machine(Dialect::Klipper);
+    let base = SliceConfig {
+        retract_mm: 2.0,
+        retract_min_travel_mm: 1.0,
+        ..SliceConfig::default()
+    };
+    let adaptive = SliceConfig {
+        retract_adaptive: true,
+        retract_full_travel_mm: 30.0,
+        retract_min_percent: 25.0,
+        ..base.clone()
+    };
+    let mesh = prism(30, 20.0, 8.0, 5.0);
+    let (p0, g0) = slice(&mesh, &m, &base).unwrap();
+    let (p1, g1) = slice(&mesh, &m, &adaptive).unwrap();
+    let pulls = |g: &str| -> Vec<f64> {
+        g.lines()
+            .filter_map(|l| {
+                let code = l.split(';').next().unwrap_or("");
+                (code.starts_with("G1") && word(code, 'X').is_none() && word(code, 'Z').is_none())
+                    .then(|| word(code, 'E'))
+                    .flatten()
+                    .filter(|e| *e < 0.0)
+                    .map(|e| -e)
+            })
+            .collect()
+    };
+    let (a, b) = (pulls(&g0), pulls(&g1));
+    assert!(!a.is_empty() && !b.is_empty());
+    assert!(a.iter().all(|x| (x - 2.0).abs() < 1e-9));
+    assert!(
+        b.iter()
+            .all(|x| *x <= 2.0 + 1e-9 && *x >= 2.0 * 0.25 - 1e-9),
+        "{b:?}"
+    );
+    assert!(
+        b.iter().any(|x| *x < 2.0 - 1e-6),
+        "no short travel was found"
+    );
+    // what is pulled back is pushed again, so the net plastic is that of the plan in both
+    for (p, g) in [(&p0, &g0), (&p1, &g1)] {
+        let w = walk(g);
+        let from_file = w.filament_mm * base.filament_area_mm2();
+        assert!((from_file - p.extrusion_mm3()).abs() / p.extrusion_mm3() < 0.003);
+    }
+    // the function that decides it
+    assert!((p1.retract_for_travel(0.0) - 0.5).abs() < 1e-9);
+    assert!((p1.retract_for_travel(15.0) - 1.25).abs() < 1e-9);
+    assert!((p1.retract_for_travel(500.0) - 2.0).abs() < 1e-9);
+    assert!((p0.retract_for_travel(3.0) - 2.0).abs() < 1e-9);
+}
+
+#[test]
+fn the_times_with_acceleration_lie_between_the_plain_time_and_the_stop_and_go_time() {
+    let mut rng = Rng::new(0x713E_5EED);
+    let m = machine(Dialect::Marlin);
+    for case in 0..8 {
+        let cfg = SliceConfig {
+            accel_mm_s2: rng.range(300.0, 12_000.0),
+            corner_speed_mm_s: rng.range(1.0, 20.0),
+            infill_percent: [15.0, 40.0][rng.below(2) as usize],
+            adhesion: [Adhesion::None, Adhesion::Brim, Adhesion::Raft][case % 3],
+            ..SliceConfig::default()
+        };
+        let mesh = block(
+            rng.range(15.0, 45.0),
+            rng.range(15.0, 45.0),
+            rng.range(2.0, 5.0),
+        );
+        let (p, g) = slice(&mesh, &m, &cfg).unwrap();
+        let t = p.time_check();
+        assert!(t.is_consistent(), "case {case}: {t:?}");
+        assert!((t.estimate_s - p.estimated_seconds()).abs() < 1e-9);
+        assert!((t.flat_s - p.flat_estimated_seconds()).abs() < 1e-9);
+        // the minutes written in the file are the estimate rounded up
+        let want = (t.estimate_s / 60.0).ceil() as u64;
+        let said = g
+            .lines()
+            .find_map(|l| l.strip_prefix("M73 P0 R"))
+            .and_then(|r| r.trim().parse::<u64>().ok());
+        if let Some(said) = said {
+            assert_eq!(said, want, "case {case}");
+        }
+        // the sum of the layers is the whole
+        let sum: f64 = p.summaries().iter().map(|s| s.time_s).sum();
+        assert!((sum - t.estimate_s).abs() < 1e-9);
+    }
+    // a stronger acceleration never makes it slower, and a huge one is the plain time
+    let mesh = block(30.0, 30.0, 3.0);
+    let at = |a: f64| {
+        let cfg = SliceConfig {
+            accel_mm_s2: a,
+            ..SliceConfig::default()
+        };
+        slice(&mesh, &m, &cfg).unwrap().0.estimated_seconds()
+    };
+    let (slow, quick, huge) = (at(500.0), at(5000.0), at(100_000.0));
+    assert!(slow > quick && quick >= huge);
+    let flat = slice(&mesh, &m, &SliceConfig::default())
+        .unwrap()
+        .0
+        .flat_estimated_seconds();
+    assert!(huge >= flat && huge < flat * 1.5, "{huge} {flat}");
 }

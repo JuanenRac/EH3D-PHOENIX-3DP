@@ -1,7 +1,8 @@
 //! The plan of a print: for every layer, the paths of the head in the order they are printed (supports, perimeters from the inside out, then the infill), in millimetres on the bed.
 //! The plan is the preview by layers (it is data, with no window) and the source of the G-code, so what is shown is what is written.
 
-use crate::config::{Placement, Seam, SliceConfig, ThinRegions};
+use crate::adhesion;
+use crate::config::{Adhesion, Placement, Seam, SliceConfig, ThinRegions};
 use crate::cut::Cutter;
 use crate::error::SliceError;
 use crate::geom::{self, inset, Loop, P};
@@ -51,6 +52,10 @@ pub enum Kind {
     /// A solid skin over nothing: it is printed slower, with the fan on and a little less plastic.
     Bridge,
     Support,
+    /// A loop of a skirt or of a brim.
+    Adhesion,
+    /// A line of a raft.
+    Raft,
 }
 
 impl Kind {
@@ -62,6 +67,8 @@ impl Kind {
             Kind::SolidInfill => "solid infill",
             Kind::Bridge => "bridge",
             Kind::Support => "support",
+            Kind::Adhesion => "adhesion",
+            Kind::Raft => "raft",
         }
     }
 }
@@ -115,6 +122,10 @@ pub struct Plan {
     pub shift_mm: [f64; 3],
     /// The volume of the model, for what is printed to be compared with.
     pub model_volume_mm3: f64,
+    /// The layers of the raft under the model (0 when there is none): they are the first layers of the plan.
+    pub raft_layers: usize,
+    /// The slowing down of each layer that would take less than `min_layer_time_s`: 1 is no change.
+    pub layer_scales: Vec<f64>,
 }
 
 /// The heights of the layers: the first, then the height asked for, the last one whatever is left.
@@ -169,6 +180,33 @@ pub fn plan(mesh: &Mesh, machine: &Machine, config: &SliceConfig) -> Result<Plan
             what: format!("it is {:.3} mm high and the printer takes {bz} mm", size[2]),
         });
     }
+    let raft = if config.adhesion == Adhesion::Raft {
+        config.raft_layers as usize
+    } else {
+        0
+    };
+    let raft_heights: Vec<f64> = (0..raft)
+        .map(|k| {
+            if k == 0 {
+                config.first_layer_height_mm
+            } else {
+                config.layer_height_mm
+            }
+        })
+        .collect();
+    let raft_total = if raft > 0 {
+        raft_heights.iter().sum::<f64>() + config.raft_air_gap_mm
+    } else {
+        0.0
+    };
+    if size[2] + raft_total > bz + 1e-9 {
+        return Err(SliceError::DoesNotFit {
+            what: format!(
+                "with the raft it is {:.3} mm high and the printer takes {bz} mm",
+                size[2] + raft_total
+            ),
+        });
+    }
     let shift = match config.placement {
         Placement::Center => [
             bx / 2.0 - (lo[0] + hi[0]) / 2.0,
@@ -199,9 +237,9 @@ pub fn plan(mesh: &Mesh, machine: &Machine, config: &SliceConfig) -> Result<Plan
         config.first_layer_height_mm,
         config.layer_height_mm,
     );
-    if heights.len() > config.max_layers as usize {
+    if heights.len() + raft > config.max_layers as usize {
         return Err(SliceError::TooManyLayers {
-            layers: heights.len(),
+            layers: heights.len() + raft,
             max: config.max_layers as usize,
         });
     }
@@ -220,15 +258,41 @@ pub fn plan(mesh: &Mesh, machine: &Machine, config: &SliceConfig) -> Result<Plan
     // the supports, decided on the whole stack of cuts
     let supports = support_paths(&outlines, &heights, config)?;
     // the paths
-    let mut layers = Vec::with_capacity(heights.len());
+    let mut layers = Vec::with_capacity(heights.len() + raft);
     let mut warnings = Vec::new();
     let mut top = 0.0;
     let mut state = State {
         head: [0.0, 0.0],
         seams: Vec::new(),
     };
+    // the raft first: the part stands on it
+    let mut raft_top = 0.0;
+    for (k, h) in raft_heights.iter().enumerate() {
+        raft_top += h;
+        layers.push(Layer {
+            index: k,
+            z_mm: raft_top,
+            height_mm: *h,
+            paths: adhesion::raft_paths(&outlines[0], config, k, raft, *h, &mut state.head),
+        });
+    }
     for (i, h) in heights.iter().enumerate() {
         top += h;
+        if config.vase_mode && i >= config.bottom_layers as usize && outlines[i].len() != 1 {
+            return Err(SliceError::VaseNeedsOneOutline {
+                layer: i,
+                outlines: outlines[i].len(),
+            });
+        }
+        let mut lead = if i == 0 {
+            match config.adhesion {
+                Adhesion::Skirt => adhesion::skirt_paths(&outlines[0], config, *h, &mut state.head),
+                Adhesion::Brim => adhesion::brim_paths(&outlines[0], config, *h, &mut state.head),
+                _ => Vec::new(),
+            }
+        } else {
+            Vec::new()
+        };
         let paths = layer_paths(
             LayerInput {
                 index: i,
@@ -241,11 +305,12 @@ pub fn plan(mesh: &Mesh, machine: &Machine, config: &SliceConfig) -> Result<Plan
             &mut warnings,
             &mut state,
         )?;
+        lead.extend(paths);
         layers.push(Layer {
-            index: i,
-            z_mm: top,
+            index: raft + i,
+            z_mm: top + raft_total,
             height_mm: *h,
-            paths,
+            paths: lead,
         });
     }
     // nothing may leave the bed (the model fits, and the paths are inside the model; this is the check that says so)
@@ -265,14 +330,18 @@ pub fn plan(mesh: &Mesh, machine: &Machine, config: &SliceConfig) -> Result<Plan
             }
         }
     }
-    Ok(Plan {
+    let mut plan = Plan {
         machine: machine.clone(),
         config: config.clone(),
         layers,
         warnings,
         shift_mm: shift,
         model_volume_mm3: volume,
-    })
+        raft_layers: raft,
+        layer_scales: Vec::new(),
+    };
+    plan.layer_scales = plan.compute_layer_scales();
+    Ok(plan)
 }
 
 /// The point of a closed loop nearest to a place, as the index to start from.
@@ -367,6 +436,19 @@ fn layer_paths(
 ) -> Result<Vec<Path>, SliceError> {
     let (index, h) = (input.index, input.height);
     let outline = &outlines[index];
+    // a vase: one wall, a solid base, nothing inside and no top
+    let vase_cfg;
+    let open_vase = cfg.vase_mode && index >= cfg.bottom_layers as usize;
+    let cfg = if cfg.vase_mode {
+        let mut c = cfg.clone();
+        c.perimeters = 1;
+        c.top_layers = 0;
+        c.infill_percent = 100.0;
+        vase_cfg = c;
+        &vase_cfg
+    } else {
+        cfg
+    };
     let mut paths: Vec<Path> = Vec::new();
     // the supports first, so the part is laid on them
     paths.extend(order_paths(input.supports.to_vec(), &mut st.head));
@@ -428,7 +510,7 @@ fn layer_paths(
     let s = cfg.spacing_for(width, h);
     let d_region = width / 2.0 + f64::from(cfg.perimeters.saturating_sub(1)) * s + s / 2.0;
     let region: Vec<Loop> = outline.iter().flat_map(|l| inset(l, d_region)).collect();
-    if !region.is_empty() {
+    if !region.is_empty() && !open_vase {
         let fill = Fill {
             index,
             height: h,
