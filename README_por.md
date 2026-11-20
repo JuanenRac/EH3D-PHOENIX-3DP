@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Stack-Rust-DEA584.svg" alt="Rust">
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.7-0f6cbd.svg" alt="Version">
-  <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
+  <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
   <img src="https://img.shields.io/badge/Tests-650-4CAF50.svg" alt="Tests">
 </p>
 
@@ -32,7 +32,7 @@
 | | |
 |---|---|
 | Versão | `0.0.7` |
-| Maturidade | Estrutura inicial |
+| Maturidade | Funcional |
 | Testes | 650 |
 | Tecnologias | Rust |
 | Em hardware real | Por testar: nada disto correu numa impressora, nem sequer numa Bambu Lab A1 ou numa P1S. |
@@ -90,22 +90,26 @@ Como as partes deste repositório se encaixam: quem o usa, o que contém e de qu
 ## 🖼️ Capturas de ecrã
 
 <p align="center">
-  <img src="images/screenshots/prepare.png" alt="Separador Preparar: as listas de impressoras e filamentos à esquerda, a mesa em 3D com o cálice de demonstração ao centro e o painel de objetos à direita." width="100%">
+  <img src="images/layouts/prepare.svg" alt="Espaço Preparar: a barra de menus no topo; as definições de impressão e os materiais como separadores à esquerda, a vista 3D ao centro por cima da consola e do G-code, e os objetos e a impressora como separadores à direita." width="100%">
 </p>
 
 <p align="center">
-  <img src="images/screenshots/preview.png" alt="Separador Pré-visualização: o cálice laminado com a legenda dos tipos de linha, o cursor das camadas e o tempo, o filamento, o custo e as camadas do plano." width="100%">
+  <img src="images/layouts/review.svg" alt="Espaço Rever: a vista 3D e a pré-visualização das camadas como separadores, com a legenda do G-code por cima das definições de impressão à direita." width="100%">
 </p>
 
 <p align="center">
-  <img src="images/screenshots/device.png" alt="Separador Dispositivo: as máquinas do servidor, as suas temperaturas e o seu progresso, a fila e o aviso de que o plugin da impressora é um simulador." width="100%">
+  <img src="images/layouts/run.svg" alt="Espaço Executar: o dispositivo (o servidor e as suas máquinas), o estado da máquina e a fila lado a lado." width="100%">
 </p>
 
 <p align="center">
-  <img src="images/screenshots/project.png" alt="Separador Projeto: o ficheiro de projeto, as definições da janela, os atalhos de teclado e o ficheiro de definições." width="100%">
+  <img src="images/layouts/setup.svg" alt="Espaço Definições: o projeto e as definições da janela, com a consola por baixo." width="100%">
 </p>
 
-Imagens tiradas com o modo de imagem do programa (`--shot --demo`): um modelo e um servidor criados em memória, pelo que nada disto chega a uma impressora.
+<p align="center">
+  <img src="images/layouts/compact.svg" alt="Espaço Compacto: um único grupo de separadores, a vista 3D e as definições de impressão." width="100%">
+</p>
+
+Desenhos da disposição de fábrica de cada espaço de trabalho, feitos a partir do modelo da janela (`cargo run --example workspace_pictures`): a barra de menus e os grupos de painéis com os seus separadores. Não são fotografias da janela; as fotografias tiram-se com o modo de imagem do programa (`--shot --demo`, um modelo e um servidor criados em memória, pelo que nada chega a uma impressora) com o fluxo `Window pictures`.
 
 ## ✨ Funcionalidades
 
@@ -246,7 +250,7 @@ EH3D-PHOENIX-3DP/
 │   ├── architecture.json                        dados da imagem de Arquitetura
 │   └── structure.json                           dados da imagem de Estrutura
 ├── tools/                                       verificação da CI e do README e ferramentas de imagens
-├── images/                                      banner, os dois diagramas e as capturas da janela do README
+├── images/                                      banner, os dois diagramas e os desenhos dos espaços de trabalho do README
 ├── .github/                                     fluxos de CI e de publicação, modelos de issues e pull requests
 ├── eh3d.project.json                            manifesto: versão, função, maturidade e comando de compilação
 ├── Cargo.toml                                   o espaço de trabalho e os seus crates

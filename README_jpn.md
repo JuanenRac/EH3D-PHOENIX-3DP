@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Stack-Rust-DEA584.svg" alt="Rust">
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.7-0f6cbd.svg" alt="Version">
-  <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
+  <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
   <img src="https://img.shields.io/badge/Tests-650-4CAF50.svg" alt="Tests">
 </p>
 
@@ -32,7 +32,7 @@
 | | |
 |---|---|
 | バージョン | `0.0.7` |
-| 成熟度 | 足場 |
+| 成熟度 | 機能する |
 | テスト | 650 |
 | 技術スタック | Rust |
 | 実機での動作 | 未試験：ここにあるものはプリンターでは一度も動かしておらず、Bambu Lab A1 や P1S でも試していません。 |
@@ -90,22 +90,26 @@ EH3D-PHOENIX-3DP は EH3D Fabrication Suite の PHOENIX ファミリーに属す
 ## 🖼️ スクリーンショット
 
 <p align="center">
-  <img src="images/screenshots/prepare.png" alt="「準備」タブ：左にプリンターとフィラメントの一覧、中央にデモ用のゴブレットを置いた3Dのベッド、右にオブジェクトのパネル。" width="100%">
+  <img src="images/layouts/prepare.svg" alt="「準備」ワークスペース：上にメニューバー。左に印刷設定と材料をタブで、中央にコンソールとG-codeの上の3Dビュー、右にオブジェクトとプリンターをタブで配置。" width="100%">
 </p>
 
 <p align="center">
-  <img src="images/screenshots/preview.png" alt="「プレビュー」タブ：スライス済みのゴブレット、線の種類の凡例、レイヤーのスライダー、プランの時間・フィラメント・コスト・レイヤー数。" width="100%">
+  <img src="images/layouts/review.svg" alt="「確認」ワークスペース：3Dビューとレイヤープレビューをタブで、右に印刷設定の上のG-code凡例。" width="100%">
 </p>
 
 <p align="center">
-  <img src="images/screenshots/device.png" alt="「デバイス」タブ：サーバーのマシンとその温度・進捗、キュー、プリンタープラグインがシミュレーターであることを示すバナー。" width="100%">
+  <img src="images/layouts/run.svg" alt="「実行」ワークスペース：デバイス（サーバーとそのマシン）、マシンの状態、キューを横に並べて配置。" width="100%">
 </p>
 
 <p align="center">
-  <img src="images/screenshots/project.png" alt="「プロジェクト」タブ：プロジェクトファイル、ウィンドウの設定、キーボードショートカット、設定ファイル。" width="100%">
+  <img src="images/layouts/setup.svg" alt="「設定」ワークスペース：プロジェクトとウィンドウの設定、その下にコンソール。" width="100%">
 </p>
 
-画像はプログラムの画像モード（`--shot --demo`）で撮影したものです。モデルとサーバーはメモリ上で作られるため、プリンターには一切届きません。
+<p align="center">
+  <img src="images/layouts/compact.svg" alt="「コンパクト」ワークスペース：3Dビューと印刷設定を1つのタブグループにまとめた配置。" width="100%">
+</p>
+
+各ワークスペースの初期配置を、ウィンドウのモデルから描いた図です（`cargo run --example workspace_pictures`）。メニューバーと、タブ付きのパネルのグループを示します。ウィンドウの写真ではありません。写真はプログラムの画像モード（`--shot --demo`、モデルとサーバーはメモリ上で作られるためプリンターには届きません）を使うワークフロー `Window pictures` で撮影します。
 
 ## ✨ 機能
 
@@ -246,7 +250,7 @@ EH3D-PHOENIX-3DP/
 │   ├── architecture.json                        アーキテクチャ図のデータ
 │   └── structure.json                           構成図のデータ
 ├── tools/                                       CI チェック、README チェック、図のツール
-├── images/                                      バナー、2 枚の図、README のウィンドウ画像
+├── images/                                      バナー、2 枚の図、README のワークスペースの図
 ├── .github/                                     CI とリリースのワークフロー、Issue と PR のテンプレート
 ├── eh3d.project.json                            マニフェスト：バージョン、役割、成熟度、ビルド コマンド
 ├── Cargo.toml                                   ワークスペースとそのクレート

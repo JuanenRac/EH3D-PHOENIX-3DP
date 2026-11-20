@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Stack-Rust-DEA584.svg" alt="Rust">
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.7-0f6cbd.svg" alt="Version">
-  <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
+  <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
   <img src="https://img.shields.io/badge/Tests-650-4CAF50.svg" alt="Tests">
 </p>
 
@@ -32,7 +32,7 @@
 | | |
 |---|---|
 | 版本 | `0.0.7` |
-| 成熟度 | 脚手架 |
+| 成熟度 | 可用 |
 | 测试 | 650 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试验：这里的任何内容都没有在打印机上运行过，包括 Bambu Lab A1 和 P1S。 |
@@ -90,22 +90,26 @@ EH3D-PHOENIX-3DP 是 EH3D Fabrication Suite 中 PHOENIX 家族的 3D 打印程�
 ## 🖼️ 屏幕截图
 
 <p align="center">
-  <img src="images/screenshots/prepare.png" alt="“准备”标签页：左侧是打印机和耗材列表，中间是放有演示高脚杯的3D打印床，右侧是对象面板。" width="100%">
+  <img src="images/layouts/prepare.svg" alt="“准备”工作区：顶部是菜单栏；左侧以标签页放置打印设置和材料，中间是位于控制台和G-code上方的3D视图，右侧以标签页放置对象和打印机。" width="100%">
 </p>
 
 <p align="center">
-  <img src="images/screenshots/preview.png" alt="“预览”标签页：已切片的高脚杯、线型图例、层滑块，以及方案的时间、耗材、成本和层数。" width="100%">
+  <img src="images/layouts/review.svg" alt="“检查”工作区：3D视图和分层预览以标签页呈现，右侧是位于打印设置上方的G-code图例。" width="100%">
 </p>
 
 <p align="center">
-  <img src="images/screenshots/device.png" alt="“设备”标签页：服务器上的机器及其温度和进度、队列，以及说明打印机插件是模拟器的横幅。" width="100%">
+  <img src="images/layouts/run.svg" alt="“运行”工作区：设备（服务器及其机器）、机器状态和队列并排放置。" width="100%">
 </p>
 
 <p align="center">
-  <img src="images/screenshots/project.png" alt="“项目”标签页：项目文件、窗口设置、键盘快捷键和设置文件。" width="100%">
+  <img src="images/layouts/setup.svg" alt="“设置”工作区：项目和窗口设置，下方是控制台。" width="100%">
 </p>
 
-图片由程序的截图模式（`--shot --demo`）拍摄：模型和服务器都在内存中生成，因此这里的一切都不会连到打印机。
+<p align="center">
+  <img src="images/layouts/compact.svg" alt="“紧凑”工作区：只有一组标签页，即3D视图和打印设置。" width="100%">
+</p>
+
+各工作区出厂布局的示意图，由窗口的模型绘制（`cargo run --example workspace_pictures`）：菜单栏以及带标签页的面板组。它们不是窗口的照片；照片由程序的截图模式（`--shot --demo`，模型和服务器都在内存中生成，因此不会连到打印机）通过工作流 `Window pictures` 拍摄。
 
 ## ✨ 功能
 
@@ -246,7 +250,7 @@ EH3D-PHOENIX-3DP/
 │   ├── architecture.json                        架构图数据
 │   └── structure.json                           结构图数据
 ├── tools/                                       CI 检查、README 检查和图片工具
-├── images/                                      横幅图、两张示意图和 README 的窗口截图
+├── images/                                      横幅图、两张示意图和 README 的工作区示意图
 ├── .github/                                     CI 与发布工作流、议题和拉取请求模板
 ├── eh3d.project.json                            清单：版本、角色、成熟度和构建命令
 ├── Cargo.toml                                   工作区及其 crate

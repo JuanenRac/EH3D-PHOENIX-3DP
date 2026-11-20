@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Stack-Rust-DEA584.svg" alt="Rust">
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.7-0f6cbd.svg" alt="Version">
-  <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
+  <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
   <img src="https://img.shields.io/badge/Tests-650-4CAF50.svg" alt="Tests">
 </p>
 
@@ -32,7 +32,7 @@
 | | |
 |---|---|
 | Versione | `0.0.7` |
-| Maturità | Impalcatura |
+| Maturità | Funzionale |
 | Test | 650 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di tutto ciò è stato eseguito su una stampante, nemmeno su una Bambu Lab A1 o una P1S. |
@@ -90,22 +90,26 @@ Come si incastrano le parti di questo repository: chi lo usa, cosa contiene e da
 ## 🖼️ Schermate
 
 <p align="center">
-  <img src="images/screenshots/prepare.png" alt="Scheda Prepara: a sinistra gli elenchi di stampanti e filamenti, al centro il piano in 3D con la coppa di dimostrazione e a destra il pannello degli oggetti." width="100%">
+  <img src="images/layouts/prepare.svg" alt="Spazio Prepara: la barra dei menu in alto; le impostazioni di stampa e i materiali come schede a sinistra, la vista 3D al centro sopra la console e il G-code, e gli oggetti e la stampante come schede a destra." width="100%">
 </p>
 
 <p align="center">
-  <img src="images/screenshots/preview.png" alt="Scheda Anteprima: la coppa elaborata con la legenda dei tipi di linea, il cursore dei livelli e il tempo, il filamento, il costo e i livelli del piano." width="100%">
+  <img src="images/layouts/review.svg" alt="Spazio Verifica: la vista 3D e l'anteprima dei livelli come schede, con la legenda del G-code sopra le impostazioni di stampa a destra." width="100%">
 </p>
 
 <p align="center">
-  <img src="images/screenshots/device.png" alt="Scheda Dispositivo: le macchine del server, le loro temperature e il loro avanzamento, la coda e l'avviso che il plugin della stampante è un simulatore." width="100%">
+  <img src="images/layouts/run.svg" alt="Spazio Esegui: il dispositivo (il server e le sue macchine), lo stato della macchina e la coda affiancati." width="100%">
 </p>
 
 <p align="center">
-  <img src="images/screenshots/project.png" alt="Scheda Progetto: il file di progetto, le impostazioni della finestra, le scorciatoie da tastiera e il file delle impostazioni." width="100%">
+  <img src="images/layouts/setup.svg" alt="Spazio Impostazioni: il progetto e le impostazioni della finestra, con la console sotto." width="100%">
 </p>
 
-Immagini ottenute con la modalità immagine del programma (`--shot --demo`): un modello e un server creati in memoria, quindi nulla di tutto ciò raggiunge una stampante.
+<p align="center">
+  <img src="images/layouts/compact.svg" alt="Spazio Compatto: un solo gruppo di schede, la vista 3D e le impostazioni di stampa." width="100%">
+</p>
+
+Disegni della disposizione di fabbrica di ogni spazio di lavoro, fatti dal modello della finestra (`cargo run --example workspace_pictures`): la barra dei menu e i gruppi di pannelli con le loro schede. Non sono fotografie della finestra; le fotografie si ottengono con la modalità immagine del programma (`--shot --demo`, un modello e un server creati in memoria, quindi nulla raggiunge una stampante) con il workflow `Window pictures`.
 
 ## ✨ Funzionalità
 
@@ -246,7 +250,7 @@ EH3D-PHOENIX-3DP/
 │   ├── architecture.json                        dati dell'immagine di Architettura
 │   └── structure.json                           dati dell'immagine di Struttura
 ├── tools/                                       controllo della CI e del README e strumenti per le immagini
-├── images/                                      banner, i due diagrammi e le schermate della finestra del README
+├── images/                                      banner, i due diagrammi e i disegni degli spazi di lavoro del README
 ├── .github/                                     workflow di CI e di rilascio, modelli di issue e pull request
 ├── eh3d.project.json                            manifesto: versione, ruolo, maturità e comando di build
 ├── Cargo.toml                                   il workspace e i suoi crate

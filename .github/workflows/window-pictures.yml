@@ -1,0 +1,55 @@
+name: Window pictures
+
+# Takes the pictures of the window with the picture mode of the program (`phoenix-3dp gui --shot`) on a virtual screen and keeps them as an artifact of the run, so the pictures of the
+# README can be renewed without building the window on a personal machine. Run it by hand: Actions > Window pictures > Run workflow; then put the pictures of the artifact in
+# images/screenshots/ and in a pull request.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: window-pictures
+  cancel-in-progress: false
+
+env:
+  # The tag of the sibling repository the window is built against.
+  COMMON_REF: "v0.2.7"
+
+jobs:
+  pictures:
+    name: Take the pictures of the window
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          path: EH3D-PHOENIX-3DP
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: The sibling repository of the common library
+        shell: bash
+        run: git -c advice.detachedHead=false clone --quiet --depth 1 --branch "${COMMON_REF}" "https://github.com/${GITHUB_REPOSITORY_OWNER}/EH3D-COMMON.git" EH3D-COMMON
+      - name: Libraries of the window and a virtual screen
+        run: sudo apt-get update && sudo apt-get install -y libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev libxrandr-dev libxi-dev libgl1-mesa-dev libgl1-mesa-dri xvfb
+      - name: Rust toolchain
+        working-directory: EH3D-PHOENIX-3DP
+        run: rustup toolchain install "$(sed -n 's/^channel = "\(.*\)"/\1/p' rust-toolchain.toml)" --profile minimal
+      - name: Pillow, to make the pictures a palette
+        run: python -m pip install --disable-pip-version-check pillow
+      - name: Build the window
+        working-directory: EH3D-PHOENIX-3DP
+        run: cargo build --release --features gui
+      - name: Take the pictures
+        working-directory: EH3D-PHOENIX-3DP
+        run: xvfb-run -a python -I tools/make_screenshots.py target/release/phoenix-3dp --out window-pictures
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: window-pictures
+          path: EH3D-PHOENIX-3DP/window-pictures/*.png
+          if-no-files-found: error
+          retention-days: 14

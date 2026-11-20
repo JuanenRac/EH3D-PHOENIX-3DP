@@ -737,14 +737,14 @@
         {
           "name": "images/",
           "desc": {
-            "en": "banner, the two diagrams and the window pictures of the README",
-            "es": "banner, los dos diagramas y las capturas de la ventana del README",
-            "de": "Banner, die zwei Diagramme und die Fensterbilder des README",
-            "fr": "bannière, les deux schémas et les captures de la fenêtre du README",
-            "it": "banner, i due diagrammi e le schermate della finestra del README",
-            "ja": "バナー、2 枚の図、README のウィンドウ画像",
-            "zh": "横幅图、两张示意图和 README 的窗口截图",
-            "pt": "banner, os dois diagramas e as capturas da janela do README"
+            "en": "banner, the two diagrams and the drawings of the workspaces of the README",
+            "es": "banner, los dos diagramas y los dibujos de los espacios de trabajo del README",
+            "de": "Banner, die zwei Diagramme und die Zeichnungen der Arbeitsbereiche des README",
+            "fr": "bannière, les deux schémas et les dessins des espaces de travail du README",
+            "it": "banner, i due diagrammi e i disegni degli spazi di lavoro del README",
+            "ja": "バナー、2 枚の図、README のワークスペースの図",
+            "zh": "横幅图、两张示意图和 README 的工作区示意图",
+            "pt": "banner, os dois diagramas e os desenhos dos espaços de trabalho do README"
           }
         },
         {

@@ -37,6 +37,11 @@ path = "src/lib.rs"
 name = "phoenix-3dp"
 path = "src/main.rs"
 
+# the pictures of the workspaces of the window, drawn from the model of the arrangement alone (no window): `cargo run --example workspace_pictures`
+[[example]]
+name = "workspace_pictures"
+path = "tools/workspace_pictures.rs"
+
 [features]
 default = []
 # the window (egui): `cargo run --release --features gui`

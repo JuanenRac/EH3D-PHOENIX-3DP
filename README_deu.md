@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Stack-Rust-DEA584.svg" alt="Rust">
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.7-0f6cbd.svg" alt="Version">
-  <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
+  <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
   <img src="https://img.shields.io/badge/Tests-650-4CAF50.svg" alt="Tests">
 </p>
 
@@ -32,7 +32,7 @@
 | | |
 |---|---|
 | Version | `0.0.7` |
-| Reifegrad | Gerüst |
+| Reifegrad | Funktionsfähig |
 | Tests | 650 |
 | Technologie-Stack | Rust |
 | Auf echter Hardware | Nicht getestet: nichts davon lief an einem Drucker, nicht einmal an einem Bambu Lab A1 oder P1S. |
@@ -90,22 +90,26 @@ Wie die Teile dieses Repositorys zusammenpassen: wer es nutzt, was es enthält u
 ## 🖼️ Screenshots
 
 <p align="center">
-  <img src="images/screenshots/prepare.png" alt="Reiter Vorbereiten: links die Listen der Drucker und Filamente, in der Mitte das Druckbett in 3D mit dem Demo-Pokal und rechts das Objektpanel." width="100%">
+  <img src="images/layouts/prepare.svg" alt="Arbeitsbereich Vorbereiten: oben die Menüleiste; links Druckeinstellungen und Materialien als Reiter, in der Mitte die 3D-Ansicht über der Konsole und dem G-Code, rechts Objekte und Drucker als Reiter." width="100%">
 </p>
 
 <p align="center">
-  <img src="images/screenshots/preview.png" alt="Reiter Vorschau: der gesliceste Pokal mit der Legende der Linienarten, dem Schichtregler sowie Zeit, Filament, Kosten und Schichten des Plans." width="100%">
+  <img src="images/layouts/review.svg" alt="Arbeitsbereich Prüfen: die 3D-Ansicht und die Schichtvorschau als Reiter, rechts die G-Code-Legende über den Druckeinstellungen." width="100%">
 </p>
 
 <p align="center">
-  <img src="images/screenshots/device.png" alt="Reiter Gerät: die Maschinen des Servers mit Temperaturen und Fortschritt, die Warteschlange und der Hinweis, dass das Druckerplugin ein Simulator ist." width="100%">
+  <img src="images/layouts/run.svg" alt="Arbeitsbereich Ausführen: das Gerät (der Server und seine Maschinen), der Zustand der Maschine und die Warteschlange nebeneinander." width="100%">
 </p>
 
 <p align="center">
-  <img src="images/screenshots/project.png" alt="Reiter Projekt: die Projektdatei, die Fenstereinstellungen, die Tastenkürzel und die Einstellungsdatei." width="100%">
+  <img src="images/layouts/setup.svg" alt="Arbeitsbereich Einstellungen: das Projekt und die Fenstereinstellungen, darunter die Konsole." width="100%">
 </p>
 
-Bilder, aufgenommen mit dem Bildmodus des Programms (`--shot --demo`): ein Modell und ein Server aus dem Speicher, sodass nichts davon einen Drucker erreicht.
+<p align="center">
+  <img src="images/layouts/compact.svg" alt="Arbeitsbereich Kompakt: eine einzige Reitergruppe mit der 3D-Ansicht und den Druckeinstellungen." width="100%">
+</p>
+
+Zeichnungen der Werksanordnung jedes Arbeitsbereichs, aus dem Modell des Fensters erzeugt (`cargo run --example workspace_pictures`): die Menüleiste und die Gruppen der Panels mit ihren Reitern. Es sind keine Fotos des Fensters; die Fotos entstehen mit dem Bildmodus des Programms (`--shot --demo`, ein Modell und ein Server aus dem Speicher, sodass nichts einen Drucker erreicht) durch den Workflow `Window pictures`.
 
 ## ✨ Funktionen
 
@@ -246,7 +250,7 @@ EH3D-PHOENIX-3DP/
 │   ├── architecture.json                        Daten des Architektur-Bildes
 │   └── structure.json                           Daten des Struktur-Bildes
 ├── tools/                                       CI-Prüfung, README-Prüfung und die Bildwerkzeuge
-├── images/                                      Banner, die zwei Diagramme und die Fensterbilder des README
+├── images/                                      Banner, die zwei Diagramme und die Zeichnungen der Arbeitsbereiche des README
 ├── .github/                                     CI- und Release-Workflows, Vorlagen für Issues und Pull Requests
 ├── eh3d.project.json                            Manifest: Version, Rolle, Reifegrad und Build-Befehl
 ├── Cargo.toml                                   der Workspace und seine Crates

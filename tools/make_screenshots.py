@@ -6,8 +6,8 @@
 # =============================================================================
 """Takes the pictures of the window for the READMEs with the picture mode of the program, one for each tab.
 
-    py -3.14 -I tools/make_screenshots.py PATH/TO/phoenix-3dp[.exe] [--out images/screenshots] [--lang en] [--size 1360x860]
-    py -3.14 -I tools/make_screenshots.py --check [--out images/screenshots]
+    py -3.14 -I tools/make_screenshots.py PATH/TO/phoenix-3dp[.exe] [--out window-pictures] [--lang en] [--size 1360x860]
+    py -3.14 -I tools/make_screenshots.py --check [--out window-pictures]
 
 The program must have been built with `--features gui`. It is copied into a new empty folder and run from there, with the folders of the user (APPDATA,
 LOCALAPPDATA, USERPROFILE, HOME) pointing at that folder, so no picture carries the name of a folder or of a person. Each picture is quantized to a palette with Pillow and made
@@ -93,7 +93,7 @@ def check(out: Path) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("binary", nargs="?", help="the program built with --features gui")
-    ap.add_argument("--out", default="images/screenshots")
+    ap.add_argument("--out", default="window-pictures")
     ap.add_argument("--lang", default="en")
     ap.add_argument("--size", default="1360x860")
     ap.add_argument("--check", action="store_true")

@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Stack-Rust-DEA584.svg" alt="Rust">
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.7-0f6cbd.svg" alt="Version">
-  <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
+  <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
   <img src="https://img.shields.io/badge/Tests-650-4CAF50.svg" alt="Tests">
 </p>
 
@@ -32,7 +32,7 @@
 | | |
 |---|---|
 | Version | `0.0.7` |
-| Maturity | Scaffolding |
+| Maturity | Functional |
 | Tests | 650 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a printer, not even on a Bambu Lab A1 or a P1S. |
@@ -90,22 +90,26 @@ How the parts of this repository fit together: who uses it, what it holds and wh
 ## 🖼️ Screenshots
 
 <p align="center">
-  <img src="images/screenshots/prepare.png" alt="Prepare tab: the printer and filament lists on the left, the bed in 3D with the demonstration goblet in the middle, and the object panel on the right." width="100%">
+  <img src="images/layouts/prepare.svg" alt="Prepare workspace: the menu bar on top; the print settings and the materials as tabs on the left, the 3D view in the middle above the console and the G-code tabs, and the objects and the printer as tabs on the right." width="100%">
 </p>
 
 <p align="center">
-  <img src="images/screenshots/preview.png" alt="Preview tab: the sliced goblet with the key of the kinds of line, the layer slider and the time, filament, cost and layers of the plan." width="100%">
+  <img src="images/layouts/review.svg" alt="Review workspace: the 3D view and the layer preview as tabs, with the G-code legend above the print settings on the right." width="100%">
 </p>
 
 <p align="center">
-  <img src="images/screenshots/device.png" alt="Device tab: the machines of the server, their temperatures and progress, the queue and the banner that says the printer plugin is a simulator." width="100%">
+  <img src="images/layouts/run.svg" alt="Run workspace: the device (the server and its machines), the state of the machine and the queue side by side." width="100%">
 </p>
 
 <p align="center">
-  <img src="images/screenshots/project.png" alt="Project tab: the project file, the window settings, the keyboard shortcuts and the settings file." width="100%">
+  <img src="images/layouts/setup.svg" alt="Setup workspace: the project and the settings of the window, with the console below." width="100%">
 </p>
 
-Pictures taken with the picture mode of the program (`--shot --demo`): a model and a server made in memory, so nothing here reaches a printer.
+<p align="center">
+  <img src="images/layouts/compact.svg" alt="Compact workspace: one group of tabs, the 3D view and the print settings." width="100%">
+</p>
+
+Drawings of the factory arrangement of each workspace, made from the model of the window (`cargo run --example workspace_pictures`): the menu bar and the groups of panels with their tabs. They are not photographs of the window; the photographs are taken with the picture mode of the program (`--shot --demo`, a model and a server made in memory, so nothing reaches a printer) by the workflow `Window pictures`.
 
 ## ✨ Features
 
@@ -246,7 +250,7 @@ EH3D-PHOENIX-3DP/
 │   ├── architecture.json                        data of the Architecture picture
 │   └── structure.json                           data of the Repository Structure picture
 ├── tools/                                       CI check, README check and the picture tools
-├── images/                                      banner, the two diagrams and the window pictures of the README
+├── images/                                      banner, the two diagrams and the drawings of the workspaces of the README
 ├── .github/                                     CI and release workflows, issue and pull-request templates
 ├── eh3d.project.json                            manifest: version, role, maturity and build command
 ├── Cargo.toml                                   the workspace and its crates
