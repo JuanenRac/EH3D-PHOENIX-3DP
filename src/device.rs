@@ -9,7 +9,8 @@
 use crate::i18n::{fill, Lang, Msg};
 use p3dp_core::TempLimits;
 use p3dp_server_bridge::{
-    stricter, BridgeError, Confirmation, HeaterInfo, JobInfo, LayerInfo, PrinterInfo, ServerClient,
+    stricter, BridgeError, Confirmation, HeaterInfo, JobInfo, LayerInfo, PrinterInfo, QueuePolicy,
+    ServerClient,
 };
 
 /// The state of the Device tab.
@@ -26,6 +27,8 @@ pub struct DevicePanel {
     pub error: Option<BridgeError>,
     /// What the last call that went well did, for the status line.
     pub done: Option<Done>,
+    /// The rules for putting a job in the queue (a repeated name, a full line).
+    pub policy: QueuePolicy,
 }
 
 /// A thing that was done.
@@ -45,6 +48,14 @@ impl DevicePanel {
         DevicePanel::default()
     }
 
+    /// A panel that keeps these rules when it puts a job in the queue.
+    pub fn with_policy(policy: QueuePolicy) -> DevicePanel {
+        DevicePanel {
+            policy,
+            ..DevicePanel::default()
+        }
+    }
+
     fn fail(&mut self, e: BridgeError) {
         self.done = None;
         self.error = Some(e);
@@ -52,7 +63,7 @@ impl DevicePanel {
 
     /// Forgets what was read (when the server is let go).
     pub fn clear(&mut self) {
-        *self = DevicePanel::default();
+        *self = DevicePanel::with_policy(self.policy);
     }
 
     /// The machine chosen, as the server lists it.
@@ -239,7 +250,7 @@ impl DevicePanel {
             Some(s) => stricter(profile_limits, &s),
             None => *profile_limits,
         };
-        match c.enqueue(&id, name, gcode, &limits) {
+        match c.enqueue_checked(&id, name, gcode, &limits, &self.policy) {
             Ok(j) => {
                 self.error = None;
                 self.done = Some(Done::Queued(j.name.clone()));
@@ -330,6 +341,35 @@ mod tests {
         assert_eq!(d.enqueue(None, "x", SAFE, &limits()), None);
         assert!(d.question(Lang::En).is_none());
         assert!(d.lines(Lang::En).is_empty());
+    }
+
+    #[test]
+    fn a_repeated_job_and_a_full_line_are_refused_by_the_panel_and_the_rules_survive_a_clear() {
+        let (mut c, sim) = client(TOKEN);
+        let mut d = DevicePanel::with_policy(QueuePolicy {
+            refuse_duplicates: true,
+            max_waiting: 2,
+        });
+        d.refresh(Some(&mut c));
+        assert!(d.enqueue(Some(&mut c), "cube", SAFE, &limits()).is_some());
+        let posted = sim.with_state(|s| s.posted.len());
+        assert!(d.enqueue(Some(&mut c), "Cube", SAFE, &limits()).is_none());
+        let e = d.error_text(Lang::En).unwrap();
+        assert!(e.contains("already waiting"), "{e}");
+        assert_eq!(
+            sim.with_state(|s| s.posted.len()),
+            posted,
+            "nothing was sent"
+        );
+        assert!(d.enqueue(Some(&mut c), "benchy", SAFE, &limits()).is_some());
+        assert!(d.enqueue(Some(&mut c), "third", SAFE, &limits()).is_none());
+        assert!(d.error_text(Lang::En).unwrap().contains("2 jobs waiting"));
+        d.clear();
+        assert_eq!(
+            d.policy.max_waiting, 2,
+            "clearing what was read keeps the rules"
+        );
+        assert!(d.queue.is_empty());
     }
 
     #[test]

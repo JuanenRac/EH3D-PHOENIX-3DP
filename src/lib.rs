@@ -12,6 +12,7 @@ pub mod lists;
 pub mod look;
 pub mod preview;
 pub mod project;
+pub mod report;
 pub mod server_ui;
 pub mod shot;
 pub mod view;

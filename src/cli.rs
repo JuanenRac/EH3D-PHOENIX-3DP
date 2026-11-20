@@ -4,12 +4,14 @@
 use crate::app_state::{profile_report, AppState};
 use crate::config::AppConfig;
 use crate::i18n::{Lang, Msg};
+use crate::report;
+use p3dp_formats::picture::PictureFormat;
 use p3dp_formats::project3mf::read_project;
-use p3dp_formats::{bgcode, resin, resin_control};
+use p3dp_formats::{bgcode, gcode_meta, resin, resin_control};
 use p3dp_formats::{write_mesh, Format};
 use p3dp_gcode::check_program;
 use p3dp_profiles::filament::{FilamentCatalog, Nozzle};
-use p3dp_profiles::{PrinterProfile, Technology};
+use p3dp_profiles::{PrinterProfile, ResinCatalog, ResinKind, Technology};
 use p3dp_slicer::{Machine, SliceConfig};
 use std::collections::HashMap;
 
@@ -54,17 +56,21 @@ pub const USAGE: &str = "phoenix-3dp: prepare and send 3D prints (simulators onl
   phoenix-3dp info MODEL [--printer ID]
   phoenix-3dp check-profile ID [--gcode FILE]
   phoenix-3dp check-profile --file PROFILE [--gcode FILE]
+  phoenix-3dp check-profile ID|--file PROFILE --set \"key=value;key=value\" [--save FILE] [--force]
   phoenix-3dp convert IN OUT [--printer ID] [--force]
   phoenix-3dp filaments [--printer ID] [--nozzle MM] [--hardened]
-  phoenix-3dp slice MODEL --printer ID [--settings FILE] [--filament ID] [--nozzle MM] [--hardened] [--out FILE.gcode] [--force]
-  phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.sl1 [--bottom-layers N] [--lift MM] [--light-power MW]
+  phoenix-3dp resins [--kind KIND] [--printer ID] [--part-ml ML]
+  phoenix-3dp slice MODEL --printer ID [--settings FILE] [--filament ID] [--nozzle MM] [--hardened] [--report] [--out FILE.gcode] [--force]
+  phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.gcode|FILE.sl1 [--thumbnail FILE] [--force] [--bottom-layers N] [--lift MM] [--light-power MW]
   phoenix-3dp version
 
 Every command also takes --config FILE (the settings) and --lang CODE (en, es, de, fr, it, ja, zh, pt).
 The models are STL, OBJ and 3MF; OUT is chosen by its extension (.stl, .obj, .3mf).
 `slice` makes the layers and the G-code of a closed model for a printer of the catalog and refuses, never cuts down, what does not fit or goes past a limit;
-without --out it only reports. `project` reads the objects, plates and settings of a 3MF project saved by another program, the header of a binary G-code file, or the header
-of an open package of resin layers (.sl1) with an estimate of its time; all of it read only, and the closed formats of resin printers are refused with the reason.";
+without --out it only reports; with --report it also tells the material, its cost, the time and the layers. `resins` lists the resins and, with --part-ml, what a part of that
+volume takes. `check-profile --set` edits a copy of a profile (a limit past the figure of the maker is allowed and told) and --save writes it as a profile file. `project` reads the
+objects, plates and settings of a 3MF project saved by another program, the header and thumbnails of a binary G-code file, the figures and thumbnails in the comments of a plain
+G-code file, or the header of an open package of resin layers (.sl1) with an estimate of its time; all of it read only, and the closed formats of resin printers are refused with the reason.";
 
 struct Parsed {
     positional: Vec<String>,
@@ -134,6 +140,7 @@ pub fn run(args: &[String], env_lang: Option<&str>) -> Outcome {
         "check-profile" => check_profile(rest, env_lang),
         "convert" => convert(rest, env_lang),
         "filaments" => filaments(rest, env_lang),
+        "resins" => resins(rest, env_lang),
         "slice" => slice(rest, env_lang),
         "project" => project(rest, env_lang),
         other => Outcome::usage(&format!("{other:?} is not a command")),
@@ -241,6 +248,92 @@ fn filaments(args: &[String], env_lang: Option<&str>) -> Outcome {
     Outcome::ok(out)
 }
 
+/// The resins of the program; with a printer, only if it is a resin printer; with a volume, what a part of that volume takes.
+fn resins(args: &[String], env_lang: Option<&str>) -> Outcome {
+    let p = match parse(args, &["kind", "printer", "part-ml", "config", "lang"], &[]) {
+        Ok(p) => p,
+        Err(e) => return Outcome::usage(&e),
+    };
+    if !p.positional.is_empty() {
+        return Outcome::usage("resins takes no file");
+    }
+    let mut state = match state_of(&p, env_lang) {
+        Ok(s) => s,
+        Err(e) => return Outcome::fail(e),
+    };
+    let catalog = match ResinCatalog::builtin() {
+        Ok(c) => c,
+        Err(e) => return Outcome::fail(e.to_string()),
+    };
+    let kind = match p
+        .flags
+        .get("kind")
+        .map(|k| ResinKind::from_name(k).ok_or(k))
+    {
+        Some(Err(k)) => {
+            return Outcome::usage(&format!(
+                "--kind {k:?} is not one of standard, tough, flexible, castable, clear, high-detail"
+            ))
+        }
+        Some(Ok(k)) => Some(k),
+        None => None,
+    };
+    let part_mm3 = match p.flags.get("part-ml").map(|v| v.parse::<f64>()) {
+        Some(Ok(ml)) if ml.is_finite() && ml >= 0.0 => Some(ml * 1000.0),
+        Some(_) => return Outcome::usage("--part-ml takes a number of millilitres, zero or more"),
+        None => None,
+    };
+    if let Some(id) = p.flags.get("printer") {
+        if !state.select_printer(id) {
+            return Outcome::fail(state.status.text(state.lang));
+        }
+    }
+    let printer = state
+        .printer()
+        .cloned()
+        .filter(|_| p.flags.contains_key("printer"));
+    let mut out = String::new();
+    let mut n = 0;
+    for r in catalog
+        .profiles
+        .iter()
+        .filter(|r| kind.is_none_or(|k| r.kind == k))
+    {
+        if let Some(pr) = &printer {
+            if let Err(e) = r.usable_on(pr) {
+                return Outcome::fail(e.to_string());
+            }
+        }
+        out.push_str(&format!(
+            "{:<22} {:<30} {:<12} layer {}-{} um (best {}), exposure {} s ({} s for the first {} layers), lift {} mm at {} mm/min, {} nm, {} g/ml, wash with {}, not verified\n",
+            r.id,
+            r.name,
+            r.kind.name(),
+            r.layer_um.lowest,
+            r.layer_um.highest,
+            r.layer_um.best,
+            r.normal_exposure_s.best,
+            r.bottom_exposure_s.best,
+            r.bottom_layers,
+            r.lift_mm,
+            r.lift_speed_mm_min,
+            r.wavelength_nm,
+            r.density_g_ml,
+            r.wash.name()
+        ));
+        if let Some(v) = part_mm3 {
+            match report::resin_line(r, v, &state.config, state.lang) {
+                Ok(l) => out.push_str(&format!("    {l}\n")),
+                Err(e) => return Outcome::fail(e),
+            }
+        }
+        n += 1;
+    }
+    out.push_str(&format!("{n} resins\n"));
+    out.push_str("the exposures are starting points for a monochrome-screen printer, not the figures of a bottle: they depend on the power of the light, and none has been tried on a machine\n");
+    Outcome::ok(out)
+}
+
 fn printers(args: &[String], env_lang: Option<&str>) -> Outcome {
     let p = match parse(args, &["vendor", "tech", "search", "config", "lang"], &[]) {
         Ok(p) => p,
@@ -329,7 +422,11 @@ fn info(args: &[String], env_lang: Option<&str>) -> Outcome {
 }
 
 fn check_profile(args: &[String], env_lang: Option<&str>) -> Outcome {
-    let p = match parse(args, &["file", "gcode", "config", "lang"], &[]) {
+    let p = match parse(
+        args,
+        &["file", "gcode", "config", "lang", "set", "save"],
+        &["force"],
+    ) {
         Ok(p) => p,
         Err(e) => return Outcome::usage(&e),
     };
@@ -362,11 +459,66 @@ fn check_profile(args: &[String], env_lang: Option<&str>) -> Outcome {
         }
         _ => return Outcome::usage("check-profile takes an id or --file PROFILE"),
     };
+    let original = profile.clone();
+    let mut profile = profile;
+    let mut notes = String::new();
+    if let Some(spec) = p.flags.get("set") {
+        let mut edits: Vec<(&str, &str)> = Vec::new();
+        for part in spec.split(';').map(str::trim).filter(|s| !s.is_empty()) {
+            let Some((k, v)) = part.split_once('=') else {
+                return Outcome::usage(&format!(
+                    "--set takes key=value pairs separated by semicolons, not {part:?}"
+                ));
+            };
+            edits.push((k.trim(), v.trim()));
+        }
+        match original.edited(&edits) {
+            Ok(e) => {
+                for c in original.diff(&e.profile) {
+                    let shown = |s: &str| {
+                        if s.is_empty() {
+                            "-".to_string()
+                        } else {
+                            s.to_string()
+                        }
+                    };
+                    notes.push_str(&format!(
+                        "changed: {}: {} -> {}\n",
+                        c.key,
+                        shown(&c.from),
+                        shown(&c.to)
+                    ));
+                }
+                for l in report::notice_lines(&e.notices, state.lang) {
+                    notes.push_str(&format!("note: {l}\n"));
+                }
+                profile = e.profile;
+            }
+            Err(e) => return Outcome::fail(e.to_string()),
+        }
+    }
+    if let Some(path) = p.flags.get("save") {
+        if !p.flags.contains_key("force") && std::path::Path::new(path).exists() {
+            return Outcome::fail(format!(
+                "{path}: the file exists (use --force to replace it)"
+            ));
+        }
+        let tmp = format!("{path}.tmp-{}", std::process::id());
+        if let Err(e) = std::fs::write(&tmp, profile.to_text()) {
+            return Outcome::fail(format!("{tmp}: {e}"));
+        }
+        if let Err(e) = std::fs::rename(&tmp, path) {
+            let _ = std::fs::remove_file(&tmp);
+            return Outcome::fail(format!("{path}: {e}"));
+        }
+        notes.push_str(&format!("saved: {path}\n"));
+    }
     let mut out = String::new();
     for l in profile_report(&profile, state.lang) {
         out.push_str(&l);
         out.push('\n');
     }
+    out.push_str(&notes);
     let Some(gpath) = p.flags.get("gcode") else {
         return Outcome::ok(out);
     };
@@ -496,7 +648,7 @@ fn slice(args: &[String], env_lang: Option<&str>) -> Outcome {
         &[
             "printer", "settings", "out", "config", "lang", "filament", "nozzle",
         ],
-        &["force", "hardened"],
+        &["force", "hardened", "report"],
     ) {
         Ok(p) => p,
         Err(e) => return Outcome::usage(&e),
@@ -532,6 +684,7 @@ fn slice(args: &[String], env_lang: Option<&str>) -> Outcome {
         },
     };
     let mut notes = String::new();
+    let mut density = report::DEFAULT_DENSITY_G_CM3;
     if let Some(fid) = p.flags.get("filament") {
         let nozzle = match nozzle_of(&p, &profile) {
             Ok(n) => n,
@@ -546,6 +699,7 @@ fn slice(args: &[String], env_lang: Option<&str>) -> Outcome {
                 "{fid}: no such filament (see `phoenix-3dp filaments`)"
             ));
         };
+        density = f.density_g_cm3;
         match config.apply_filament(f, &profile, nozzle) {
             Ok(compat) => {
                 notes.push_str(&format!(
@@ -600,6 +754,17 @@ fn slice(args: &[String], env_lang: Option<&str>) -> Outcome {
             "warning: layer {layer} has a part thinner than the perimeters; it has fewer of them or none\n"
         ));
     }
+    if p.flags.contains_key("report") {
+        match report::slice_lines(&plan, density, &state.config, state.lang) {
+            Ok(lines) => {
+                for l in lines {
+                    out.push_str(&l);
+                    out.push('\n');
+                }
+            }
+            Err(e) => return Outcome::fail(e),
+        }
+    }
     out.push_str(&format!("{}\n", Msg::SimulatorOnly.tr(state.lang)));
     let Some(target) = p.flags.get("out") else {
         return Outcome::ok(out);
@@ -616,9 +781,116 @@ fn slice(args: &[String], env_lang: Option<&str>) -> Outcome {
     Outcome::ok(out)
 }
 
+/// What `project` was asked to do with a thumbnail.
+struct Thumb {
+    /// The file to write the largest thumbnail to.
+    out: Option<String>,
+    force: bool,
+}
+
+/// Writes a picture taken out of a file. The name must end in the extension of the picture (a QOI picture in a `.png` would not open), and an existing file is not replaced without `--force`.
+fn write_picture(
+    path: &str,
+    format: PictureFormat,
+    data: &[u8],
+    force: bool,
+) -> Result<(), String> {
+    let ext = path.rsplit_once('.').map(|(_, e)| e.to_ascii_lowercase());
+    if ext.as_deref().and_then(PictureFormat::from_name) != Some(format) {
+        return Err(format!(
+            "{path}: the picture is {}; name the file with .{}",
+            format.extension().to_uppercase(),
+            format.extension()
+        ));
+    }
+    if !force && std::path::Path::new(path).exists() {
+        return Err(format!(
+            "{path}: the file exists (use --force to replace it)"
+        ));
+    }
+    let tmp = format!("{path}.tmp-{}", std::process::id());
+    std::fs::write(&tmp, data).map_err(|e| format!("{tmp}: {e}"))?;
+    std::fs::rename(&tmp, path).map_err(|e| {
+        let _ = std::fs::remove_file(&tmp);
+        format!("{path}: {e}")
+    })
+}
+
+/// The figures and thumbnails in the comments of a plain G-code file. Read only: no line is run, and only the start and the end of the file are looked at.
+fn gcode_report(
+    file: &str,
+    bytes: &[u8],
+    config: &AppConfig,
+    lang: Lang,
+    thumb: &Thumb,
+) -> Outcome {
+    let text = String::from_utf8_lossy(bytes);
+    let limits = config.scan_limits();
+    let mut out = format!(
+        "{file}: plain G-code, {} bytes, {} lines\n",
+        bytes.len(),
+        text.lines().count()
+    );
+    let s = gcode_meta::summary(&text, &limits);
+    for (k, v) in s.lines() {
+        out.push_str(&format!("{k} = {v}\n"));
+    }
+    let scan = gcode_meta::thumbnails(&text, &limits);
+    for (i, t) in scan.thumbnails.iter().enumerate() {
+        out.push_str(&report::thumbnail_line(
+            i + 1,
+            t.width,
+            t.height,
+            t.format,
+            t.data.len(),
+            lang,
+        ));
+        out.push('\n');
+    }
+    for problem in &scan.problems {
+        out.push_str(&format!("warning: {problem}\n"));
+    }
+    if let Some(path) = &thumb.out {
+        let best = scan
+            .thumbnails
+            .iter()
+            .enumerate()
+            .fold(None::<(usize, u64)>, |best, (i, t)| {
+                let area = u64::from(t.width) * u64::from(t.height);
+                if best.is_none_or(|(_, a)| area > a) {
+                    Some((i, area))
+                } else {
+                    best
+                }
+            });
+        let Some((i, _)) = best else {
+            return Outcome::fail(format!("{file}: no thumbnail that can be taken out"));
+        };
+        let t = &scan.thumbnails[i];
+        if let Err(e) = write_picture(path, t.format, &t.data, thumb.force) {
+            return Outcome::fail(e);
+        }
+        out.push_str(&format!(
+            "{path}: the largest thumbnail ({} bytes) was written\n",
+            t.data.len()
+        ));
+    }
+    if s.is_empty() && scan.thumbnails.is_empty() {
+        out.push_str("no figures of the print and no thumbnail in its comments\n");
+    }
+    out.push_str("read only: no line was run or changed\n");
+    Outcome::ok(out)
+}
+
 /// The header of a binary G-code file, as lines.
-fn bgcode_report(file: &str, bytes: &[u8], limits: &p3dp_core::Limits) -> Outcome {
-    let h = match bgcode::read_header(bytes, limits) {
+fn bgcode_report(
+    file: &str,
+    bytes: &[u8],
+    config: &AppConfig,
+    lang: Lang,
+    thumb: &Thumb,
+) -> Outcome {
+    let h = match bgcode::read_header(bytes, &config.limits) {
         Ok(h) => h,
         Err(e) => return Outcome::fail(format!("{file}: {e}")),
     };
@@ -643,6 +915,32 @@ fn bgcode_report(file: &str, bytes: &[u8], limits: &p3dp_core::Limits) -> Outcom
     }
     for (kind, k, v) in &h.metadata {
         out.push_str(&format!("{}: {k} = {v}\n", kind.name()));
+    }
+    for (i, t) in h.thumbnails.iter().enumerate() {
+        out.push_str(&report::thumbnail_line(
+            i + 1,
+            u32::from(t.width),
+            u32::from(t.height),
+            t.format,
+            t.bytes,
+            lang,
+        ));
+        out.push('\n');
+    }
+    if let Some(path) = &thumb.out {
+        let Some((format, data)) = h
+            .largest_thumbnail()
+            .and_then(|(i, t)| h.thumbnail_data(bytes, i).map(|d| (t.format, d)))
+        else {
+            return Outcome::fail(format!("{file}: no thumbnail that can be taken out"));
+        };
+        if let Err(e) = write_picture(path, format, data, thumb.force) {
+            return Outcome::fail(e);
+        }
+        out.push_str(&format!(
+            "{path}: the largest thumbnail ({} bytes) was written\n",
+            data.len()
+        ));
     }
     out.push_str("read only: the blocks of G-code were not unpacked and nothing was changed\n");
     Outcome::ok(out)
@@ -724,8 +1022,15 @@ fn resin_report(file: &str, bytes: &[u8], p: &Parsed, limits: &p3dp_core::Limits
 fn project(args: &[String], env_lang: Option<&str>) -> Outcome {
     let p = match parse(
         args,
-        &["config", "lang", "bottom-layers", "lift", "light-power"],
-        &[],
+        &[
+            "config",
+            "lang",
+            "bottom-layers",
+            "lift",
+            "light-power",
+            "thumbnail",
+        ],
+        &["force"],
     ) {
         Ok(p) => p,
         Err(e) => return Outcome::usage(&e),
@@ -741,13 +1046,20 @@ fn project(args: &[String], env_lang: Option<&str>) -> Outcome {
         Ok(b) => b,
         Err(e) => return Outcome::fail(e),
     };
+    let thumb = Thumb {
+        out: p.flags.get("thumbnail").cloned(),
+        force: p.flags.contains_key("force"),
+    };
     if bgcode::is_bgcode(&bytes) {
-        return bgcode_report(file, &bytes, &state.config.limits);
+        return bgcode_report(file, &bytes, &state.config, state.lang, &thumb);
     }
     let ext = file
         .rsplit_once('.')
         .map(|(_, e)| e.to_ascii_lowercase())
         .unwrap_or_default();
+    if ["gcode", "gco", "g"].contains(&ext.as_str()) {
+        return gcode_report(file, &bytes, &state.config, state.lang, &thumb);
+    }
     if resin::OPEN_EXTENSIONS.contains(&ext.as_str())
         || resin::CLOSED_EXTENSIONS.contains(&ext.as_str())
     {
@@ -1449,5 +1761,348 @@ mod tests {
         for f in [&own, &junk] {
             let _ = std::fs::remove_file(f);
         }
+    }
+
+    /// The base64 text of a small PNG header (12 bytes: the signature and 1 2 3 4).
+    const PNG_B64: &str = "iVBORw0KGgoBAgME";
+    const PNG_BYTES: [u8; 12] = [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3, 4];
+
+    fn gcode_with_thumbnail(name: &str) -> String {
+        let path = tmp(name);
+        let text = format!(
+            "; generated by a test\n; thumbnail begin 16x16 16\n; {PNG_B64}\n; thumbnail end\nG28\nG1 X1 Y1 E1\n; filament used [g] = 3.5\n; estimated printing time (normal mode) = 2m 3s\n"
+        );
+        std::fs::write(&path, text).unwrap();
+        path
+    }
+
+    #[test]
+    fn project_reads_the_figures_and_thumbnails_of_plain_gcode_and_takes_the_thumbnail_out() {
+        let path = gcode_with_thumbnail("t1.gcode");
+        let r = run(&args(&format!("project {path}")), None);
+        assert_eq!(r.code, 0, "{}", r.err);
+        assert!(
+            r.out.contains("plain G-code") && r.out.contains("filament_g = 3.50"),
+            "{}",
+            r.out
+        );
+        assert!(r.out.contains("seconds = 123"), "{}", r.out);
+        assert!(
+            r.out.contains("Thumbnail 1: 16 x 16 PNG, 12 bytes"),
+            "{}",
+            r.out
+        );
+        assert!(r.out.contains("read only"), "{}", r.out);
+        // in another language
+        let es = run(&args(&format!("project {path} --lang es")), None);
+        assert!(
+            es.out.contains("Miniatura 1: 16 x 16 PNG, 12 bytes"),
+            "{}",
+            es.out
+        );
+        // the thumbnail is taken out under a name that matches its format, and never over a file without --force
+        let png = tmp("t1_out.png");
+        let _ = std::fs::remove_file(&png);
+        let r = run(&args(&format!("project {path} --thumbnail {png}")), None);
+        assert_eq!(r.code, 0, "{}{}", r.out, r.err);
+        assert_eq!(std::fs::read(&png).unwrap(), PNG_BYTES);
+        let again = run(&args(&format!("project {path} --thumbnail {png}")), None);
+        assert_eq!(again.code, 1);
+        assert!(again.err.contains("use --force"), "{}", again.err);
+        assert_eq!(
+            run(
+                &args(&format!("project {path} --thumbnail {png} --force")),
+                None
+            )
+            .code,
+            0
+        );
+        let wrong = tmp("t1_out.jpg");
+        let w = run(&args(&format!("project {path} --thumbnail {wrong}")), None);
+        assert_eq!(w.code, 1);
+        assert!(
+            w.err.contains("name the file with .png") && !std::path::Path::new(&wrong).exists(),
+            "{}",
+            w.err
+        );
+        for f in [&path, &png] {
+            let _ = std::fs::remove_file(f);
+        }
+    }
+
+    #[test]
+    fn plain_gcode_with_nothing_in_its_comments_says_so_and_a_bad_thumbnail_is_a_warning() {
+        let path = tmp("t2.gcode");
+        std::fs::write(&path, "G28\nG1 X1 Y1 E1\n").unwrap();
+        let r = run(&args(&format!("project {path}")), None);
+        assert_eq!(r.code, 0);
+        assert!(
+            r.out.contains("no figures of the print and no thumbnail"),
+            "{}",
+            r.out
+        );
+        let none = run(
+            &args(&format!("project {path} --thumbnail {}", tmp("t2_out.png"))),
+            None,
+        );
+        assert_eq!(none.code, 1);
+        assert!(
+            none.err.contains("no thumbnail that can be taken out"),
+            "{}",
+            none.err
+        );
+        std::fs::write(
+            &path,
+            format!("; thumbnail begin 16x16 99\n; {PNG_B64}\n; thumbnail end\n"),
+        )
+        .unwrap();
+        let r = run(&args(&format!("project {path}")), None);
+        assert!(
+            r.out.contains("warning: line 1") && r.out.contains("says 99"),
+            "{}",
+            r.out
+        );
+        // the limits of the settings file are honoured: a head of 1 KiB does not reach a thumbnail after 2 KiB of comments
+        let far = format!(
+            "{}; thumbnail begin 16x16 16\n; {PNG_B64}\n; thumbnail end\n",
+            "; filler\n".repeat(400)
+        );
+        std::fs::write(&path, far).unwrap();
+        let cfg = tmp("t2.cfg");
+        std::fs::write(&cfg, "limit_gcode_head_kib = 1\n").unwrap();
+        let near = run(&args(&format!("project {path} --config {cfg}")), None);
+        assert!(!near.out.contains("Thumbnail 1"), "{}", near.out);
+        let wide = run(&args(&format!("project {path}")), None);
+        assert!(wide.out.contains("Thumbnail 1"), "{}", wide.out);
+        for f in [&path, &cfg] {
+            let _ = std::fs::remove_file(f);
+        }
+    }
+
+    #[test]
+    fn project_lists_the_thumbnails_of_binary_gcode_and_takes_the_largest_out() {
+        let crc = p3dp_formats::crc32::crc32;
+        let block = |kind: u16, params: &[u8], data: &[u8]| {
+            let mut b = Vec::new();
+            b.extend_from_slice(&kind.to_le_bytes());
+            b.extend_from_slice(&0u16.to_le_bytes());
+            b.extend_from_slice(&(data.len() as u32).to_le_bytes());
+            b.extend_from_slice(params);
+            b.extend_from_slice(data);
+            let c = crc(&b);
+            b.extend_from_slice(&c.to_le_bytes());
+            b
+        };
+        let mut f = b"GCDE".to_vec();
+        f.extend_from_slice(&1u32.to_le_bytes());
+        f.extend_from_slice(&1u16.to_le_bytes());
+        f.extend_from_slice(&block(5, &[0, 0, 16, 0, 16, 0], &PNG_BYTES));
+        let mut big = b"qoif".to_vec();
+        big.extend_from_slice(&[7; 10]);
+        f.extend_from_slice(&block(5, &[2, 0, 0, 1, 0, 1], &big));
+        f.extend_from_slice(&block(1, &[0, 0], b"G28 G1"));
+        let path = tmp("t3.bgcode");
+        std::fs::write(&path, &f).unwrap();
+        let r = run(&args(&format!("project {path}")), None);
+        assert_eq!(r.code, 0, "{}", r.err);
+        assert!(
+            r.out.contains("Thumbnail 1: 16 x 16 PNG, 12 bytes"),
+            "{}",
+            r.out
+        );
+        assert!(
+            r.out.contains("Thumbnail 2: 256 x 256 QOI, 14 bytes"),
+            "{}",
+            r.out
+        );
+        // the largest is the QOI one: a .png name is refused, a .qoi name works
+        let bad = tmp("t3_out.png");
+        let w = run(&args(&format!("project {path} --thumbnail {bad}")), None);
+        assert_eq!(w.code, 1);
+        assert!(w.err.contains("name the file with .qoi"), "{}", w.err);
+        let qoi = tmp("t3_out.qoi");
+        let _ = std::fs::remove_file(&qoi);
+        assert_eq!(
+            run(&args(&format!("project {path} --thumbnail {qoi}")), None).code,
+            0
+        );
+        assert_eq!(std::fs::read(&qoi).unwrap(), big);
+        for f in [&path, &qoi] {
+            let _ = std::fs::remove_file(f);
+        }
+    }
+
+    #[test]
+    fn slice_with_report_tells_the_material_the_time_and_the_layers_in_the_language_asked() {
+        let model = write_cube("report_cube.stl", Format::Stl);
+        let base = format!("slice {model} --printer prusa-mk4s --report");
+        let r = run(&args(&base), None);
+        assert_eq!(r.code, 0, "{}", r.err);
+        assert!(
+            r.out.contains("Material: ") && r.out.contains("Cost of the filament: "),
+            "{}",
+            r.out
+        );
+        assert!(
+            r.out.contains("Time: ") && r.out.contains("Layers under 5 s: "),
+            "{}",
+            r.out
+        );
+        assert!(
+            r.out.contains("Slowest layers: ") && r.out.contains("Travel without printing: "),
+            "{}",
+            r.out
+        );
+        let without = run(&args(&format!("slice {model} --printer prusa-mk4s")), None);
+        assert!(
+            !without.out.contains("Material: "),
+            "the report is asked for"
+        );
+        let es = run(&args(&format!("{base} --lang es")), None);
+        assert!(
+            es.out.contains("Coste del filamento: ") && es.out.contains("Capas más lentas: "),
+            "{}",
+            es.out
+        );
+        // the density of the chosen filament weighs the material: PETG is denser than the PLA of the default
+        let grams = |text: &str| -> f64 {
+            let l = text.lines().find(|l| l.starts_with("Material: ")).unwrap();
+            l.rsplit(", ")
+                .next()
+                .unwrap()
+                .trim_end_matches(" g")
+                .parse()
+                .unwrap()
+        };
+        let petg = run(&args(&format!("{base} --filament generic-petg")), None);
+        assert_eq!(petg.code, 0, "{}{}", petg.out, petg.err);
+        assert!(grams(&petg.out) > grams(&r.out) * 0.95);
+        let _ = std::fs::remove_file(&model);
+    }
+
+    #[test]
+    fn the_resins_are_listed_by_kind_for_a_resin_printer_and_with_what_a_part_takes() {
+        let r = run(&args("resins"), None);
+        assert_eq!(r.code, 0, "{}", r.err);
+        for id in [
+            "generic-standard",
+            "generic-water-washable",
+            "generic-tough",
+            "generic-flexible",
+            "generic-castable",
+            "generic-clear",
+            "generic-high-detail",
+        ] {
+            assert!(r.out.contains(id), "{id}");
+        }
+        assert!(
+            r.out.contains("7 resins") && r.out.contains("none has been tried on a machine"),
+            "{}",
+            r.out
+        );
+        let tough = run(&args("resins --kind tough"), None);
+        assert!(
+            tough.out.contains("1 resins") && !tough.out.contains("generic-clear"),
+            "{}",
+            tough.out
+        );
+        assert_eq!(run(&args("resins --kind jelly"), None).code, 2);
+        assert_eq!(run(&args("resins --part-ml -3"), None).code, 2);
+        assert_eq!(run(&args("resins extra"), None).code, 2);
+        let part = run(&args("resins --kind standard --part-ml 10"), None);
+        assert!(
+            part.out
+                .contains("Resin: 10.00 ml in the part, 12.00 ml with the waste"),
+            "{}",
+            part.out
+        );
+        // a filament printer takes no resin
+        let fdm = run(&args("resins --printer bambu-lab-a1"), None);
+        assert_eq!(fdm.code, 1);
+        assert!(fdm.err.contains("takes no resin"), "{}", fdm.err);
+        let cat = p3dp_profiles::Catalog::builtin().unwrap();
+        let msla = cat.technology(Technology::Msla)[0].id.clone();
+        let ok = run(&args(&format!("resins --printer {msla}")), None);
+        assert_eq!(ok.code, 0, "{}", ok.err);
+    }
+
+    #[test]
+    fn check_profile_edits_a_copy_tells_what_changed_and_saves_it_as_a_profile_file() {
+        // the owner of a Bambu Lab A1 mini raises the bed limit by hand, past the 80 C of the maker
+        let r = run(
+            &args("check-profile bambu-lab-a1-mini --set bed_max_c=100"),
+            None,
+        );
+        assert_eq!(r.code, 0, "{}", r.err);
+        assert!(r.out.contains("changed: bed_max_c: 80 -> 100"), "{}", r.out);
+        assert!(
+            r.out.contains("changed: limit_source: maker -> owner"),
+            "{}",
+            r.out
+        );
+        assert!(
+            r.out.contains("note: bed_max_c raised from 80 C to 100 C"),
+            "{}",
+            r.out
+        );
+        assert!(r.out.contains("above what the maker states"), "{}", r.out);
+        assert!(r.out.contains("Bed: 100 C"), "{}", r.out);
+        let pt = run(
+            &args("check-profile bambu-lab-a1-mini --set bed_max_c=100 --lang pt"),
+            None,
+        );
+        assert!(
+            pt.out.contains("aumentado de 80 C para 100 C"),
+            "{}",
+            pt.out
+        );
+        // a mistake names the key and changes nothing
+        for (set, want, code) in [
+            ("colour=red", "colour", 1),
+            ("id=other", "id", 1),
+            ("bed_max_c=999", "bed_max_c", 1),
+            ("bed_max_c", "key=value", 2),
+        ] {
+            let e = run(
+                &args(&format!("check-profile bambu-lab-a1-mini --set {set}")),
+                None,
+            );
+            assert_eq!(e.code, code, "{set}: {}{}", e.out, e.err);
+            assert!(e.err.contains(want), "{set}: {}", e.err);
+        }
+        // saved, read back by the same command, and not over a file without --force
+        let file = tmp("edited_a1_mini.cfg");
+        let _ = std::fs::remove_file(&file);
+        let s = run(&args(&format!("check-profile bambu-lab-a1-mini --set bed_max_c=100;nozzle_max_c=290 --save {file}")), None);
+        assert_eq!(s.code, 0, "{}{}", s.out, s.err);
+        assert!(
+            s.out.contains("saved: ") && s.out.contains("changed: nozzle_max_c: 300 -> 290"),
+            "{}",
+            s.out
+        );
+        let back = run(&args(&format!("check-profile --file {file}")), None);
+        assert_eq!(back.code, 0, "{}{}", back.out, back.err);
+        assert!(
+            back.out.contains("Bed: 100 C") && back.out.contains("Nozzle: 290 C"),
+            "{}",
+            back.out
+        );
+        let again = run(
+            &args(&format!("check-profile bambu-lab-a1-mini --save {file}")),
+            None,
+        );
+        assert_eq!(again.code, 1);
+        assert!(again.err.contains("use --force"), "{}", again.err);
+        assert_eq!(
+            run(
+                &args(&format!(
+                    "check-profile bambu-lab-a1-mini --save {file} --force"
+                )),
+                None
+            )
+            .code,
+            0
+        );
+        let _ = std::fs::remove_file(&file);
     }
 }

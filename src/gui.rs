@@ -174,7 +174,7 @@ impl App {
             filament_id: None,
             nozzle_mm: 0.4,
             preview: PreviewState::default(),
-            device: DevicePanel::new(),
+            device: DevicePanel::with_policy(state.config.queue_policy()),
             device_read: false,
             server,
             scheme,
@@ -712,6 +712,15 @@ impl App {
                 ui.checkbox(&mut f.bridges, Msg::PanelBridges.tr(lang));
                 ui.checkbox(&mut f.supports, Msg::PanelSupports.tr(lang));
                 ui.checkbox(&mut f.adhesion, Msg::KindAdhesion.tr(lang));
+                ui.checkbox(&mut self.preview.show_travel, Msg::ViewTravel.tr(lang));
+            });
+            if let Some(s) = self.preview.progress_label(lang) {
+                ui.label(s);
+            }
+            ui.collapsing(Msg::PanelEstimate.tr(lang), |ui| {
+                for l in self.preview.report_lines(&self.state.config, lang) {
+                    ui.label(l);
+                }
             });
         }
         let size = ui.available_size();

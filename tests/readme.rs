@@ -86,6 +86,7 @@ fn the_readmes_show_only_commands_the_program_has() {
         "convert",
         "slice",
         "filaments",
+        "resins",
         "project",
         "version",
         "gui",

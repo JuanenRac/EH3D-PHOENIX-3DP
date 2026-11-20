@@ -183,10 +183,24 @@ pub enum Msg {
     ShortcutsTitle,
     SchemeFamily,
     SchemeOwn,
+    ReportMaterial,
+    ReportCost,
+    ReportTime,
+    ReportShortLayers,
+    ReportSlowestLayers,
+    ReportTravel,
+    ReportResin,
+    ReportNone,
+    ThumbnailLine,
+    NoticeLimitRaised,
+    NoticeAboveMaker,
+    NoticeVerificationCleared,
+    ProgressAtLayer,
+    ViewTravel,
 }
 
 impl Msg {
-    pub const ALL: [Msg; 109] = [
+    pub const ALL: [Msg; 123] = [
         Msg::TabPrepare,
         Msg::TabPreview,
         Msg::TabDevice,
@@ -296,6 +310,20 @@ impl Msg {
         Msg::ShortcutsTitle,
         Msg::SchemeFamily,
         Msg::SchemeOwn,
+        Msg::ReportMaterial,
+        Msg::ReportCost,
+        Msg::ReportTime,
+        Msg::ReportShortLayers,
+        Msg::ReportSlowestLayers,
+        Msg::ReportTravel,
+        Msg::ReportResin,
+        Msg::ReportNone,
+        Msg::ThumbnailLine,
+        Msg::NoticeLimitRaised,
+        Msg::NoticeAboveMaker,
+        Msg::NoticeVerificationCleared,
+        Msg::ProgressAtLayer,
+        Msg::ViewTravel,
     ];
 
     /// The texts in the order English, Spanish, German, French, Italian, Japanese, Chinese, Portuguese (Portugal).
@@ -419,6 +447,20 @@ impl Msg {
             Msg::ShortcutsTitle => ["Keyboard shortcuts", "Atajos de teclado", "Tastenkürzel", "Raccourcis clavier", "Scorciatoie da tastiera", "キーボードショートカット", "键盘快捷键", "Atalhos de teclado"],
             Msg::SchemeFamily => ["Family scheme", "Esquema de la familia", "Schema der Familie", "Schéma de la famille", "Schema della famiglia", "ファミリー共通の割り当て", "系列通用方案", "Esquema da família"],
             Msg::SchemeOwn => ["Own scheme", "Esquema propio", "Eigenes Schema", "Schéma propre", "Schema proprio", "独自の割り当て", "自定义方案", "Esquema próprio"],
+            Msg::ReportMaterial => ["Material: {} m of filament, {} cm3, {} g", "Material: {} m de filamento, {} cm3, {} g", "Material: {} m Filament, {} cm3, {} g", "Matière : {} m de filament, {} cm3, {} g", "Materiale: {} m di filamento, {} cm3, {} g", "材料: フィラメント {} m、{} cm3、{} g", "耗材：耗丝 {} m，{} cm3，{} g", "Material: {} m de filamento, {} cm3, {} g"],
+            Msg::ReportCost => ["Cost of the filament: {}", "Coste del filamento: {}", "Kosten des Filaments: {}", "Coût du filament : {}", "Costo del filamento: {}", "フィラメントの費用: {}", "耗材成本：{}", "Custo do filamento: {}"],
+            Msg::ReportTime => ["Time: {} (an estimate, not the planner of the printer)", "Tiempo: {} (una estimación, no el planificador de la impresora)", "Zeit: {} (eine Schätzung, nicht die Bewegungsplanung des Druckers)", "Durée : {} (une estimation, pas le planificateur de l'imprimante)", "Tempo: {} (una stima, non il pianificatore della stampante)", "時間: {}（推定値であり、プリンターのプランナーとは異なります）", "时间：{}（估算值，并非打印机规划器的结果）", "Tempo: {} (uma estimativa, não o planeador da impressora)"],
+            Msg::ReportShortLayers => ["Layers under {} s: {}", "Capas de menos de {} s: {}", "Schichten unter {} s: {}", "Couches de moins de {} s : {}", "Strati sotto {} s: {}", "{} 秒未満のレイヤー: {}", "不足 {} 秒的层：{}", "Camadas com menos de {} s: {}"],
+            Msg::ReportSlowestLayers => ["Slowest layers: {}", "Capas más lentas: {}", "Langsamste Schichten: {}", "Couches les plus lentes : {}", "Strati più lenti: {}", "最も遅いレイヤー: {}", "最慢的层：{}", "Camadas mais lentas: {}"],
+            Msg::ReportTravel => ["Travel without printing: {} m", "Desplazamientos sin imprimir: {} m", "Leerfahrten ohne Druck: {} m", "Déplacements sans imprimer : {} m", "Spostamenti senza stampare: {} m", "印刷しない移動: {} m", "不打印的空走：{} m", "Deslocações sem imprimir: {} m"],
+            Msg::ReportResin => ["Resin: {} ml in the part, {} ml with the waste, {} g, cost {}", "Resina: {} ml en la pieza, {} ml con el desperdicio, {} g, coste {}", "Harz: {} ml im Teil, {} ml mit Verschnitt, {} g, Kosten {}", "Résine : {} ml dans la pièce, {} ml avec les pertes, {} g, coût {}", "Resina: {} ml nel pezzo, {} ml con lo scarto, {} g, costo {}", "レジン: 造形物 {} ml、ロス込み {} ml、{} g、費用 {}", "树脂：零件 {} ml，含损耗 {} ml，{} g，成本 {}", "Resina: {} ml na peça, {} ml com o desperdício, {} g, custo {}"],
+            Msg::ReportNone => ["none", "ninguna", "keine", "aucune", "nessuno", "なし", "无", "nenhuma"],
+            Msg::ThumbnailLine => ["Thumbnail {}: {} x {} {}, {} bytes", "Miniatura {}: {} x {} {}, {} bytes", "Vorschaubild {}: {} x {} {}, {} Bytes", "Vignette {} : {} x {} {}, {} octets", "Miniatura {}: {} x {} {}, {} byte", "サムネイル {}: {} x {} {}、{} バイト", "缩略图 {}：{} x {} {}，{} 字节", "Miniatura {}: {} x {} {}, {} bytes"],
+            Msg::NoticeLimitRaised => ["{} raised from {} C to {} C", "{} subido de {} C a {} C", "{} von {} C auf {} C erhöht", "{} relevé de {} C à {} C", "{} alzato da {} C a {} C", "{} を {} C から {} C に引き上げました", "{} 已从 {} C 提高到 {} C", "{} aumentado de {} C para {} C"],
+            Msg::NoticeAboveMaker => ["This is above what the maker states for the model: the decision is the owner's, and nothing has been tried at that temperature", "Esto supera lo que indica el fabricante para el modelo: la decisión es del propietario y nada se ha probado a esa temperatura", "Das liegt über der Herstellerangabe für das Modell: die Entscheidung liegt beim Besitzer, und bei dieser Temperatur wurde nichts erprobt", "C'est au-dessus de ce que le fabricant indique pour le modèle : la décision revient au propriétaire et rien n'a été essayé à cette température", "È sopra quanto dichiara il produttore per il modello: la decisione spetta al proprietario e nulla è stato provato a quella temperatura", "メーカーがこのモデルに示す値を超えています。判断は所有者に委ねられ、この温度では何も試されていません", "这高于制造商对该型号给出的数值：由所有者自行决定，且从未在该温度下试验过", "Isto está acima do que o fabricante indica para o modelo: a decisão é do proprietário e nada foi testado a essa temperatura"],
+            Msg::NoticeVerificationCleared => ["An edited profile has not been tried: it says verified = off", "Un perfil editado no se ha probado: dice verified = off", "Ein bearbeitetes Profil wurde nicht erprobt: es steht auf verified = off", "Un profil modifié n'a pas été essayé : il indique verified = off", "Un profilo modificato non è stato provato: dice verified = off", "編集したプロファイルは試されていません: verified = off になります", "编辑后的配置从未试用过：verified = off", "Um perfil editado não foi testado: indica verified = off"],
+            Msg::ProgressAtLayer => ["After this layer: {} gone, {} left ({} %)", "Tras esta capa: {} transcurridos, {} restantes ({} %)", "Nach dieser Schicht: {} vergangen, {} verbleibend ({} %)", "Après cette couche : {} écoulées, {} restantes ({} %)", "Dopo questo strato: {} trascorsi, {} rimanenti ({} %)", "このレイヤーの後: 経過 {}、残り {}（{} %）", "此层之后：已用 {}，剩余 {}（{} %）", "Depois desta camada: {} decorridos, {} em falta ({} %)"],
+            Msg::ViewTravel => ["Travel moves", "Desplazamientos", "Leerfahrten", "Déplacements", "Spostamenti", "移動", "空走", "Deslocações"],
         }
     }
 
@@ -639,7 +681,7 @@ mod tests {
         seen.sort_by_key(|m| format!("{m:?}"));
         seen.dedup();
         assert_eq!(seen.len(), Msg::ALL.len());
-        assert_eq!(Msg::ALL.len(), 109);
+        assert_eq!(Msg::ALL.len(), 123);
     }
 
     #[test]
@@ -711,7 +753,7 @@ mod tests {
     #[test]
     fn the_texts_of_the_tabs_and_the_lists_have_their_eight_values_and_keep_the_order_of_their_places(
     ) {
-        let new = &Msg::ALL[73..];
+        let new = &Msg::ALL[73..109];
         assert_eq!(new.len(), 36);
         let mut values = 0;
         for m in new {
@@ -736,6 +778,65 @@ mod tests {
             let s = Msg::EmergencyStop.tr(l);
             assert_eq!(s, s.to_uppercase(), "{}", l.code());
         }
+    }
+
+    #[test]
+    fn the_words_of_the_report_the_thumbnails_and_the_edits_keep_the_order_of_their_places() {
+        let new = &Msg::ALL[109..121];
+        assert_eq!(new.len(), 12);
+        for m in new {
+            for l in Lang::ALL {
+                assert!(!m.tr(l).trim().is_empty(), "{m:?} in {}", l.code());
+            }
+        }
+        // the places are filled in order: the values of the material keep their order in every language
+        for l in Lang::ALL {
+            let s = fill(Msg::ReportMaterial.tr(l), &["M1", "V2", "G3"]);
+            let at = |x: &str| s.find(x).unwrap_or_else(|| panic!("{}: {s}", l.code()));
+            assert!(
+                at("M1") < at("V2") && at("V2") < at("G3"),
+                "{}: {s}",
+                l.code()
+            );
+            let t = fill(Msg::ThumbnailLine.tr(l), &["N1", "W2", "H3", "F4", "B5"]);
+            let order: Vec<usize> = ["N1", "W2", "H3", "F4", "B5"]
+                .iter()
+                .map(|x| t.find(x).unwrap())
+                .collect();
+            assert!(order.windows(2).all(|w| w[0] < w[1]), "{}: {t}", l.code());
+            let r = fill(Msg::NoticeLimitRaised.tr(l), &["KEY", "FROM", "TO"]);
+            assert!(
+                r.contains("KEY") && r.find("FROM") < r.find("TO"),
+                "{}: {r}",
+                l.code()
+            );
+        }
+        // portuguese of Portugal, and the plain word for an empty list
+        assert!(Msg::ReportTime.tr(Lang::Pt).contains("planeador"));
+        assert!(Msg::ReportTravel.tr(Lang::Pt).contains("Deslocações"));
+        assert!(Msg::NoticeAboveMaker.tr(Lang::Pt).contains("proprietário"));
+        assert_eq!(Msg::ReportNone.tr(Lang::En), "none");
+        // every notice about a profile names the key it is about, so a person can find the line
+        assert!(Msg::NoticeVerificationCleared
+            .tr(Lang::De)
+            .contains("verified"));
+    }
+
+    #[test]
+    fn the_progress_and_travel_words_keep_the_order_of_their_places_and_the_words_of_portugal() {
+        let new = &Msg::ALL[121..];
+        assert_eq!(new.len(), 2);
+        for l in Lang::ALL {
+            let s = fill(Msg::ProgressAtLayer.tr(l), &["T1", "R2", "P3"]);
+            let order: Vec<usize> = ["T1", "R2", "P3"]
+                .iter()
+                .map(|x| s.find(x).unwrap())
+                .collect();
+            assert!(order.windows(2).all(|w| w[0] < w[1]), "{}: {s}", l.code());
+            assert!(!Msg::ViewTravel.tr(l).trim().is_empty());
+        }
+        assert!(Msg::ProgressAtLayer.tr(Lang::Pt).contains("camada"));
+        assert_eq!(Msg::ViewTravel.tr(Lang::Pt), "Deslocações");
     }
 
     #[test]

@@ -1,12 +1,17 @@
 //! The Preview tab without the window: slices the model that is loaded, keeps the plan, the slider of layers, the kinds of line that are shown and the camera, and gives the lines of
 //! the plan already projected on the screen. The slicer and the viewer model do the work; this puts them in the order a person uses them.
 
+use crate::config::AppConfig;
 use crate::i18n::{fill, Lang, Msg};
+use crate::report;
 use p3dp_core::Mesh;
 use p3dp_profiles::filament::{FilamentProfile, Nozzle};
 use p3dp_profiles::PrinterProfile;
-use p3dp_slicer::{Kind, Machine, Plan, SliceConfig};
-use p3dp_viewer::layers::{lines_of, plate_lines, KindFilter, LayerRange, FLOATS_PER_VERTEX};
+use p3dp_slicer::report::{progress, Progress};
+use p3dp_slicer::{Kind, LayerSummary, Machine, Plan, SliceConfig};
+use p3dp_viewer::layers::{
+    lines_of, plate_lines, travel_lines, KindFilter, LayerRange, FLOATS_PER_VERTEX,
+};
 use p3dp_viewer::{OrbitCamera, Viewport};
 
 /// The most lines the window is asked to draw in one frame.
@@ -60,6 +65,14 @@ pub struct PreviewState {
     pub error: Option<String>,
     /// Advice from the check of the filament against the printer, that did not stop the slice.
     pub advice: Vec<String>,
+    /// Draw the moves of the head between the paths too (pale blue lines).
+    pub show_travel: bool,
+    /// The density of the plastic of the last slice, for the weight in the report.
+    pub density_g_cm3: f64,
+    /// What every layer of the plan comes to, worked out once when the plan is made.
+    summaries: Vec<LayerSummary>,
+    /// Where the print stands after each layer, worked out with the summaries.
+    progress: Vec<Progress>,
     /// The camera is put to fit the plate on the next frame.
     fit_next: bool,
 }
@@ -75,6 +88,10 @@ impl Default for PreviewState {
             only_one: false,
             error: None,
             advice: Vec::new(),
+            show_travel: false,
+            density_g_cm3: report::DEFAULT_DENSITY_G_CM3,
+            summaries: Vec::new(),
+            progress: Vec::new(),
             fit_next: true,
         }
     }
@@ -98,7 +115,9 @@ impl PreviewState {
             }
         };
         let mut config = self.config.clone();
+        let mut density = report::DEFAULT_DENSITY_G_CM3;
         if let Some((f, nozzle)) = filament {
+            density = f.density_g_cm3;
             match config.apply_filament(f, printer, nozzle) {
                 Ok(c) => self.advice = c.advice.iter().map(|a| a.text().to_string()).collect(),
                 Err(e) => {
@@ -110,6 +129,9 @@ impl PreviewState {
         match p3dp_slicer::plan(mesh, &machine, &config) {
             Ok(plan) => {
                 let top = plan.layer_count().saturating_sub(1);
+                self.summaries = plan.summaries();
+                self.progress = progress(&self.summaries, plan.config.filament_area_mm2());
+                self.density_g_cm3 = density;
                 self.plan = Some(plan);
                 self.layer = top;
                 self.fit_next = true;
@@ -125,6 +147,8 @@ impl PreviewState {
     /// Forgets the plan (a new model was loaded).
     pub fn forget(&mut self) {
         self.plan = None;
+        self.summaries.clear();
+        self.progress.clear();
         self.error = None;
         self.advice.clear();
         self.layer = 0;
@@ -183,6 +207,28 @@ impl PreviewState {
         ))
     }
 
+    /// The lines of the report of the plan (material, cost, time, short and slowest layers), in a language; empty when there is no plan.
+    pub fn report_lines(&self, config: &AppConfig, lang: Lang) -> Vec<String> {
+        let Some(plan) = self.plan.as_ref() else {
+            return Vec::new();
+        };
+        report::lines_from(plan, &self.summaries, self.density_g_cm3, config, lang)
+            .unwrap_or_else(|e| vec![fill(Msg::Problem.tr(lang), &[&e])])
+    }
+
+    /// Where the print stands after the layer the slider is on: the time gone, the time left and the share done.
+    pub fn progress_label(&self, lang: Lang) -> Option<String> {
+        let p = self.progress.get(self.layer)?;
+        Some(fill(
+            Msg::ProgressAtLayer.tr(lang),
+            &[
+                &format_duration(p.elapsed_s),
+                &format_duration(p.remaining_s),
+                &format!("{:.0}", p.percent),
+            ],
+        ))
+    }
+
     /// The length of line of each kind in the layers that are shown, in millimetres, for the key of the colours.
     pub fn lengths(&self) -> Vec<(Kind, f64)> {
         let (Some(p), Some(r)) = (self.plan.as_ref(), self.range()) else {
@@ -231,6 +277,9 @@ impl PreviewState {
         let mut batches = vec![plate_lines(bx, by)];
         if let Some(r) = self.range() {
             batches.push(lines_of(plan, &r, &self.filter));
+            if self.show_travel {
+                batches.push(travel_lines(plan, &r));
+            }
         }
         let mut frame = Frame::default();
         for batch in &batches {
@@ -337,6 +386,72 @@ mod tests {
         s.set_layer(50);
         let more = s.frame(800.0, 600.0).segments.len();
         assert!(more > few, "{more} {few}");
+    }
+
+    #[test]
+    fn the_travel_moves_are_drawn_only_when_asked_and_in_their_own_colour() {
+        let (mut s, _) = sliced();
+        let without = s.frame(800.0, 600.0);
+        assert!(!s.show_travel);
+        s.show_travel = true;
+        let with = s.frame(800.0, 600.0);
+        assert!(with.segments.len() > without.segments.len());
+        let pale = with
+            .segments
+            .iter()
+            .filter(|x| x.colour == p3dp_viewer::layers::TRAVEL_COLOUR)
+            .count();
+        assert_eq!(pale, with.segments.len() - without.segments.len());
+        assert!(without
+            .segments
+            .iter()
+            .all(|x| x.colour != p3dp_viewer::layers::TRAVEL_COLOUR));
+    }
+
+    #[test]
+    fn the_report_and_the_progress_follow_the_plan_the_filament_and_the_slider() {
+        let (mut s, _) = sliced();
+        let cfg = AppConfig::default();
+        let lines = s.report_lines(&cfg, Lang::En);
+        assert_eq!(lines.len(), 6, "{lines:?}");
+        assert!(lines[0].starts_with("Material: "));
+        // at the top of the slider the print is all done, at the bottom it has just begun
+        assert!(
+            s.progress_label(Lang::En).unwrap().contains("(100 %)"),
+            "{:?}",
+            s.progress_label(Lang::En)
+        );
+        s.set_layer(0);
+        let first = s.progress_label(Lang::En).unwrap();
+        assert!(
+            first.starts_with("After this layer: ") && !first.contains("(100 %)"),
+            "{first}"
+        );
+        assert!(s
+            .progress_label(Lang::Pt)
+            .unwrap()
+            .starts_with("Depois desta camada"));
+        // the plastic of the filament chosen sets the density that weighs the report
+        let c = catalog();
+        let petg = FilamentCatalog::builtin()
+            .unwrap()
+            .find("generic-petg")
+            .unwrap()
+            .clone();
+        let p = c.find("prusa-mk4s").unwrap();
+        let nozzle = Nozzle {
+            diameter_mm: 0.4,
+            hardened: false,
+        };
+        assert!(
+            s.slice(&cube(20.0), p, Some((&petg, nozzle))),
+            "{:?}",
+            s.error
+        );
+        assert_eq!(s.density_g_cm3, petg.density_g_cm3);
+        // forgetting the plan forgets the report too
+        s.forget();
+        assert!(s.report_lines(&cfg, Lang::En).is_empty() && s.progress_label(Lang::En).is_none());
     }
 
     #[test]
