@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- A Screenshots section in the eight READMEs with a picture of each tab of the window (Prepare, Preview, Device, Project), made by `tools/make_screenshots.py` from the signed build.
+
 ## [0.0.6] - A studio-style window: parts on the bed, a shaded 3D view, background slicing with estimates, editable limits and a light theme
 
 - The bed of the Prepare tab as logic without a window (`objects`): each part has a position, a turn about three axes and a scale, always rests on the bed, and can be given a size in millimetres (alone or in proportion); a part can be stood the way that needs the fewest supports among six, several parts are arranged in rows with a gap and a margin (the ones that do not fit are named), the parts that go past the edge or lie one over the other are found, and the parts are joined into the one mesh the slicer takes.

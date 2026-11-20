@@ -87,6 +87,26 @@ EH3D-PHOENIX-3DP ist das 3D-Druck-Programm der PHOENIX-Familie der EH3D Fabricat
 
 Wie die Teile dieses Repositorys zusammenpassen: wer es nutzt, was es enthält und wovon es abhängt. Das Bild wird aus `docs/architecture.json` gezeichnet und gegen den Code geprüft.
 
+## 🖼️ Screenshots
+
+<p align="center">
+  <img src="images/screenshots/prepare.png" alt="Reiter Vorbereiten: links die Listen der Drucker und Filamente, in der Mitte das Druckbett in 3D mit dem Demo-Pokal und rechts das Objektpanel." width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/preview.png" alt="Reiter Vorschau: der gesliceste Pokal mit der Legende der Linienarten, dem Schichtregler sowie Zeit, Filament, Kosten und Schichten des Plans." width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/device.png" alt="Reiter Gerät: die Maschinen des Servers mit Temperaturen und Fortschritt, die Warteschlange und der Hinweis, dass das Druckerplugin ein Simulator ist." width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/project.png" alt="Reiter Projekt: die Projektdatei, die Fenstereinstellungen, die Tastenkürzel und die Einstellungsdatei." width="100%">
+</p>
+
+Bilder, aufgenommen mit dem Bildmodus des Programms (`--shot --demo`): ein Modell und ein Server aus dem Speicher, sodass nichts davon einen Drucker erreicht.
+
 ## ✨ Funktionen
 
 * **Eine Grenze ist eine Ablehnung:** eine nicht erlaubte Temperatur oder Bewegung ist ein Fehler, der Wert und Grenze nennt, nie ein zurechtgekappter Wert; Schreiber, Treiber und Prüfung halten sich daran.
@@ -224,7 +244,7 @@ EH3D-PHOENIX-3DP/
 │   ├── architecture.json                        Daten des Architektur-Bildes
 │   └── structure.json                           Daten des Struktur-Bildes
 ├── tools/                                       CI-Prüfung, README-Prüfung und die Bildwerkzeuge
-├── images/                                      Banner und die zwei README-Bilder
+├── images/                                      Banner, die zwei Diagramme und die Fensterbilder des README
 ├── .github/                                     CI- und Release-Workflows, Vorlagen für Issues und Pull Requests
 ├── eh3d.project.json                            Manifest: Version, Rolle, Reifegrad und Build-Befehl
 ├── Cargo.toml                                   der Workspace und seine Crates

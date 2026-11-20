@@ -87,6 +87,26 @@ EH3D-PHOENIX-3DP es el programa de impresión 3D de la familia PHOENIX de la EH3
 
 Cómo encajan las partes de este repositorio: quién lo usa, qué contiene y de qué depende. La imagen se dibuja desde `docs/architecture.json` y se comprueba con el código.
 
+## 🖼️ Capturas de pantalla
+
+<p align="center">
+  <img src="images/screenshots/prepare.png" alt="Pestaña Preparar: las listas de impresoras y filamentos a la izquierda, la cama en 3D con la copa de demostración en el centro y el panel de objetos a la derecha." width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/preview.png" alt="Pestaña Vista previa: la copa laminada con la leyenda de los tipos de línea, el deslizador de capas y el tiempo, el filamento, el coste y las capas del plan." width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/device.png" alt="Pestaña Dispositivo: las máquinas del servidor, sus temperaturas y su progreso, la cola y el aviso de que el complemento de impresora es un simulador." width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/project.png" alt="Pestaña Proyecto: el fichero de proyecto, los ajustes de la ventana, los atajos de teclado y el fichero de ajustes." width="100%">
+</p>
+
+Imágenes tomadas con el modo de imagen del programa (`--shot --demo`): un modelo y un servidor hechos en memoria, así que nada de esto llega a una impresora.
+
 ## ✨ Funciones
 
 * **Un límite es un rechazo:** una temperatura o un movimiento no permitidos son un error que nombra el valor y el límite, nunca un valor recortado para que quepa; los escritores, los controladores y el comprobador lo cumplen.
@@ -224,7 +244,7 @@ EH3D-PHOENIX-3DP/
 │   ├── architecture.json                        datos de la imagen de Arquitectura
 │   └── structure.json                           datos de la imagen de Estructura
 ├── tools/                                       comprobación del CI y del README y herramientas de imágenes
-├── images/                                      banner y las dos imágenes del README
+├── images/                                      banner, los dos diagramas y las capturas de la ventana del README
 ├── .github/                                     flujos de CI y de publicación, plantillas de incidencias y de pull requests
 ├── eh3d.project.json                            manifiesto: versión, función, madurez y orden de compilación
 ├── Cargo.toml                                   el espacio de trabajo y sus crates

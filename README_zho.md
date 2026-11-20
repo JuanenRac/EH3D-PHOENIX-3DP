@@ -87,6 +87,26 @@ EH3D-PHOENIX-3DP 是 EH3D Fabrication Suite 中 PHOENIX 家族的 3D 打印程�
 
 本仓库各部分如何配合：谁使用它、它包含什么、它依赖什么。图由 `docs/architecture.json` 绘制并与代码核对。
 
+## 🖼️ 屏幕截图
+
+<p align="center">
+  <img src="images/screenshots/prepare.png" alt="“准备”标签页：左侧是打印机和耗材列表，中间是放有演示高脚杯的3D打印床，右侧是对象面板。" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/preview.png" alt="“预览”标签页：已切片的高脚杯、线型图例、层滑块，以及方案的时间、耗材、成本和层数。" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/device.png" alt="“设备”标签页：服务器上的机器及其温度和进度、队列，以及说明打印机插件是模拟器的横幅。" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/project.png" alt="“项目”标签页：项目文件、窗口设置、键盘快捷键和设置文件。" width="100%">
+</p>
+
+图片由程序的截图模式（`--shot --demo`）拍摄：模型和服务器都在内存中生成，因此这里的一切都不会连到打印机。
+
 ## ✨ 功能
 
 * **上限就是拒绝：** 不允许的温度或移动是一个指明数值和上限的错误，绝不会被截断到上限；写出器、驱动和检查器都遵守。
@@ -224,7 +244,7 @@ EH3D-PHOENIX-3DP/
 │   ├── architecture.json                        架构图数据
 │   └── structure.json                           结构图数据
 ├── tools/                                       CI 检查、README 检查和图片工具
-├── images/                                      横幅图和 README 的两张图
+├── images/                                      横幅图、两张示意图和 README 的窗口截图
 ├── .github/                                     CI 与发布工作流、议题和拉取请求模板
 ├── eh3d.project.json                            清单：版本、角色、成熟度和构建命令
 ├── Cargo.toml                                   工作区及其 crate

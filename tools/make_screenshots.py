@@ -9,7 +9,7 @@
     py -3.14 -I tools/make_screenshots.py PATH/TO/phoenix-3dp[.exe] [--out images/screenshots] [--lang en] [--size 1360x860]
     py -3.14 -I tools/make_screenshots.py --check [--out images/screenshots]
 
-The program must have been built with `--features gui`. It is copied into a new empty folder and run from there with a relative path, with the folders of the user (APPDATA,
+The program must have been built with `--features gui`. It is copied into a new empty folder and run from there, with the folders of the user (APPDATA,
 LOCALAPPDATA, USERPROFILE, HOME) pointing at that folder, so no picture carries the name of a folder or of a person. Each picture is quantized to a palette with Pillow and made
 smaller until it is at most 250 KB; the program is asked for `--demo` (a model and a server made in memory), so nothing here reaches a network or a printer.
 """
@@ -24,7 +24,7 @@ import tempfile
 from pathlib import Path
 
 MAX_BYTES = 250 * 1024
-WINDOWS = ("prepare", "preview", "device")
+WINDOWS = ("prepare", "preview", "device", "project")
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 
 
@@ -52,7 +52,7 @@ def take(binary: Path, window: str, lang: str, size: str, out: Path) -> None:
         env = {k: v for k, v in os.environ.items() if k.upper() in ("PATH", "SYSTEMROOT", "WINDIR", "COMSPEC", "DISPLAY", "WAYLAND_DISPLAY", "XDG_RUNTIME_DIR")}
         for name in ("APPDATA", "LOCALAPPDATA", "USERPROFILE", "HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME"):
             env[name] = str(work)
-        args = [f".{os.sep}{exe.name}", "gui", "--shot", "raw.png", "--window", window, "--demo", "--lang", lang,
+        args = [str(exe), "gui", "--shot", "raw.png", "--window", window, "--demo", "--lang", lang,
                 "--size", size, "--wait", "12"]
         if window == "preview":
             args.append("--slice")

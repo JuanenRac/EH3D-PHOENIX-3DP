@@ -87,6 +87,26 @@ EH3D-PHOENIX-3DP は EH3D Fabrication Suite の PHOENIX ファミリーに属す
 
 このリポジトリの各部分の関係：誰が使い、何を持ち、何に依存するか。図は `docs/architecture.json` から描かれ、コードと照合されます。
 
+## 🖼️ スクリーンショット
+
+<p align="center">
+  <img src="images/screenshots/prepare.png" alt="「準備」タブ：左にプリンターとフィラメントの一覧、中央にデモ用のゴブレットを置いた3Dのベッド、右にオブジェクトのパネル。" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/preview.png" alt="「プレビュー」タブ：スライス済みのゴブレット、線の種類の凡例、レイヤーのスライダー、プランの時間・フィラメント・コスト・レイヤー数。" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/device.png" alt="「デバイス」タブ：サーバーのマシンとその温度・進捗、キュー、プリンタープラグインがシミュレーターであることを示すバナー。" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/project.png" alt="「プロジェクト」タブ：プロジェクトファイル、ウィンドウの設定、キーボードショートカット、設定ファイル。" width="100%">
+</p>
+
+画像はプログラムの画像モード（`--shot --demo`）で撮影したものです。モデルとサーバーはメモリ上で作られるため、プリンターには一切届きません。
+
 ## ✨ 機能
 
 * **上限は拒否：** 許可されない温度や動きは、値と上限を示すエラーになり、収まるように切り詰められることはありません。書き出し、ドライバー、チェッカーのすべてがこれに従います。
@@ -224,7 +244,7 @@ EH3D-PHOENIX-3DP/
 │   ├── architecture.json                        アーキテクチャ図のデータ
 │   └── structure.json                           構成図のデータ
 ├── tools/                                       CI チェック、README チェック、図のツール
-├── images/                                      バナーと README の 2 枚の図
+├── images/                                      バナー、2 枚の図、README のウィンドウ画像
 ├── .github/                                     CI とリリースのワークフロー、Issue と PR のテンプレート
 ├── eh3d.project.json                            マニフェスト：バージョン、役割、成熟度、ビルド コマンド
 ├── Cargo.toml                                   ワークスペースとそのクレート
