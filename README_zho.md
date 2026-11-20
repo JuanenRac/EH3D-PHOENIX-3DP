@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.2-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-362-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-388-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**诚实检查 - 今天真正能运行的内容：** 一个由七个库和一个命令行程序（`phoenix-3dp`）组成的 Rust 工作区，带有 362 个可在电脑上运行的测试。它读取并检查 STL、OBJ 和 3MF 模型，包含一个由公开数据建立的 120 个打印机配置的目录（没有一个在机器上试过），为 Marlin、Klipper、RepRapFirmware 和 Bambu 方言写出 G 代码，温度上限会拒绝超限的值而不是截断它，并能操作 Moonraker 和 OctoPrint 打印机以及 EH3D 服务器，但仅限模拟器（内存中的，以及本机的套接字）。它能把封闭模型切成平整的层，生成外壁、直线填充和实心表层（第一个最简切片器，尚无支撑、可变线宽和桥接）；窗口尚未构建，也没有在屏幕上看过；没有任何内容在真实打印机上运行过。
+**诚实检查 - 今天真正能运行的内容：** 一个由七个库和一个命令行程序（`phoenix-3dp`）组成的 Rust 工作区，带有 388 个可在电脑上运行的测试。它读取并检查 STL、OBJ 和 3MF 模型，包含一个由公开数据建立的 120 个打印机配置的目录（没有一个在机器上试过），为 Marlin、Klipper、RepRapFirmware 和 Bambu 方言写出 G 代码，温度上限会拒绝超限的值而不是截断它，并能操作 Moonraker 和 OctoPrint 打印机以及 EH3D 服务器，但仅限模拟器（内存中的，以及本机的套接字）。它能把封闭模型切成平整的层，生成外壁、直线填充和实心表层（第一个最简切片器，尚无支撑、可变线宽和桥接）；窗口尚未构建，也没有在屏幕上看过；没有任何内容在真实打印机上运行过。
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | 版本 | `0.0.2` |
 | 成熟度 | 脚手架 |
-| 测试 | 362 |
+| 测试 | 388 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试验：这里的任何内容都没有在打印机上运行过，包括 Bambu Lab A1 和 P1S。 |
 
@@ -55,7 +55,7 @@
 | 服务器连接 | 🟠 | 连接的设置，以及建立在套件通用客户端（登录、续期、重试、八种语言的错误信息）之上的服务器打印机插件客户端，已针对内存中的服务器试过；从未对真实服务器试过。 |
 | 切片器 | 🟡 | 封闭网格的平整层、外壁、直线填充、实心表层、按方言生成的 G 代码，以及以数据形式提供的逐层预览；已用固定种子形状上的性质测试检查（挤出的塑料量等于零件体积，没有任何内容超出热床，没有温度超过上限）；还没有用它在打印机上打印过。 |
 | 命令行 | 🟡 | `phoenix-3dp`（`printers`、`info`、`check-profile`、`slice``project`）运行库中的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 362 个测试通过（`cargo test --workspace`），包含正常情况、边界情况、损坏的输入，涉及随机的地方使用固定种子。 |
+| 测试 | 🟡 | 388 个测试通过（`cargo test --workspace`），包含正常情况、边界情况、损坏的输入，涉及随机的地方使用固定种子。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：上限是拒绝而不是截断；令牌绝不打印；收到的文件不会引发 panic；没有独立审查。 |
 | 窗口 | 🔴 | 四个标签页（准备、预览、设备、项目）的第一版已用 `--features gui` 写好；其逻辑已测试，但尚未构建，也没有在屏幕上看过。 |
 | 真实硬件 | 🔴 | 未试验：这里的任何内容都没有在打印机上运行过，包括 Bambu Lab A1 和 P1S。 |
@@ -147,7 +147,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 测试
 
-测试套件有 362 个测试（`cargo test --workspace`，CI 中在 Windows 和 Linux 上运行），涉及随机的地方使用固定种子。它们检查正常情况、边界情况和损坏的输入：被截断的文件、乱码和恶意文件头绝不会 panic，目录中任何打印机的温度都不会超过其上限。CI 还会运行 `cargo fmt --all --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
+测试套件有 388 个测试（`cargo test --workspace`，CI 中在 Windows 和 Linux 上运行），涉及随机的地方使用固定种子。它们检查正常情况、边界情况和损坏的输入：被截断的文件、乱码和恶意文件头绝不会 panic，目录中任何打印机的温度都不会超过其上限。CI 还会运行 `cargo fmt --all --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 

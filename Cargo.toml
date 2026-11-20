@@ -8,6 +8,7 @@ members = [
     "crates/p3dp-link",
     "crates/p3dp-server-bridge",
     "crates/p3dp-slicer",
+    "crates/p3dp-viewer",
 ]
 resolver = "2"
 

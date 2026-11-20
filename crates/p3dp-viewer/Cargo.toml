@@ -1,0 +1,24 @@
+[package]
+name = "p3dp-viewer"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The model of the 3D viewer of the program with no graphics code: an orbit camera with perspective, picking and selection boxes on a plate, the range of layers and the lines of a plan; the part that draws with wgpu sits behind the gui feature"
+
+[lib]
+name = "p3dp_viewer"
+path = "src/lib.rs"
+
+[features]
+default = []
+# the drawing with wgpu (a pipeline of lines over the data of this crate); it is not part of the tests, which need no graphics card
+gui = ["dep:wgpu"]
+
+[dependencies]
+p3dp-core = { path = "../p3dp-core" }
+p3dp-slicer = { path = "../p3dp-slicer" }
+
+# only with the gui feature
+wgpu = { version = "26", optional = true }
