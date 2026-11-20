@@ -5,6 +5,7 @@ use crate::app_state::{profile_report, AppState};
 use crate::config::AppConfig;
 use crate::i18n::{Lang, Msg};
 use p3dp_formats::project3mf::read_project;
+use p3dp_formats::{bgcode, resin};
 use p3dp_formats::{write_mesh, Format};
 use p3dp_gcode::check_program;
 use p3dp_profiles::{PrinterProfile, Technology};
@@ -54,13 +55,14 @@ pub const USAGE: &str = "phoenix-3dp: prepare and send 3D prints (simulators onl
   phoenix-3dp check-profile --file PROFILE [--gcode FILE]
   phoenix-3dp convert IN OUT [--printer ID] [--force]
   phoenix-3dp slice MODEL --printer ID [--settings FILE] [--out FILE.gcode] [--force]
-  phoenix-3dp project FILE.3mf
+  phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.sl1 [--bottom-layers N] [--lift MM]
   phoenix-3dp version
 
 Every command also takes --config FILE (the settings) and --lang CODE (en, es, de, fr, it, ja, zh, pt).
 The models are STL, OBJ and 3MF; OUT is chosen by its extension (.stl, .obj, .3mf).
 `slice` makes the layers and the G-code of a closed model for a printer of the catalog and refuses, never cuts down, what does not fit or goes past a limit;
-without --out it only reports. `project` reads the objects, plates and settings of a 3MF project saved by another program (read only).";
+without --out it only reports. `project` reads the objects, plates and settings of a 3MF project saved by another program, the header of a binary G-code file, or the header
+of an open package of resin layers (.sl1) with an estimate of its time; all of it read only, and the closed formats of resin printers are refused with the reason.";
 
 struct Parsed {
     positional: Vec<String>,
@@ -479,8 +481,87 @@ fn slice(args: &[String], env_lang: Option<&str>) -> Outcome {
     Outcome::ok(out)
 }
 
+/// The header of a binary G-code file, as lines.
+fn bgcode_report(file: &str, bytes: &[u8], limits: &p3dp_core::Limits) -> Outcome {
+    let h = match bgcode::read_header(bytes, limits) {
+        Ok(h) => h,
+        Err(e) => return Outcome::fail(format!("{file}: {e}")),
+    };
+    let mut out = format!(
+        "{file}: binary G-code, version {}, {} blocks ({} of G-code, {} thumbnails), checksums {}\n",
+        h.version,
+        h.blocks.len(),
+        h.count(bgcode::BlockKind::GCode),
+        h.count(bgcode::BlockKind::Thumbnail),
+        match h.checksum {
+            bgcode::Checksum::None => "not used",
+            bgcode::Checksum::Crc32 =>
+                if h.all_checksums_ok() {
+                    "all right"
+                } else {
+                    "WRONG on at least one block"
+                },
+        }
+    );
+    if let Some(s) = h.estimated_seconds() {
+        out.push_str(&format!("the file says the print takes {s} s\n"));
+    }
+    for (kind, k, v) in &h.metadata {
+        out.push_str(&format!("{}: {k} = {v}\n", kind.name()));
+    }
+    out.push_str("read only: the blocks of G-code were not unpacked and nothing was changed\n");
+    Outcome::ok(out)
+}
+
+/// The header of a file of resin layers and the time it takes to expose.
+fn resin_report(file: &str, bytes: &[u8], p: &Parsed, limits: &p3dp_core::Limits) -> Outcome {
+    let job = match resin::read_job(file, bytes, limits) {
+        Ok(j) => j,
+        Err(e) => return Outcome::fail(format!("{file}: {e}")),
+    };
+    let mut settings = resin::ResinSettings::default();
+    if let Some(v) = p.flags.get("bottom-layers") {
+        match v.parse::<u32>() {
+            Ok(n) => settings.bottom_layers = n,
+            Err(_) => return Outcome::usage("--bottom-layers takes a whole number"),
+        }
+    }
+    if let Some(v) = p.flags.get("lift") {
+        match v.parse::<f64>() {
+            Ok(x) => settings.lift_mm = x,
+            Err(_) => return Outcome::usage("--lift takes a number of millimetres"),
+        }
+    }
+    let est = match resin::estimate(&job, &settings) {
+        Ok(e) => e,
+        Err(e) => return Outcome::fail(format!("{file}: {e}")),
+    };
+    let mut out = format!(
+        "{file}: a package of {} layers of {} mm{}\nexposure {} s ({} s for the bottom layers, {} layers of transition)\n",
+        job.layers,
+        job.layer_height_mm,
+        if job.material.is_empty() {
+            String::new()
+        } else {
+            format!(", material {}", job.material)
+        },
+        job.exposure_s,
+        job.bottom_exposure_s,
+        job.transition_layers
+    );
+    out.push_str(&format!(
+        "estimate: {:.0} s of light and {:.0} s of moving and waiting, {:.0} s in all, with {} bottom layers and a lift of {} mm (an estimate, not the planner of the printer)\n",
+        est.exposure_s, est.movement_s, est.total_s, settings.bottom_layers, settings.lift_mm
+    ));
+    if let Some(s) = job.stated_seconds {
+        out.push_str(&format!("the file says the print takes {s} s\n"));
+    }
+    out.push_str("read only: no layer image was decoded and nothing was changed\n");
+    Outcome::ok(out)
+}
+
 fn project(args: &[String], env_lang: Option<&str>) -> Outcome {
-    let p = match parse(args, &["config", "lang"], &[]) {
+    let p = match parse(args, &["config", "lang", "bottom-layers", "lift"], &[]) {
         Ok(p) => p,
         Err(e) => return Outcome::usage(&e),
     };
@@ -495,6 +576,18 @@ fn project(args: &[String], env_lang: Option<&str>) -> Outcome {
         Ok(b) => b,
         Err(e) => return Outcome::fail(e),
     };
+    if bgcode::is_bgcode(&bytes) {
+        return bgcode_report(file, &bytes, &state.config.limits);
+    }
+    let ext = file
+        .rsplit_once('.')
+        .map(|(_, e)| e.to_ascii_lowercase())
+        .unwrap_or_default();
+    if resin::OPEN_EXTENSIONS.contains(&ext.as_str())
+        || resin::CLOSED_EXTENSIONS.contains(&ext.as_str())
+    {
+        return resin_report(file, &bytes, &p, &state.config.limits);
+    }
     let info = match read_project(&bytes, &state.config.limits) {
         Ok(i) => i,
         Err(e) => return Outcome::fail(format!("{file}: {e}")),
@@ -987,6 +1080,66 @@ mod tests {
         for f in [&model, &out, &cfg] {
             let _ = std::fs::remove_file(f);
         }
+    }
+
+    #[test]
+    fn project_reads_the_header_of_binary_gcode_and_of_a_package_of_resin_layers() {
+        // a binary G-code file: the header, one block of plain text metadata and one block of G-code
+        let meta = b"printer_model=GENERIC\nestimated printing time (normal mode)=1h 1m 1s\n";
+        let mut f = b"GCDE".to_vec();
+        f.extend_from_slice(&1u32.to_le_bytes());
+        f.extend_from_slice(&0u16.to_le_bytes());
+        f.extend_from_slice(&[3, 0, 0, 0]);
+        f.extend_from_slice(&(meta.len() as u32).to_le_bytes());
+        f.extend_from_slice(&[0, 0]);
+        f.extend_from_slice(meta);
+        f.extend_from_slice(&[1, 0, 0, 0, 8, 0, 0, 0, 0, 0]);
+        f.extend_from_slice(&[0u8; 8]);
+        let path = tmp("a.bgcode");
+        std::fs::write(&path, &f).unwrap();
+        let r = run(&args(&format!("project {path}")), None);
+        assert_eq!(r.code, 0, "{}", r.out);
+        assert!(r.out.contains("binary G-code") && r.out.contains("3661 s"));
+        assert!(r.out.contains("printer_model = GENERIC"));
+        // cut short: a refusal with the file named
+        std::fs::write(&path, &f[..30]).unwrap();
+        assert_eq!(run(&args(&format!("project {path}")), None).code, 1);
+        let _ = std::fs::remove_file(&path);
+        // a package of layers
+        let mut z = p3dp_formats::zip::Writer::new();
+        z.add(
+            "config.ini",
+            b"expTime = 2\nexpTimeFirst = 30\nlayerHeight = 0.05\nnumFade = 0\nmaterialName = Test\n",
+        )
+        .unwrap();
+        for i in 0..20 {
+            z.add(&format!("m{i:05}.png"), b"x").unwrap();
+        }
+        let sl1 = tmp("a.sl1");
+        std::fs::write(&sl1, z.finish()).unwrap();
+        let r = run(
+            &args(&format!("project {sl1} --bottom-layers 2 --lift 4")),
+            None,
+        );
+        assert_eq!(r.code, 0, "{}", r.out);
+        assert!(r.out.contains("20 layers of 0.05 mm") && r.out.contains("material Test"));
+        assert!(r.out.contains("with 2 bottom layers and a lift of 4 mm"));
+        assert_eq!(
+            run(&args(&format!("project {sl1} --lift far")), None).code,
+            2
+        );
+        assert_eq!(
+            run(&args(&format!("project {sl1} --bottom-layers x")), None).code,
+            2
+        );
+        // the same bytes under a closed name are refused with the reason
+        let ctb = tmp("a.ctb");
+        std::fs::copy(&sl1, &ctb).unwrap();
+        let r = run(&args(&format!("project {ctb}")), None);
+        assert_eq!(r.code, 1);
+        assert!(r.err.contains("not open"), "{}", r.err);
+        let _ = std::fs::remove_file(&sl1);
+        let _ = std::fs::remove_file(&ctb);
     }
 
     #[test]

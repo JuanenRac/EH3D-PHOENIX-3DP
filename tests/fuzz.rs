@@ -156,3 +156,70 @@ fn zip_bombs_and_deep_nesting_are_refused() {
     z.add("3D/3dmodel.model", deep.as_bytes()).unwrap();
     assert!(read_mesh(&z.finish(), Some("x.3mf"), &small()).is_err());
 }
+
+/// A binary G-code file made to the description of the format, and a package of resin layers, as seeds for the readers of headers.
+fn header_seeds() -> Vec<(&'static str, Vec<u8>)> {
+    let meta = b"printer_model=GENERIC\nestimated printing time (normal mode)=1h 1m 1s\n";
+    let mut f = b"GCDE".to_vec();
+    f.extend_from_slice(&1u32.to_le_bytes());
+    f.extend_from_slice(&0u16.to_le_bytes());
+    f.extend_from_slice(&[3, 0, 0, 0]);
+    f.extend_from_slice(&(meta.len() as u32).to_le_bytes());
+    f.extend_from_slice(&[0, 0]);
+    f.extend_from_slice(meta);
+    f.extend_from_slice(&[1, 0, 1, 0, 8, 0, 0, 0, 4, 0, 0, 0, 0, 0]);
+    f.extend_from_slice(&[7u8; 4]);
+    let mut z = p3dp_formats::zip::Writer::new();
+    z.add(
+        "config.ini",
+        b"expTime = 2\nexpTimeFirst = 30\nlayerHeight = 0.05\nnumFade = 3\n",
+    )
+    .unwrap();
+    for i in 0..8 {
+        z.add(&format!("m{i:05}.png"), b"x").unwrap();
+    }
+    vec![("a.bgcode", f), ("a.sl1", z.finish())]
+}
+
+fn read_header_file(name: &str, bytes: &[u8]) -> bool {
+    if p3dp_formats::bgcode::is_bgcode(bytes) || name.ends_with(".bgcode") {
+        p3dp_formats::bgcode::read_header(bytes, &small()).is_ok()
+    } else {
+        p3dp_formats::resin::read_job(name, bytes, &small()).is_ok()
+    }
+}
+
+#[test]
+fn the_readers_of_headers_read_their_seeds_and_survive_cuts_changes_and_noise() {
+    let mut rng = Rng::new(0xB6C0DE);
+    for (name, bytes) in header_seeds() {
+        assert!(
+            read_header_file(name, &bytes),
+            "{name}: the whole file must read"
+        );
+        for cut in 0..bytes.len() {
+            let _ = read_header_file(name, &bytes[..cut]);
+        }
+        for _ in 0..1500 {
+            let mut d = bytes.clone();
+            for _ in 0..1 + rng.below(4) {
+                let i = rng.below(d.len() as u64) as usize;
+                d[i] = match rng.below(3) {
+                    0 => rng.next_u64() as u8,
+                    1 => 0xFF,
+                    _ => 0,
+                };
+            }
+            let _ = read_header_file(name, &d);
+        }
+    }
+    for _ in 0..300 {
+        let n = rng.below(300) as usize;
+        let mut noise: Vec<u8> = (0..n).map(|_| rng.next_u64() as u8).collect();
+        let _ = read_header_file("n.sl1", &noise);
+        if noise.len() > 4 {
+            noise[..4].copy_from_slice(b"GCDE");
+        }
+        let _ = read_header_file("n.bgcode", &noise);
+    }
+}
