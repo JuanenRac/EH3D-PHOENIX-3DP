@@ -18,7 +18,15 @@ The drivers talk to an `HttpTransport`; `TcpTransport` is a plain HTTP/1.1 one w
 
 ## Bambu Lab
 
-`p3dp-link/src/bambu.rs` holds what can be written without a printer: the table of states, the names of the topics, the messages that ask for the whole state and that pause, resume or stop. The driver itself answers `Experimental` to everything. It needs, before it connects: a client of MQTT over TLS with the certificate of the printer checked, the upload by FTPS, and the access code of the printer in a store that is encrypted at rest. The cloud of Bambu is not part of the design and, if it is ever added, will be off by default.
+`p3dp-link/src/bambu.rs` holds what can be written and tested without a printer: the table of states, the names of the topics, the messages that ask for the whole state and that pause, resume or stop, and the settings of the local link (`LanSettings`), which are refused without the fingerprint of the certificate of the printer. Around it are three modules with the protocol as bytes and text, tried with a broker made in memory and with the published test vectors: `mqtt` (the packets of MQTT 3.1.1 that the link uses, quality 0 only), `ftps` (the commands and replies of the upload, with the check that the data connection goes to the address of the control connection) and `pin` (SHA-256 and the comparison of the fingerprint of a certificate). The driver itself still answers `Experimental` to everything, because nothing opens the TLS connection: the standard library has no TLS and this repository takes no crates from outside.
+
+Pending, with the ways to close it:
+
+* **A. Through the EH3D server (the one this program recommends).** The server has the experimental Bambu LAN link with the fingerprint of the certificate; this program then needs no TLS at all and speaks the routes of the `printer3d` plugin it speaks already. It leaves the stand-alone mode without Bambu.
+* **B. A TLS library behind a feature.** A feature of `p3dp-link` that takes a TLS crate, off by default, with the fingerprint check of `pin` as the only way to accept a certificate. It breaks the rule of no outside crates for that feature and can only be tried in the CI or on a computer with the crates.
+* **C. The TLS of the system.** A different small binding for each system (SChannel, Secure Transport, the library of Linux): the most code and the least testable.
+
+Whatever is chosen, the access code of the printer must live in a store that is encrypted at rest, and the cloud of Bambu is not part of the design and, if it is ever added, will be off by default. Nothing here has been tried on a Bambu printer.
 
 ## Models
 
