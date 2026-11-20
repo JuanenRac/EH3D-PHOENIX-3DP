@@ -18,7 +18,7 @@
 
 ---
 
-**Controllo di onestà - ciò che funziona davvero oggi:** un workspace Rust con sette librerie e un programma a riga di comando (`phoenix-3dp`) con 388 test che girano su un computer. Legge e controlla modelli STL, OBJ e 3MF, contiene un catalogo di 120 profili di stampante costruiti da dati pubblici (nessuno provato su una macchina), scrive G-code per i dialetti Marlin, Klipper, RepRapFirmware e Bambu con limiti di temperatura che rifiutano un valore invece di tagliarlo, e pilota stampanti Moonraker e OctoPrint e il server EH3D, ma solo contro simulatori (in memoria e su un socket di questo computer). Taglia un modello chiuso in strati piani con perimetri, riempimento rettilineo e pelli piene (un primo slicer minimo, ancora senza supporti, larghezza variabile o ponti); la finestra non è stata compilata né vista su uno schermo; nulla è stato eseguito su una stampante reale.
+**Controllo di onestà - ciò che funziona davvero oggi:** un workspace Rust con otto librerie e un programma a riga di comando (`phoenix-3dp`) con 388 test che girano su un computer. Legge e controlla modelli STL, OBJ e 3MF, contiene un catalogo di 120 profili di stampante costruiti da dati pubblici (nessuno provato su una macchina), scrive G-code per i dialetti Marlin, Klipper, RepRapFirmware e Bambu con limiti di temperatura che rifiutano un valore invece di tagliarlo, e pilota stampanti Moonraker e OctoPrint e il server EH3D, ma solo contro simulatori (in memoria e su un socket di questo computer). Taglia un modello chiuso in strati piani con perimetri, riempimento rettilineo e pelli piene (un piccolo slicer con riempimento a griglia e giroide, ponti, supporti semplici, giunzioni, larghezza variabile, sollevamento negli spostamenti e una stima del tempo con accelerazione; ancora niente per più materiali); la finestra non è stata compilata né vista su uno schermo; nulla è stato eseguito su una stampante reale.
 
 ---
 
@@ -49,12 +49,12 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 |---|---|---|
 | Nucleo | 🟡 | unità in nanometri, la mesh e i suoi controlli, i limiti dei lettori, un piccolo lettore JSON e un segreto che non si stampa mai; provato su computer con input normali e danneggiati. |
 | Modelli e file | 🟡 | STL (testo e binario), OBJ e 3MF di base vengono letti con limiti di dimensione e rifiuti che dicono cosa hanno trovato; si scrivono il pacchetto 3MF proprio, STL binario, OBJ e il file di G-code; dei progetti 3MF di altri programmi si leggono oggetti, piatti e alcune impostazioni (sola lettura); verificato con test di fuzzing, non con una raccolta di file reali di altri programmi. |
-| Profili di stampante | 🟠 | 120 modelli da dati pubblici (volume, ugelli, dialetto, modi di collegamento, limiti del produttore, comprese Bambu Lab A1 e P1S); tutti dicono `verified = false`, perché nessuno è stato provato su una macchina. |
+| Profili di stampante | 🟠 | 120 modelli da dati pubblici (volume, ugelli, dialetto, modi di collegamento, limiti del produttore per i primi 46, comprese Bambu Lab A1 e P1S, e limiti prudenti del programma per gli altri, che lo dicono; sei filamenti generici verificati contro la stampante e l'ugello); tutti dicono `verified = false`, perché nessuno è stato provato su una macchina. |
 | G-code | 🟡 | scrittori per i quattro dialetti con un inizio e una fine sicuri; una temperatura oltre il limite viene rifiutata e non si scrive nulla; un controllore trova le righe di un programma che superano un limite; mai eseguito su una stampante. |
 | Driver di stampante | 🟠 | Moonraker e OctoPrint su un trasporto, provati solo contro simulatori dei loro protocolli; Bambu LAN è un progetto marcato sperimentale che non si collega. |
 | Collegamento al server | 🟠 | le impostazioni del collegamento e un client del plugin delle stampanti del server sopra il client comune della suite (accesso, rinnovo, nuovi tentativi, errori in otto lingue), provato contro un server in memoria; mai contro il server reale. |
-| Slicer | 🟡 | strati piani di una mesh chiusa, perimetri, riempimento rettilineo, pelli piene, G-code per dialetto e un'anteprima per strati come dati; verificato con proprietà su forme a seme fisso (la plastica depositata è il volume del pezzo, nulla esce dal piatto, nessuna temperatura supera un limite); nessuna stampa ne è uscita su una stampante. |
-| Riga di comando | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `slice`, `project`, `version`) esegue le funzioni delle librerie e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
+| Slicer | 🟡 | strati piani di una mesh chiusa, perimetri, riempimento rettilineo, a griglia o giroide, pelli piene, ponti, supporti semplici, giunzioni, larghezza variabile, G-code per dialetto, un'anteprima per strati come dati e una stima del tempo con accelerazione; verificato con proprietà su forme a seme fisso (la plastica depositata è il volume del pezzo, nulla esce dal piatto, nessuna temperatura supera un limite); nessuna stampa ne è uscita su una stampante. |
+| Riga di comando | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `slice`, `project`, `version`) esegue le funzioni delle librerie e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
 | Test | 🟡 | 388 test passano (`cargo test --workspace`), con casi normali, casi limite, input danneggiati e un seme fisso dove c'è casualità. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): un limite è un rifiuto e mai un taglio; il token non si stampa mai; nulla va in panico con i file ricevuti; nessuna revisione indipendente. |
 | Finestra | 🔴 | Una prima versione delle quattro schede (Prepara, Anteprima, Dispositivo, Progetto) è scritta con `--features gui`; la sua logica è testata, ma non è ancora stata compilata né vista su uno schermo. |
@@ -65,12 +65,14 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 
 * **L'idea:** PHOENIX-3DP è il programma di stampa 3D della famiglia PHOENIX. Il server EH3D e i suoi client sono il centro della suite: questo programma è un client in più del server, e la modalità autonoma che parla direttamente con una stampante è un'opzione spenta per impostazione predefinita.
 * **I modelli** (`p3dp-formats`): STL (testo e binario), OBJ e 3MF di base vengono letti con limiti su dimensione, numero di triangoli e contenuto di un pacchetto ZIP; ciò che non si può leggere viene rifiutato con il nome di ciò che è stato trovato. Scrive STL binario, OBJ, il proprio pacchetto 3MF e file di G-code. I progetti salvati come 3MF da altri programmi vengono letti per oggetti, piatti e alcune impostazioni (sola lettura, con limiti contro pacchetti fatti per nuocere).
-* **I profili** (`p3dp-profiles`): un catalogo di 120 modelli di stampante, FDM e resina, scritto da fatti pubblici: volume, ugelli, dialetto, modi di collegamento, sistema multimateriale e le temperature massime dichiarate dal produttore. Ogni profilo dice se è stato provato su una macchina; nessuno lo è stato.
+* **I profili** (`p3dp-profiles`): un catalogo di 120 modelli di stampante, FDM e resina, scritto da fatti pubblici: volume, ugelli, dialetto, modi di collegamento, sistema multimateriale e le temperature massime (la cifra del produttore per i primi 46 modelli, i limiti prudenti del programma per gli altri, e ogni profilo dice quali). Sei filamenti generici (PLA, PETG, ABS, ASA, TPU e PA) sono verificati contro la stampante e l'ugello: una coppia che non va è rifiutata con le ragioni. Ogni profilo dice se è stato provato su una macchina; nessuno lo è stato.
 * **Il G-code** (`p3dp-gcode`): scrittori per Marlin, Klipper, RepRapFirmware e Bambu, ciascuno con intestazione, inizio e fine sicuri; una temperatura o un movimento non consentiti vengono rifiutati, mai tagliati. Un controllore legge qualsiasi programma e trova le righe che superano i limiti di un modello.
 * **Il collegamento** (`p3dp-link`): un trait di driver, uno stato normalizzato (quindici stati, temperature, lavoro, avvisi) e un elenco di comandi; Moonraker e OctoPrint sono implementati su un trasporto (uno HTTP semplice scritto con la libreria standard, con limiti di tempo e dimensione, provato su un socket di questo computer) e provati contro un simulatore in memoria di ciascun protocollo; Bambu LAN è il progetto dei suoi topic e messaggi, marcato sperimentale.
 * **Il server** (`p3dp-server-bridge`): le impostazioni `server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries` e `server_mdns`, e un client del plugin `printer3d` del server sopra il client comune della suite (`eh3d-serverclient`): i lavori entrano in coda e aspettano che una persona li avvii, i limiti di temperatura sono controllati prima di inviare qualsiasi cosa, e c'è l'arresto; provato contro un server in memoria.
-* **Lo slicer** (`p3dp-slicer`): strati piani di una mesh chiusa, perimetri, riempimento rettilineo con pelli piene, G-code per i dialetti del programma tramite il suo scrittore e l'anteprima per strati come dati; rifiuta, senza mai tagliare, ciò che non sta sul piatto, supera un limite di temperatura o non è una mesh chiusa.
-* **Non ancora fatto:** il visualizzatore 3D, uno slicer con larghezza variabile, giunzioni, ponti e supporti, il collegamento Bambu LAN e gli altri trasporti. La roadmap è in `docs/ROADMAP.md` e ciò che manca in `docs/NOT_YET.md`.
+* **Lo slicer** (`p3dp-slicer`): strati piani di una mesh chiusa, perimetri, riempimento rettilineo, a griglia o giroide con pelli piene, ponti, supporti semplici, giunzioni, larghezza variabile, sollevamento negli spostamenti, G-code per i dialetti del programma tramite il suo scrittore e l'anteprima per strati come dati, con una stima del tempo che usa l'accelerazione; rifiuta, senza mai tagliare, ciò che non sta sul piatto, supera un limite di temperatura o non è una mesh chiusa.
+* **Il visualizzatore** (`p3dp-viewer`): il modello del visualizzatore 3D senza codice grafico: una camera orbitale con prospettiva, la selezione con un clic e con un riquadro sul piano, l'intervallo di strati e le linee di un piano per una scheda grafica. Il disegno con wgpu è dietro una funzionalità, disattivata di default, e non è mai stato compilato.
+* **Altri file:** il G-code binario (`bgcode`) e i pacchetti aperti di strati di resina (`.sl1`) si leggono solo dalle intestazioni, con una stima del tempo di esposizione; i formati chiusi delle stampanti a resina sono rifiutati con la ragione.
+* **Non ancora fatto:** il disegno del visualizzatore 3D (il suo modello esiste), uno slicer per più materiali, il collegamento Bambu LAN e gli altri trasporti. La roadmap è in `docs/ROADMAP.md` e ciò che manca in `docs/NOT_YET.md`.
 
 ## 🧩 Ruolo in EH3D
 
@@ -113,7 +115,7 @@ Come si incastrano le parti di questo repository: chi lo usa, cosa contiene e da
 
 ## 🔌 Interfacce
 
-Le librerie sono `p3dp_core`, `p3dp_formats`, `p3dp_profiles`, `p3dp_gcode`, `p3dp_link`, `p3dp_server_bridge` e `p3dp_slicer`; il programma è la libreria `eh3d_phoenix_3dp` e la riga di comando `phoenix-3dp`. Ogni comando stampa il risultato sullo standard output e segnala un errore sullo standard error con un codice di uscita diverso da zero (1 per un fallimento di ciò che era richiesto, 2 per un errore nel comando). L'unico accesso alla rete è il trasporto dei driver e del collegamento al server, e solo verso un indirizzo dato.
+Le librerie sono `p3dp_core`, `p3dp_formats`, `p3dp_profiles`, `p3dp_gcode`, `p3dp_link`, `p3dp_server_bridge`, `p3dp_slicer` e `p3dp_viewer`; il programma è la libreria `eh3d_phoenix_3dp` e la riga di comando `phoenix-3dp`. Ogni comando stampa il risultato sullo standard output e segnala un errore sullo standard error con un codice di uscita diverso da zero (1 per un fallimento di ciò che era richiesto, 2 per un errore nel comando). L'unico accesso alla rete è il trasporto dei driver e del collegamento al server, e solo verso un indirizzo dato.
 
 ```text
 phoenix-3dp printers [--vendor NAME] [--tech fdm|msla] [--search TEXT]
@@ -121,8 +123,9 @@ phoenix-3dp info MODEL [--printer ID]
 phoenix-3dp check-profile ID [--gcode FILE]
 phoenix-3dp check-profile --file PROFILE [--gcode FILE]
 phoenix-3dp convert IN OUT [--printer ID] [--force]
-phoenix-3dp slice MODEL --printer ID [--settings FILE] [--out FILE.gcode] [--force]
-phoenix-3dp project FILE.3mf
+phoenix-3dp filaments [--printer ID] [--nozzle MM] [--hardened]
+phoenix-3dp slice MODEL --printer ID [--settings FILE] [--filament ID] [--nozzle MM] [--hardened] [--out FILE.gcode] [--force]
+phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.sl1 [--bottom-layers N] [--lift MM]
 phoenix-3dp version
 phoenix-3dp gui [SETTINGS]                       the window (a build with --features gui)
 ```
@@ -166,16 +169,17 @@ La versione vive in `Cargo.toml` e in `eh3d.project.json`; ogni versione ha la s
 EH3D-PHOENIX-3DP/
 ├── crates/
 │   ├── p3dp-core/                               unità, mesh e controlli, limiti, JSON, impostazioni
-│   ├── p3dp-formats/                            lettori STL, OBJ, 3MF e progetti, scrittori, ZIP
-│   ├── p3dp-profiles/                           il catalogo di stampanti da fatti pubblici, il profilo
+│   ├── p3dp-formats/                            lettori di STL, OBJ, 3MF, progetti, bgcode e resina; scrittori, ZIP
+│   ├── p3dp-profiles/                           stampanti da fatti pubblici, filamenti, il file di profilo
 │   ├── p3dp-gcode/                              scrittori di G-code per quattro dialetti, il controllore
 │   ├── p3dp-link/                               driver, stato normalizzato, TCP, simulatori, Bambu LAN
 │   ├── p3dp-server-bridge/                      impostazioni del collegamento al server, client del plugin
-│   └── p3dp-slicer/                             lo slicer minimo: strati, perimetri, riempimento, G-code
+│   ├── p3dp-slicer/                             lo slicer: strati, perimetri, riempimento, ponti, supporti, G-code
+│   └── p3dp-viewer/                             il modello del visualizzatore 3D: camera, selezione, strati
 ├── src/
 │   ├── lib.rs                                   la libreria del programma: ciò che usano la riga di comando e la finestra
 │   ├── main.rs                                  la riga di comando e l'avvio della finestra
-│   ├── cli.rs                                   i comandi: printers, info, check-profile, convert, slice, project, version
+│   ├── cli.rs                                   i comandi: printers, info, check-profile, convert, filaments, slice, project, version
 │   ├── app_state.rs                             lo stato della finestra senza finestra: schede, stampante, modello, rapporti, dispositivo simulato
 │   ├── config.rs                                il file di impostazioni: limiti, collegamento al server, lingua e stampante predefinita
 │   ├── i18n.rs                                  i testi del programma nelle otto lingue
@@ -219,7 +223,7 @@ EH3D-PHOENIX-3DP/
 
 **Limiti noti oggi**
 
-* Lo slicer è minimo: strati piani, perimetri, riempimento rettilineo e pelli piene; niente supporti, ponti, giunzioni, larghezza variabile o multimateriale, e nessuna stampa ne è uscita su una stampante.
+* Lo slicer è piccolo: i supporti sono semplici (niente albero, niente strati di interfaccia), i ponti non sono rifiniti, non c'è nulla per più materiali, e nessuna stampa ne è uscita su una stampante.
 * Nessuna stampante è stata collegata, nemmeno la Bambu Lab A1 o la P1S; ogni profilo dice `verified = false`.
 * Il lettore 3MF prende solo la mesh (componenti ed estensione di produzione vengono rifiutati); i progetti di altri programmi sono letti per oggetti, piatti e impostazioni e mai modificati.
 * I driver hanno un trasporto HTTP semplice, provato solo su un socket di questo computer e con i simulatori; niente TLS né push WebSocket; Bambu LAN è un progetto che non si collega, e il cloud di Bambu non ne fa parte.
@@ -228,7 +232,7 @@ EH3D-PHOENIX-3DP/
 **Prossimi passi**
 
 * H1: geometria delle mesh e un visualizzatore 3D proprio.
-* H2: più slicer (riempimento a griglia, giunzioni, larghezza variabile) e un cubo di calibrazione stampato su una macchina reale.
+* H2: un cubo di calibrazione stampato su una macchina reale (il riempimento a griglia e giroide, le giunzioni, la larghezza variabile, i ponti e i supporti semplici sono scritti e provati su forme a seme fisso).
 * H3: l'editor dei profili e la finestra di base.
 * H7: gli altri trasporti (push WebSocket, PrusaLink, Duet) e il collegamento Bambu LAN.
 * H8: provarlo su una Bambu Lab A1 e una P1S e marcare come verificati i profili che funzionano. L'intero piano è in `docs/ROADMAP.md`.

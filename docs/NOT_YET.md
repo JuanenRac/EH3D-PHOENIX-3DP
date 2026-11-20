@@ -2,9 +2,9 @@
 
 This page lists what the program does not do, and what each missing part needs. Nothing on it is hidden in the README: the table "Project status" says the same with lights.
 
-## A minimal slicer
+## A small slicer
 
-The program turns a closed model into flat layers, perimeters, a rectilinear infill with solid skins and G-code, and shows the plan by layers as data. It has no supports, bridges, seam control, variable width of the lines, ironing, retraction tuned by distance, pressure advance, brim or skirt, grid or gyroid infill, adaptive layer height or multi-material; the time it estimates ignores the slowing at corners; and no print made from its G-code has been run on a printer. A model that is not closed, that faces inwards or that does not fit is refused, not repaired or scaled.
+The program turns a closed model into flat layers, perimeters, a rectilinear, grid or gyroid infill with solid skins, bridges, plain supports, seams, variable width of the perimeters and G-code, and shows the plan by layers as data. It has no tree supports, interface layers or painting of supports, no ironing, pressure advance, brim or skirt, adaptive layer height or multi-material; a bridge is laid across the gap but is not tuned (no flow test, no extra anchor); the supports are lines at a pitch, with no interface; the time it estimates has an acceleration and a speed at the corners from the settings, not the planner of the printer; and no print made from its G-code has been run on a printer. A model that is not closed, that faces inwards or that does not fit is refused, not repaired or scaled.
 
 ## Nothing has run on a printer
 
@@ -26,11 +26,11 @@ The projects that other programs save as 3MF are read for their metadata only (w
 
 ## Resin printers
 
-The catalog has resin (mSLA) printers, with their volume and how they connect, but they take layers and not G-code: the writer refuses them and the drivers do not exist yet.
+The catalog has resin (mSLA) printers, with their volume and how they connect, but they take layers and not G-code: the writer refuses them and the drivers do not exist yet. The open packages of layers (`.sl1`) are read by their headers, with an estimate of the exposure, and nothing else: no layer image is decoded, no file is written, and the closed formats of the makers are refused. Binary G-code is read the same way, by its headers, following the public description of the format and tried only on files that the tests make by it.
 
 ## The window
 
-It has four tabs and its logic is tested, but it has not been built or looked at on a screen. The 3D viewer with a graphics card (wgpu) is step H1; today the preview is lines. The names of the fifteen printer states are translated in the eight languages.
+It has four tabs and its logic is tested, but it has not been built or looked at on a screen. The model of the 3D viewer is the crate `p3dp-viewer` (camera, picking, selection box, range of layers, lines of a plan); the drawing with wgpu is behind its feature `gui`, never built, and the window does not use it yet: today the preview is lines. The texts of the new panels and controls are in the eight languages, but the panels themselves are not in the window. The names of the fifteen printer states are translated in the eight languages.
 
 ## The server
 

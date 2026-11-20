@@ -18,7 +18,7 @@
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** ein Rust-Workspace mit sieben Bibliotheken und einem Kommandozeilenprogramm (`phoenix-3dp`) mit 388 Tests, die auf einem Computer laufen. Es liest und prüft STL-, OBJ- und 3MF-Modelle, enthält einen Katalog von 120 Druckerprofilen aus öffentlichen Daten (keines an einer Maschine getestet), schreibt G-Code für die Dialekte Marlin, Klipper, RepRapFirmware und Bambu mit Temperaturgrenzen, die einen Wert ablehnen, statt ihn zu kappen, und steuert Moonraker- und OctoPrint-Drucker sowie den EH3D-Server, aber nur gegen Simulatoren (im Speicher und an einem Socket dieses Computers). Es zerlegt ein geschlossenes Modell in ebene Schichten mit Perimetern, geradliniger Füllung und massiven Außenhäuten (ein erster, minimaler Slicer, noch ohne Stützen, variable Breite oder Brücken); das Fenster wurde weder gebaut noch auf einem Bildschirm angesehen; nichts lief an einem echten Drucker.
+**Ehrlichkeitscheck - was heute wirklich läuft:** ein Rust-Workspace mit acht Bibliotheken und einem Kommandozeilenprogramm (`phoenix-3dp`) mit 388 Tests, die auf einem Computer laufen. Es liest und prüft STL-, OBJ- und 3MF-Modelle, enthält einen Katalog von 120 Druckerprofilen aus öffentlichen Daten (keines an einer Maschine getestet), schreibt G-Code für die Dialekte Marlin, Klipper, RepRapFirmware und Bambu mit Temperaturgrenzen, die einen Wert ablehnen, statt ihn zu kappen, und steuert Moonraker- und OctoPrint-Drucker sowie den EH3D-Server, aber nur gegen Simulatoren (im Speicher und an einem Socket dieses Computers). Es zerlegt ein geschlossenes Modell in ebene Schichten mit Perimetern, geradliniger Füllung und massiven Außenhäuten (ein kleiner Slicer mit Gitter- und Gyroid-Füllung, Brücken, einfachen Stützen, Nähten, variabler Breite, Anheben beim Verfahren und einer Zeitschätzung mit Beschleunigung; für mehrere Materialien noch nichts); das Fenster wurde weder gebaut noch auf einem Bildschirm angesehen; nichts lief an einem echten Drucker.
 
 ---
 
@@ -49,12 +49,12 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 |---|---|---|
 | Kern | 🟡 | Einheiten in Nanometern, das Netz und seine Prüfungen, die Grenzen der Leser, ein kleiner JSON-Leser und ein Geheimnis, das sich nie ausgibt; am Computer mit normalen und beschädigten Eingaben getestet. |
 | Modelle und Dateien | 🟡 | STL (Text und binär), OBJ und einfaches 3MF werden mit Größengrenzen und Ablehnungen gelesen, die nennen, was sie gefunden haben; das eigene 3MF-Paket, binäres STL, OBJ und die G-Code-Datei werden geschrieben; von den 3MF-Projekten anderer Programme werden Objekte, Platten und einige Einstellungen gelesen (nur lesend); mit Fuzz-Tests geprüft, nicht mit einer Sammlung echter Dateien anderer Programme. |
-| Druckerprofile | 🟠 | 120 Modelle aus öffentlichen Daten (Bauraum, Düsen, Dialekt, Anbindungsarten, Grenzen des Herstellers, darunter Bambu Lab A1 und P1S); alle sagen `verified = false`, weil keines an einer Maschine getestet wurde. |
+| Druckerprofile | 🟠 | 120 Modelle aus öffentlichen Daten (Bauraum, Düsen, Dialekt, Anbindungsarten, Grenzen des Herstellers bei den ersten 46, darunter Bambu Lab A1 und P1S, und die vorsichtigen Grenzen des Programms bei den übrigen, die das sagen; sechs generische Filamente, gegen Drucker und Düse geprüft); alle sagen `verified = false`, weil keines an einer Maschine getestet wurde. |
 | G-Code | 🟡 | Schreiber für die vier Dialekte mit sicherem Start und Ende; eine Temperatur über der Grenze wird abgelehnt und nichts geschrieben; eine Prüfung findet die Zeilen eines Programms, die eine Grenze überschreiten; nie an einem Drucker ausgeführt. |
 | Druckertreiber | 🟠 | Moonraker und OctoPrint über einen Transport, nur gegen Simulatoren ihrer Protokolle getestet; Bambu LAN ist ein als experimentell gekennzeichneter Entwurf, der nicht verbindet. |
 | Serververbindung | 🟠 | die Einstellungen der Verbindung und ein Client des Druckerplugins des Servers über den gemeinsamen Client der Suite (Anmeldung, Erneuerung, Wiederholungen, Fehler in acht Sprachen), gegen einen Server im Speicher getestet; nie gegen den echten Server. |
-| Slicer | 🟡 | ebene Schichten eines geschlossenen Netzes, Perimeter, geradlinige Füllung, massive Außenhäute, G-Code je Dialekt und eine Vorschau nach Schichten als Daten; mit Eigenschaftstests an Formen aus festem Seed geprüft (das abgelegte Material entspricht dem Volumen des Teils, nichts verlässt das Bett, keine Temperatur überschreitet eine Grenze); noch kein Druck daraus auf einem Drucker. |
-| Kommandozeile | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `slice`, `project`, `version`) führt die Funktionen der Bibliotheken aus und gibt das Ergebnis aus; jeder Fehler kommt als Meldung und mit einem Exit-Code ungleich null zurück. |
+| Slicer | 🟡 | ebene Schichten eines geschlossenen Netzes, Perimeter, geradlinige, Gitter- oder Gyroid-Füllung, massive Außenhäute, Brücken, einfache Stützen, Nähte, variable Breite, G-Code je Dialekt, eine Vorschau nach Schichten als Daten und eine Zeitschätzung mit Beschleunigung; mit Eigenschaftstests an Formen aus festem Seed geprüft (das abgelegte Material entspricht dem Volumen des Teils, nichts verlässt das Bett, keine Temperatur überschreitet eine Grenze); noch kein Druck daraus auf einem Drucker. |
+| Kommandozeile | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `slice`, `project`, `version`) führt die Funktionen der Bibliotheken aus und gibt das Ergebnis aus; jeder Fehler kommt als Meldung und mit einem Exit-Code ungleich null zurück. |
 | Tests | 🟡 | 388 Tests bestehen (`cargo test --workspace`), mit Normalfällen, Grenzfällen, beschädigten Eingaben und festem Seed, wo Zufall im Spiel ist. |
 | Sicherheit | 🟡 | Schlichtes sicheres Rust (`forbid(unsafe_code)`): eine Grenze ist eine Ablehnung und nie eine Kappung; das Token wird nie ausgegeben; nichts gerät bei den Dateien in Panik; keine unabhängige Prüfung. |
 | Fenster | 🔴 | Eine erste Version der vier Reiter (Vorbereiten, Vorschau, Gerät, Projekt) ist mit `--features gui` geschrieben; ihre Logik ist getestet, aber sie wurde noch nicht gebaut oder auf einem Bildschirm angesehen. |
@@ -65,12 +65,14 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 
 * **Die Idee:** PHOENIX-3DP ist das 3D-Druck-Programm der PHOENIX-Familie. Der EH3D-Server und seine Clients sind das Zentrum der Suite: Dieses Programm ist ein weiterer Client des Servers, und der eigenständige Modus, der direkt mit einem Drucker spricht, ist eine Option, die standardmäßig aus ist.
 * **Die Modelle** (`p3dp-formats`): STL (Text und binär), OBJ und einfaches 3MF werden mit Grenzen für Größe, Dreiecksanzahl und Inhalt eines ZIP-Pakets gelesen; was sich nicht lesen lässt, wird mit dem Namen des Gefundenen abgelehnt. Geschrieben werden binäres STL, OBJ, das eigene 3MF-Paket und G-Code-Dateien. Als 3MF gespeicherte Projekte anderer Programme werden auf Objekte, Platten und einige Einstellungen gelesen (nur lesend, mit Grenzen gegen böswillige Pakete).
-* **Die Profile** (`p3dp-profiles`): ein Katalog von 120 Druckermodellen, FDM und Resin, aus öffentlichen Fakten: Bauraum, Düsen, Dialekt, Anbindungsarten, Multimaterial-System und die höchsten Temperaturen, die der Hersteller nennt. Jedes Profil sagt, ob es an einer Maschine getestet wurde; keines wurde es.
+* **Die Profile** (`p3dp-profiles`): ein Katalog von 120 Druckermodellen, FDM und Resin, aus öffentlichen Fakten: Bauraum, Düsen, Dialekt, Anbindungsarten, Multimaterial-System und die höchsten Temperaturen (bei den ersten 46 Modellen die Angabe des Herstellers, bei den übrigen die vorsichtigen Grenzen des Programms, und jedes Profil sagt welche). Sechs generische Filamente (PLA, PETG, ABS, ASA, TPU und PA) werden gegen Drucker und Düse geprüft: ein Paar, das nicht passt, wird mit den Gründen abgelehnt. Jedes Profil sagt, ob es an einer Maschine getestet wurde; keines wurde es.
 * **Der G-Code** (`p3dp-gcode`): Schreiber für Marlin, Klipper, RepRapFirmware und Bambu, jeweils mit sicherem Kopf, Start und Ende; eine nicht erlaubte Temperatur oder Bewegung wird abgelehnt, nie gekappt. Eine Prüfung liest jedes Programm und findet die Zeilen, die die Grenzen eines Modells überschreiten.
 * **Die Verbindung** (`p3dp-link`): ein Treiber-Trait, ein normalisierter Zustand (fünfzehn Zustände, Temperaturen, Auftrag, Warnungen) und eine Liste von Befehlen; Moonraker und OctoPrint sind über einen Transport umgesetzt (ein einfacher HTTP-Transport mit der Standardbibliothek und mit Zeit- und Größengrenzen, an einem Socket dieses Computers erprobt) und gegen einen Speicher-Simulator jedes Protokolls getestet; Bambu LAN ist der Entwurf seiner Topics und Nachrichten, als experimentell gekennzeichnet.
 * **Der Server** (`p3dp-server-bridge`): die Einstellungen `server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries` und `server_mdns` und ein Client des Plugins `printer3d` des Servers über den gemeinsamen Client der Suite (`eh3d-serverclient`): Aufträge kommen in die Warteschlange und warten, bis eine Person sie startet, die Temperaturgrenzen werden vor dem Senden geprüft, und es gibt den Stopp; gegen einen Server im Speicher getestet.
-* **Der Slicer** (`p3dp-slicer`): ebene Schichten eines geschlossenen Netzes, Perimeter, geradlinige Füllung mit massiven Außenhäuten, G-Code für die Dialekte des Programms über dessen Schreiber und die Vorschau nach Schichten als Daten; er lehnt ab, kappt nie, was nicht aufs Bett passt, eine Temperaturgrenze überschreitet oder kein geschlossenes Netz ist.
-* **Noch nicht gemacht:** der 3D-Betrachter, ein Slicer mit variabler Breite, Nähten, Brücken und Stützen, die Bambu-LAN-Verbindung und die übrigen Transporte. Die Roadmap steht in `docs/ROADMAP.md`, was fehlt, in `docs/NOT_YET.md`.
+* **Der Slicer** (`p3dp-slicer`): ebene Schichten eines geschlossenen Netzes, Perimeter, geradlinige, Gitter- oder Gyroid-Füllung mit massiven Außenhäuten, Brücken, einfache Stützen, Nähte, variable Breite, Anheben beim Verfahren, G-Code für die Dialekte des Programms über dessen Schreiber und die Vorschau nach Schichten als Daten, mit einer Zeitschätzung, die die Beschleunigung nutzt; er lehnt ab, kappt nie, was nicht aufs Bett passt, eine Temperaturgrenze überschreitet oder kein geschlossenes Netz ist.
+* **Der Betrachter** (`p3dp-viewer`): das Modell des 3D-Betrachters ohne Grafikcode: eine Orbit-Kamera mit Perspektive, Auswahl per Klick und per Rahmen auf dem Bett, der Bereich der Schichten und die Linien eines Plans für eine Grafikkarte. Das Zeichnen mit wgpu steckt hinter einem Feature, ist standardmäßig aus und wurde nie gebaut.
+* **Andere Dateien:** binärer G-Code (`bgcode`) und offene Pakete mit Harzschichten (`.sl1`) werden nur anhand ihrer Köpfe gelesen, mit einer Schätzung der Belichtungszeit; die geschlossenen Formate von Harzdruckern werden mit dem Grund abgelehnt.
+* **Noch nicht gemacht:** das Zeichnen des 3D-Betrachters (sein Modell gibt es), ein Slicer für mehrere Materialien, die Bambu-LAN-Verbindung und die übrigen Transporte. Die Roadmap steht in `docs/ROADMAP.md`, was fehlt, in `docs/NOT_YET.md`.
 
 ## 🧩 Rolle in EH3D
 
@@ -113,7 +115,7 @@ Wie die Teile dieses Repositorys zusammenpassen: wer es nutzt, was es enthält u
 
 ## 🔌 Schnittstellen
 
-Die Bibliotheken sind `p3dp_core`, `p3dp_formats`, `p3dp_profiles`, `p3dp_gcode`, `p3dp_link`, `p3dp_server_bridge` und `p3dp_slicer`; das Programm ist die Bibliothek `eh3d_phoenix_3dp` und die Kommandozeile `phoenix-3dp`. Jeder Befehl gibt sein Ergebnis auf der Standardausgabe aus und meldet einen Fehler auf der Fehlerausgabe mit einem Exit-Code ungleich null (1 bei Misserfolg des Gewünschten, 2 bei einem Fehler im Befehl). Der einzige Netzwerkzugriff ist der Transport der Treiber und der Serververbindung, und nur auf eine angegebene Adresse.
+Die Bibliotheken sind `p3dp_core`, `p3dp_formats`, `p3dp_profiles`, `p3dp_gcode`, `p3dp_link`, `p3dp_server_bridge`, `p3dp_slicer` und `p3dp_viewer`; das Programm ist die Bibliothek `eh3d_phoenix_3dp` und die Kommandozeile `phoenix-3dp`. Jeder Befehl gibt sein Ergebnis auf der Standardausgabe aus und meldet einen Fehler auf der Fehlerausgabe mit einem Exit-Code ungleich null (1 bei Misserfolg des Gewünschten, 2 bei einem Fehler im Befehl). Der einzige Netzwerkzugriff ist der Transport der Treiber und der Serververbindung, und nur auf eine angegebene Adresse.
 
 ```text
 phoenix-3dp printers [--vendor NAME] [--tech fdm|msla] [--search TEXT]
@@ -121,8 +123,9 @@ phoenix-3dp info MODEL [--printer ID]
 phoenix-3dp check-profile ID [--gcode FILE]
 phoenix-3dp check-profile --file PROFILE [--gcode FILE]
 phoenix-3dp convert IN OUT [--printer ID] [--force]
-phoenix-3dp slice MODEL --printer ID [--settings FILE] [--out FILE.gcode] [--force]
-phoenix-3dp project FILE.3mf
+phoenix-3dp filaments [--printer ID] [--nozzle MM] [--hardened]
+phoenix-3dp slice MODEL --printer ID [--settings FILE] [--filament ID] [--nozzle MM] [--hardened] [--out FILE.gcode] [--force]
+phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.sl1 [--bottom-layers N] [--lift MM]
 phoenix-3dp version
 phoenix-3dp gui [SETTINGS]                       the window (a build with --features gui)
 ```
@@ -166,16 +169,17 @@ Die Version steht in `Cargo.toml` und in `eh3d.project.json`; jede Version hat i
 EH3D-PHOENIX-3DP/
 ├── crates/
 │   ├── p3dp-core/                               Einheiten, Netz und Prüfungen, Grenzen, JSON, Einstellungen
-│   ├── p3dp-formats/                            STL-, OBJ-, 3MF- und Projekt-Leser, Schreiber, ZIP
-│   ├── p3dp-profiles/                           der Druckerkatalog aus öffentlichen Fakten, die Profildatei
+│   ├── p3dp-formats/                            Leser für STL, OBJ, 3MF, Projekte, bgcode und Harz; Schreiber, ZIP
+│   ├── p3dp-profiles/                           Drucker aus öffentlichen Fakten, Filamente, die Profildatei
 │   ├── p3dp-gcode/                              G-Code-Schreiber für vier Dialekte, die Programmprüfung
 │   ├── p3dp-link/                               Treiber, normalisierter Zustand, TCP, Simulatoren, Bambu LAN
 │   ├── p3dp-server-bridge/                      Einstellungen der Serververbindung, Client des Plugins
-│   └── p3dp-slicer/                             der minimale Slicer: Schichten, Perimeter, Füllung, G-Code
+│   ├── p3dp-slicer/                             der Slicer: Schichten, Perimeter, Füllung, Brücken, Stützen, G-Code
+│   └── p3dp-viewer/                             das Modell des 3D-Betrachters: Kamera, Auswahl, Schichten
 ├── src/
 │   ├── lib.rs                                   die Bibliothek des Programms: was Kommandozeile und Fenster nutzen
 │   ├── main.rs                                  die Kommandozeile und der Start des Fensters
-│   ├── cli.rs                                   die Befehle: printers, info, check-profile, convert, slice, project, version
+│   ├── cli.rs                                   die Befehle: printers, info, check-profile, convert, filaments, slice, project, version
 │   ├── app_state.rs                             der Zustand des Fensters ohne Fenster: Reiter, Drucker, Modell, Berichte, simuliertes Gerät
 │   ├── config.rs                                die Einstellungsdatei: Grenzen, Serververbindung, Sprache und Standarddrucker
 │   ├── i18n.rs                                  die Texte des Programms in den acht Sprachen
@@ -219,7 +223,7 @@ EH3D-PHOENIX-3DP/
 
 **Bekannte Grenzen heute**
 
-* Der Slicer ist minimal: ebene Schichten, Perimeter, geradlinige Füllung und massive Außenhäute; keine Stützen, Brücken, Nähte, variable Breite oder Multimaterial, und es ist noch kein Druck daraus auf einem Drucker entstanden.
+* Der Slicer ist klein: die Stützen sind einfach (kein Baum, keine Zwischenschichten), die Brücken sind nicht feinabgestimmt, für mehrere Materialien gibt es nichts, und es ist noch kein Druck daraus auf einem Drucker entstanden.
 * Es wurde kein Drucker angeschlossen, nicht einmal der Bambu Lab A1 oder P1S; jedes Profil sagt `verified = false`.
 * Der 3MF-Leser nimmt nur das Netz (Komponenten und die Produktionserweiterung werden abgelehnt); Projekte anderer Programme werden auf Objekte, Platten und Einstellungen gelesen und nie verändert.
 * Die Treiber haben einen einfachen HTTP-Transport, nur an einem Socket dieses Computers und an den Simulatoren erprobt; kein TLS und kein WebSocket-Push; Bambu LAN ist ein Entwurf, der nicht verbindet, und die Bambu-Cloud gehört nicht dazu.
@@ -228,7 +232,7 @@ EH3D-PHOENIX-3DP/
 **Als Nächstes**
 
 * H1: Netzgeometrie und ein eigener 3D-Betrachter.
-* H2: mehr Slicer (Gitterfüllung, Nähte, variable Breite) und ein Kalibrierwürfel, auf einer echten Maschine gedruckt.
+* H2: ein Kalibrierwürfel, auf einer echten Maschine gedruckt (Gitter- und Gyroid-Füllung, Nähte, variable Breite, Brücken und einfache Stützen sind geschrieben und an Formen aus festem Seed getestet).
 * H3: der Profileditor und das Grundfenster.
 * H7: die übrigen Transporte (WebSocket-Push, PrusaLink, Duet) und die Bambu-LAN-Verbindung.
 * H8: an einem Bambu Lab A1 und P1S ausprobieren und funktionierende Profile als verifiziert markieren. Der ganze Plan steht in `docs/ROADMAP.md`.

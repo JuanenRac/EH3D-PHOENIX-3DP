@@ -2,7 +2,7 @@
   "repo": "EH3D-PHOENIX-3DP",
   "ecosystem": "eh3d",
   "tagline": "A model, a printer profile, a safe G-code and a link to the printer or to the server.",
-  "description": "EH3D-PHOENIX-3DP is a set of Rust libraries and a command line program for 3D printing: it reads STL, OBJ and 3MF models and the projects other programs save as 3MF, holds a catalog of printer profiles built from public data, slices a closed model into layers with perimeters and infill, writes G-code for four dialects with temperature limits that refuse a value instead of cutting it down, and drives Moonraker and OctoPrint printers and the EH3D server, so far only against simulators and a socket of the same computer. A window with four tabs is written for the gui feature.",
+  "description": "EH3D-PHOENIX-3DP is a set of Rust libraries and a command line program for 3D printing: it reads STL, OBJ and 3MF models and the projects other programs save as 3MF, holds a catalog of printer profiles built from public data, slices a closed model into layers with perimeters, rectilinear, grid or gyroid infill, bridges and plain supports, writes G-code for four dialects with temperature limits that refuse a value instead of cutting it down, and drives Moonraker and OctoPrint printers and the EH3D server, so far only against simulators and a socket of the same computer. A window with four tabs is written for the gui feature.",
   "columns": [
     "WHO USES IT",
     "THIS REPOSITORY",
@@ -66,7 +66,7 @@
       "level": "tested",
       "title": "slicer and G-code",
       "lines": [
-        "layers, perimeters, infill; four",
+        "infill, bridges, supports; four",
         "dialects, limits that refuse"
       ],
       "code": [
@@ -112,14 +112,15 @@
       "level": "untested",
       "title": "window (gui feature)",
       "lines": [
-        "state and words are tested;",
-        "the drawing is not seen yet"
+        "state, words and the viewer",
+        "model tested; not seen yet"
       ],
       "code": [
         "src/app_state.rs::pub struct AppState",
         "src/i18n.rs::pub enum Lang",
         "src/view.rs::pub fn edges",
-        "src/gui.rs::pub fn run"
+        "src/gui.rs::pub fn run",
+        "crates/p3dp-viewer/src/camera.rs::pub struct OrbitCamera"
       ]
     },
     {

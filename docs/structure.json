@@ -42,27 +42,27 @@
         {
           "name": "p3dp-formats/",
           "desc": {
-            "en": "STL, OBJ, 3MF and project readers, writers, ZIP",
-            "es": "lectores STL, OBJ, 3MF y proyectos, escritores, ZIP",
-            "de": "STL-, OBJ-, 3MF- und Projekt-Leser, Schreiber, ZIP",
-            "fr": "lecteurs STL, OBJ, 3MF et projets, écrivains, ZIP",
-            "it": "lettori STL, OBJ, 3MF e progetti, scrittori, ZIP",
-            "ja": "STL・OBJ・3MF・プロジェクトの読み込み、書き出し、ZIP",
-            "zh": "STL、OBJ、3MF 与项目读取、写出、ZIP",
-            "pt": "leitores STL, OBJ, 3MF e projetos, escritores, ZIP"
+            "en": "STL, OBJ, 3MF, project, bgcode and resin readers; writers, ZIP",
+            "es": "lectores de STL, OBJ, 3MF, proyectos, bgcode y resina; escritores, ZIP",
+            "de": "Leser für STL, OBJ, 3MF, Projekte, bgcode und Harz; Schreiber, ZIP",
+            "fr": "lecteurs de STL, OBJ, 3MF, projets, bgcode et résine ; écrivains, ZIP",
+            "it": "lettori di STL, OBJ, 3MF, progetti, bgcode e resina; scrittori, ZIP",
+            "ja": "STL・OBJ・3MF・プロジェクト・bgcode・レジンの読み込み、書き出し、ZIP",
+            "zh": "STL、OBJ、3MF、项目、bgcode 和树脂的读取器；写出器、ZIP",
+            "pt": "leitores de STL, OBJ, 3MF, projetos, bgcode e resina; escritores, ZIP"
           }
         },
         {
           "name": "p3dp-profiles/",
           "desc": {
-            "en": "the catalog of printers from public facts, the profile file",
-            "es": "el catálogo de impresoras con hechos públicos, el perfil",
-            "de": "der Druckerkatalog aus öffentlichen Fakten, die Profildatei",
-            "fr": "le catalogue d'imprimantes (faits publics), le profil",
-            "it": "il catalogo di stampanti da fatti pubblici, il profilo",
-            "ja": "公開情報によるプリンターのカタログとプロファイル",
-            "zh": "由公开事实建立的打印机目录和配置",
-            "pt": "o catálogo de impressoras com factos públicos, o perfil"
+            "en": "printers from public facts, filaments, the profile file",
+            "es": "impresoras con hechos públicos, filamentos, el archivo de perfil",
+            "de": "Drucker aus öffentlichen Fakten, Filamente, die Profildatei",
+            "fr": "imprimantes à partir de faits publics, filaments, le fichier de profil",
+            "it": "stampanti da fatti pubblici, filamenti, il file di profilo",
+            "ja": "公開情報によるプリンター、フィラメント、プロファイル ファイル",
+            "zh": "依据公开事实的打印机、耗材、配置文件",
+            "pt": "impressoras com factos públicos, filamentos, o ficheiro de perfil"
           }
         },
         {
@@ -107,14 +107,27 @@
         {
           "name": "p3dp-slicer/",
           "desc": {
-            "en": "the minimal slicer: layers, perimeters, infill, G-code",
-            "es": "el laminador mínimo: capas, perímetros, relleno, G-code",
-            "de": "der minimale Slicer: Schichten, Perimeter, Füllung, G-Code",
-            "fr": "le trancheur minimal : couches, périmètres, remplissage, G-code",
-            "it": "lo slicer minimo: strati, perimetri, riempimento, G-code",
-            "ja": "最小限のスライサー：層、外周、インフィル、G コード",
-            "zh": "最简切片器：分层、外壁、填充、G 代码",
-            "pt": "o fatiador mínimo: camadas, perímetros, preenchimento, G-code"
+            "en": "the slicer: layers, perimeters, infill, bridges, supports, G-code",
+            "es": "el laminador: capas, perímetros, relleno, puentes, soportes, G-code",
+            "de": "der Slicer: Schichten, Perimeter, Füllung, Brücken, Stützen, G-Code",
+            "fr": "le trancheur : couches, périmètres, remplissage, ponts, supports, G-code",
+            "it": "lo slicer: strati, perimetri, riempimento, ponti, supporti, G-code",
+            "ja": "スライサー：層、外周、インフィル、ブリッジ、サポート、G コード",
+            "zh": "切片器：层、外壁、填充、桥接、支撑、G 代码",
+            "pt": "o fatiador: camadas, perímetros, preenchimento, pontes, suportes, G-code"
+          }
+        },
+        {
+          "name": "p3dp-viewer/",
+          "desc": {
+            "en": "the model of the 3D viewer: camera, picking, layers",
+            "es": "el modelo del visor 3D: cámara, selección, capas",
+            "de": "das Modell des 3D-Betrachters: Kamera, Auswahl, Schichten",
+            "fr": "le modèle du visualiseur 3D : caméra, sélection, couches",
+            "it": "il modello del visualizzatore 3D: camera, selezione, strati",
+            "ja": "3D ビューアーのモデル：カメラ、選択、層",
+            "zh": "3D 查看器的模型：相机、选择、层",
+            "pt": "o modelo do visualizador 3D: câmara, seleção, camadas"
           }
         }
       ]
@@ -153,14 +166,14 @@
         {
           "name": "cli.rs",
           "desc": {
-            "en": "the commands: printers, info, check-profile, convert, slice, project, version",
-            "es": "las órdenes: printers, info, check-profile, convert, slice, project, version",
-            "de": "die Befehle: printers, info, check-profile, convert, slice, project, version",
-            "fr": "les commandes : printers, info, check-profile, convert, slice, project, version",
-            "it": "i comandi: printers, info, check-profile, convert, slice, project, version",
-            "ja": "コマンド：printers、info、check-profile、convert、slice、project、version",
-            "zh": "命令：printers、info、check-profile、convert、slice、project、version",
-            "pt": "os comandos: printers, info, check-profile, convert, slice, project, version"
+            "en": "the commands: printers, info, check-profile, convert, filaments, slice, project, version",
+            "es": "las órdenes: printers, info, check-profile, convert, filaments, slice, project, version",
+            "de": "die Befehle: printers, info, check-profile, convert, filaments, slice, project, version",
+            "fr": "les commandes : printers, info, check-profile, convert, filaments, slice, project, version",
+            "it": "i comandi: printers, info, check-profile, convert, filaments, slice, project, version",
+            "ja": "コマンド：printers、info、check-profile、convert、filaments、slice、project、version",
+            "zh": "命令：printers、info、check-profile、convert、filaments、slice、project、version",
+            "pt": "os comandos: printers, info, check-profile, convert, filaments, slice, project, version"
           }
         },
         {
