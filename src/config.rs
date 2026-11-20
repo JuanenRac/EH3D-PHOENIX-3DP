@@ -51,8 +51,13 @@ pub struct AppConfig {
     pub arrange_on_add: bool,
     /// Show the short hints that explain each panel of the window.
     pub ui_hints: bool,
+    /// How opaque the walls of the preview are when the person looks inside, from 0.05 (almost gone) to 1 (solid).
+    pub peek_wall_alpha: f32,
     /// The temperature limits a person set for a printer of the catalog; they replace the figures of the catalog and make the limits the person's.
     pub limit_overrides: Vec<LimitOverride>,
+    /// The lines of the frame of the window (`dock.*`): the arrangement of the panels, the workspaces, the shortcuts of the frame and the recent files. The program keeps them as they are and the
+    /// frame reads and writes them.
+    pub dock_lines: Vec<(String, String)>,
 }
 
 /// The limits of one printer set by the person.
@@ -102,6 +107,15 @@ impl LimitOverride {
     }
 }
 
+/// How opaque the walls of the preview are when the person looks inside, by default.
+pub const PEEK_WALL_ALPHA_DEFAULT: f32 = 0.22;
+
+/// The prefix of the keys the frame of the window keeps in the file.
+pub const DOCK_KEY_PREFIX: &str = "dock.";
+
+/// The longest value of a line of the frame (a layout is a tree on one line; the frame itself refuses more than 64 KiB).
+pub const DOCK_VALUE_MAX: usize = 65_536;
+
 /// The prefix of the keys that hold the limits of a printer.
 pub const LIMITS_KEY_PREFIX: &str = "printer_limits_";
 
@@ -129,7 +143,9 @@ impl Default for AppConfig {
             arrange_gap_mm: 5.0,
             arrange_on_add: true,
             ui_hints: true,
+            peek_wall_alpha: PEEK_WALL_ALPHA_DEFAULT,
             limit_overrides: Vec::new(),
+            dock_lines: Vec::new(),
         }
     }
 }
@@ -255,6 +271,26 @@ impl AppConfig {
                     c.limit_overrides.retain(|x| x.printer_id != id);
                     c.limit_overrides.push(o);
                 }
+                "peek_wall_alpha" => {
+                    c.peek_wall_alpha = e
+                        .value
+                        .parse::<f32>()
+                        .ok()
+                        .filter(|v| v.is_finite() && (0.05..=1.0).contains(v))
+                        .ok_or_else(|| {
+                            at(format!(
+                                "peek_wall_alpha: {:?} is not a number from 0.05 to 1",
+                                e.value
+                            ))
+                        })?;
+                }
+                other if other.starts_with(DOCK_KEY_PREFIX) => {
+                    if e.value.len() > DOCK_VALUE_MAX {
+                        return Err(at(format!("{other}: more than {DOCK_VALUE_MAX} bytes")));
+                    }
+                    c.dock_lines.retain(|(k, _)| k != other);
+                    c.dock_lines.push((other.to_string(), e.value.clone()));
+                }
                 other if other.starts_with("key_") => {
                     let name = &other[4..];
                     if Action::from_name(name).is_none() {
@@ -318,12 +354,13 @@ impl AppConfig {
             self.limit_gcode_thumbnails
         ));
         s.push_str(&format!(
-            "theme = {}\ngrid_mm = {}\narrange_gap_mm = {}\narrange_on_add = {}\nui_hints = {}\n",
+            "theme = {}\ngrid_mm = {}\narrange_gap_mm = {}\narrange_on_add = {}\nui_hints = {}\npeek_wall_alpha = {}\n",
             self.theme.name(),
             self.grid_mm,
             self.arrange_gap_mm,
             if self.arrange_on_add { "on" } else { "off" },
             if self.ui_hints { "on" } else { "off" },
+            self.peek_wall_alpha,
         ));
         for o in &self.limit_overrides {
             s.push_str(&format!(
@@ -332,9 +369,29 @@ impl AppConfig {
                 o.value_text()
             ));
         }
+        for (k, v) in &self.dock_lines {
+            s.push_str(&format!("{k} = {v}\n"));
+        }
         s.push_str(&self.limits.to_text());
         s.push_str(&self.server.to_text(reveal));
         s
+    }
+
+    /// The lines of the frame as the text of a settings file (what the frame reads at start).
+    pub fn dock_text(&self) -> String {
+        self.dock_lines
+            .iter()
+            .map(|(k, v)| format!("{k} = {v}\n"))
+            .collect()
+    }
+
+    /// Takes the lines the frame wrote (only the ones of the frame are kept).
+    pub fn set_dock(&mut self, pairs: &[(String, String)]) {
+        self.dock_lines = pairs
+            .iter()
+            .filter(|(k, _)| k.starts_with(DOCK_KEY_PREFIX))
+            .cloned()
+            .collect();
     }
 }
 
@@ -558,6 +615,60 @@ mod tests {
                 ),
                 Err(e) => assert!(e.contains("line 1") || e.contains("key"), "{text:?} -> {e}"),
             }
+        }
+    }
+
+    #[test]
+    fn the_lines_of_the_frame_of_the_window_are_kept_and_written_back_as_they_are() {
+        let text = "theme = light\ndock.version = 1\ndock.current = 2\ndock.ws.1.tree = H220(T0(a,b),T0(c))\ndock.ws.1.tree = H300(T0(a),T0(c))\n";
+        let c = AppConfig::from_text(text).unwrap();
+        // the last line of a key wins, the order of the others is kept
+        assert_eq!(
+            c.dock_lines,
+            vec![
+                ("dock.version".to_string(), "1".to_string()),
+                ("dock.current".to_string(), "2".to_string()),
+                (
+                    "dock.ws.1.tree".to_string(),
+                    "H300(T0(a),T0(c))".to_string()
+                ),
+            ]
+        );
+        assert_eq!(AppConfig::from_text(&c.to_text(true)).unwrap(), c);
+        assert!(c.dock_text().contains("dock.current = 2\n"));
+        // the frame hands its pairs back: only its own keys are taken
+        let mut d = AppConfig::default();
+        d.set_dock(&[
+            ("dock.current".to_string(), "0".to_string()),
+            ("theme".to_string(), "dark".to_string()),
+        ]);
+        assert_eq!(
+            d.dock_lines,
+            vec![("dock.current".to_string(), "0".to_string())]
+        );
+        assert!(d.to_text(false).contains("dock.current = 0\n"));
+        // a value too long is refused with its line, and a key of the frame never reaches the key of another part
+        let long = format!("dock.ws.1.tree = {}\n", "x".repeat(DOCK_VALUE_MAX + 1));
+        let e = AppConfig::from_text(&long).unwrap_err();
+        assert!(e.contains("line 1") && e.contains("dock.ws.1.tree"), "{e}");
+        assert!(AppConfig::from_text("docks = 1\n").is_err());
+    }
+
+    #[test]
+    fn the_opacity_of_the_walls_of_the_preview_is_read_checked_and_written_back() {
+        assert_eq!(
+            AppConfig::default().peek_wall_alpha,
+            PEEK_WALL_ALPHA_DEFAULT
+        );
+        let c = AppConfig::from_text("peek_wall_alpha = 0.5\n").unwrap();
+        assert_eq!(c.peek_wall_alpha, 0.5);
+        assert_eq!(AppConfig::from_text(&c.to_text(true)).unwrap(), c);
+        for bad in ["0", "0.01", "1.5", "NaN", "inf", "dark", ""] {
+            let e = AppConfig::from_text(&format!("peek_wall_alpha = {bad}\n")).unwrap_err();
+            assert!(
+                e.contains("line 1") && e.contains("peek_wall_alpha"),
+                "{bad} -> {e}"
+            );
         }
     }
 }

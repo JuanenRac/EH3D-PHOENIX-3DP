@@ -14,12 +14,17 @@ use crate::keys::{Action, Chord, Scheme, SchemeId};
 use crate::limits_ui::{self, LimitsDraft};
 use crate::lists::{FilamentFilter, PrinterFilter};
 use crate::look::{self, Palette, Theme};
+use crate::panels::{self, id as pid, Cmd, LayoutWatch, MenuFacts};
+use crate::preflight::{self, Severity};
 use crate::preview::{self, PreviewState};
 use crate::server_ui::{self, ServerUi};
 use crate::shade::{self, LineKind, ShadedTriangle, StdView};
 use crate::shot::{self, ShotRequest, WindowArgs};
 use crate::studio::{Estimates, SliceEvent, Studio};
 use eframe::egui::{self, Color32, FontData, FontDefinitions, FontFamily, Pos2, Stroke};
+use eh3d_dock::core::AboutInfo;
+use eh3d_dock::gui::Dock;
+use eh3d_dock::menu::{Chosen, DockAction, MenuBar, StdAction};
 use eh3d_view::server_gui;
 use p3dp_core::Mesh;
 use p3dp_link::PrinterState;
@@ -27,7 +32,9 @@ use p3dp_profiles::filament::{FilamentCatalog, FilamentProfile, Material, Nozzle
 use p3dp_profiles::Technology;
 use p3dp_slicer::{Adhesion, InfillPattern, Kind, Seam, Supports};
 use p3dp_viewer::Viewport;
+use std::cell::RefCell;
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
 fn col(c: look::Rgb) -> Color32 {
@@ -185,6 +192,9 @@ fn paint_triangles(
     }
 }
 
+/// The width of the slider of the layers beside the preview, in points.
+const SLIDER_WIDTH: f32 = 86.0;
+
 /// The picture being taken.
 struct ShotState {
     request: ShotRequest,
@@ -201,6 +211,8 @@ struct App {
     filament_filter: FilamentFilter,
     filament_id: Option<String>,
     nozzle_mm: f64,
+    /// The nozzle on the printer is a hardened one, so a filament filled with fibre can be used.
+    nozzle_hardened: bool,
     preview: PreviewState,
     studio: Studio,
     device: DevicePanel,
@@ -209,11 +221,20 @@ struct App {
     device_read_at: Option<std::time::Instant>,
     server: ServerUi,
     scheme: Scheme,
-    show_shortcuts: bool,
     show_help: bool,
     path_text: String,
     save_text: String,
     project_text: String,
+    /// The file the G-code is written to.
+    export_text: String,
+    /// The project file that was saved last, so saving again replaces it.
+    saved_path: Option<String>,
+    /// The G-code file that was written last, so exporting again replaces it.
+    exported_path: Option<String>,
+    /// What the menus asked of the frame (show a panel, switch workspace), done after the frame is drawn.
+    pending_dock: Vec<DockAction>,
+    /// Files that were opened or saved, for the list of recent files of the frame.
+    recent_added: Vec<String>,
     /// Keep the proportions when one size of a part is typed.
     keep_ratio: bool,
     /// The limits being typed for the printer with this id.
@@ -260,11 +281,13 @@ impl App {
             config_path: args.config.clone(),
             filaments: FilamentCatalog::builtin().unwrap_or(FilamentCatalog {
                 profiles: Vec::new(),
+                aliases: Vec::new(),
             }),
             printer_filter: PrinterFilter::default(),
             filament_filter: FilamentFilter::default(),
             filament_id: None,
             nozzle_mm: 0.4,
+            nozzle_hardened: false,
             preview: PreviewState::looking_inside(args.peek),
             studio,
             device: DevicePanel::with_policy(state.config.queue_policy()),
@@ -272,11 +295,15 @@ impl App {
             device_read_at: None,
             server,
             scheme,
-            show_shortcuts: false,
             show_help: false,
             path_text: String::new(),
             save_text: "project.3mf".to_string(),
             project_text: String::new(),
+            export_text: "print.gcode".to_string(),
+            saved_path: None,
+            exported_path: None,
+            pending_dock: Vec::new(),
+            recent_added: Vec::new(),
             keep_ratio: true,
             limits: None,
             limits_note: Vec::new(),
@@ -318,8 +345,167 @@ impl App {
     fn open_model(&mut self) {
         let path = self.path_text.trim().to_string();
         match self.state.read_model_file(&path) {
-            Ok((name, mesh)) => self.add_part(&name, mesh),
+            Ok((name, mesh)) => {
+                self.add_part(&name, mesh);
+                self.recent_added.push(path);
+            }
             Err(e) => self.state.status = Status::Problem(e),
+        }
+    }
+
+    /// Opens the file a person picked in the list of recent files.
+    fn open_path(&mut self, path: &str) {
+        self.path_text = path.to_string();
+        self.state.tab = Tab::Prepare;
+        self.open_model();
+    }
+
+    /// Open from the menu: a path that is typed is opened; with none, the panel where it is typed is shown and the person is told.
+    fn ask_open(&mut self) {
+        self.state.tab = Tab::Prepare;
+        if self.path_text.trim().is_empty() {
+            self.pending_dock
+                .push(DockAction::ShowPanel(pid::OBJECTS.to_string()));
+            self.note = Some(Msg::OpenTypePath.tr(self.lang()).to_string());
+        } else {
+            self.open_model();
+        }
+    }
+
+    /// Save from the menu: the project goes to the file that is typed (and again to the same file, replacing it); `ask` shows the panel where the name is typed first.
+    fn ask_save(&mut self, ask: bool) {
+        self.state.tab = Tab::Project;
+        if ask || self.save_text.trim().is_empty() {
+            self.pending_dock
+                .push(DockAction::ShowPanel(pid::PROJECT.to_string()));
+            self.note = Some(Msg::SaveTypePath.tr(self.lang()).to_string());
+            return;
+        }
+        let path = self.save_text.trim().to_string();
+        let replace = self.saved_path.as_deref() == Some(path.as_str());
+        if self.state.save_project(&path, replace) {
+            self.saved_path = Some(path.clone());
+            self.recent_added.push(path);
+        }
+    }
+
+    /// Writes the G-code of the plan to the file that is typed; an existing file is not replaced unless it is the one this program wrote last.
+    fn export_gcode(&mut self) {
+        let lang = self.lang();
+        let path = self.export_text.trim().to_string();
+        let Some(plan) = &self.preview.plan else {
+            self.state.status = Status::Problem(Msg::NothingToExport.tr(lang).to_string());
+            return;
+        };
+        if path.is_empty() {
+            self.pending_dock
+                .push(DockAction::ShowPanel(pid::PROJECT.to_string()));
+            self.note = Some(Msg::ExportPathHint.tr(lang).to_string());
+            return;
+        }
+        if std::path::Path::new(&path).exists()
+            && self.exported_path.as_deref() != Some(path.as_str())
+        {
+            self.state.status = Status::Problem(format!("{path}: the file exists"));
+            return;
+        }
+        match plan
+            .gcode(env!("CARGO_PKG_VERSION"))
+            .map_err(|e| e.to_string())
+            .and_then(|g| std::fs::write(&path, g).map_err(|e| e.to_string()))
+        {
+            Ok(()) => {
+                self.state.status = Status::Exported(path.clone());
+                self.exported_path = Some(path);
+            }
+            Err(e) => self.state.status = Status::Problem(e),
+        }
+    }
+
+    /// What the menus need to know to turn entries on and off.
+    fn menu_facts(&self) -> MenuFacts {
+        MenuFacts {
+            has_parts: !self.studio.plate.is_empty(),
+            has_selection: self.studio.plate.selected_object().is_some(),
+            several_parts: self.studio.plate.len() > 1,
+            slicing: self.studio.is_slicing(),
+            has_plan: self.preview.plan.is_some(),
+            has_server: self.server.has_server(),
+        }
+    }
+
+    /// Does what an entry of the menus asks.
+    fn run_cmd(&mut self, cmd: Cmd, ctx: &egui::Context) {
+        let volume = self.volume();
+        match cmd {
+            Cmd::Std(a) => match a {
+                StdAction::New => {
+                    self.studio.clear_all();
+                    self.preview.forget();
+                    self.saved_path = None;
+                    self.studio.sync(&mut self.state);
+                    self.state.status = Status::None;
+                    self.note = None;
+                }
+                StdAction::Open => self.ask_open(),
+                StdAction::Save => self.ask_save(false),
+                StdAction::SaveAs => self.ask_save(true),
+                StdAction::Export => self.export_gcode(),
+                StdAction::Quit => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
+                StdAction::Preferences => self.state.tab = Tab::Project,
+                StdAction::OnlineHelp => self.show_help = true,
+                StdAction::CheckUpdates => {
+                    self.note = Some(Msg::UpdatesViaUpdater.tr(self.lang()).to_string());
+                }
+                StdAction::Undo
+                | StdAction::Redo
+                | StdAction::Cut
+                | StdAction::Copy
+                | StdAction::Paste => {}
+            },
+            Cmd::Slice => self.slice(),
+            Cmd::SendToQueue => self.send_to_queue(),
+            Cmd::Refresh => self.refresh_device(),
+            Cmd::ResetView => self.run_action(Action::ResetView),
+            Cmd::FitView => self.run_action(Action::FitView),
+            Cmd::EmergencyStop => self.emergency_stop(),
+            Cmd::LoadDemo => self.load_demo(),
+            Cmd::Arrange => self.studio.arrange(volume, &self.state.config),
+            Cmd::AutoOrient => {
+                self.studio.auto_orient_selected();
+            }
+            Cmd::Duplicate => {
+                self.studio.duplicate_selected(volume, &self.state.config);
+            }
+            Cmd::Remove => {
+                self.studio.remove_selected();
+            }
+            Cmd::LayerUp => self.preview.step_layer(1),
+            Cmd::LayerDown => self.preview.step_layer(-1),
+            Cmd::ExportGcode => self.export_gcode(),
+        }
+    }
+
+    /// Keeps the arrangement of the panels in the settings file, when the person gave one (a picture keeps nothing).
+    fn save_layout(&mut self, pairs: &[(String, String)]) {
+        self.state.config.set_dock(pairs);
+        if self.shot.is_some() {
+            return;
+        }
+        let Some(path) = self.config_path.clone() else {
+            return;
+        };
+        let text = std::fs::read_to_string(&path).unwrap_or_default();
+        let merged = eh3d_dock::config::replace_block(&text, pairs);
+        if let Err(e) = std::fs::write(&path, merged) {
+            self.state.status = Status::Problem(format!("{}: {e}", path.display()));
+        }
+    }
+
+    /// The machines and the queue are read the first time a panel of the machine is on show.
+    fn ensure_device_read(&mut self) {
+        if self.server.has_server() && !self.device_read {
+            self.refresh_device();
         }
     }
 
@@ -331,7 +517,7 @@ impl App {
     fn chosen_filament(&self) -> Option<(FilamentProfile, Nozzle)> {
         let nozzle = Nozzle {
             diameter_mm: self.nozzle_mm,
-            hardened: false,
+            hardened: self.nozzle_hardened,
         };
         self.filament_id
             .as_deref()
@@ -445,23 +631,12 @@ impl App {
 
     fn run_action(&mut self, action: Action) {
         match action {
-            Action::Open => {
-                self.state.tab = Tab::Prepare;
-                self.open_model();
-            }
-            Action::Save => {
-                self.state.tab = Tab::Project;
-                let path = self.save_text.trim().to_string();
-                self.state.save_project(&path, false);
-            }
-            Action::Slice => self.slice(),
             Action::NextTab => self.state.tab = self.state.tab.next(),
             Action::PreviousTab => self.state.tab = self.state.tab.previous(),
             Action::GoPrepare => self.state.tab = Tab::Prepare,
             Action::GoPreview => self.state.tab = Tab::Preview,
             Action::GoDevice => self.state.tab = Tab::Device,
             Action::GoProject => self.state.tab = Tab::Project,
-            Action::Refresh => self.refresh_device(),
             Action::ResetView => {
                 self.preview.reset_view();
                 self.studio.fit_next = true;
@@ -471,10 +646,8 @@ impl App {
                 self.studio.fit_next = true;
                 self.studio.fit_bed = true;
             }
-            Action::LayerUp => self.preview.step_layer(1),
-            Action::LayerDown => self.preview.step_layer(-1),
-            Action::EmergencyStop => self.emergency_stop(),
-            Action::ShowShortcuts => self.show_shortcuts = !self.show_shortcuts,
+            // the rest are entries of the menus, which give the keys their meaning (see `panels::menu_entry_of`)
+            _ => {}
         }
     }
 
@@ -483,6 +656,7 @@ impl App {
             .scheme
             .rows()
             .into_iter()
+            .filter(|(a, _)| panels::menu_entry_of(*a).is_none())
             .filter_map(|(a, _)| self.scheme.chord(a).map(|c| (a, c.clone())))
             .filter(|(_, c)| pressed(ctx, c))
             .map(|(a, _)| a)
@@ -882,13 +1056,18 @@ impl App {
 
     fn filament_section(&mut self, ui: &mut egui::Ui) {
         let lang = self.lang();
+        ui.add(
+            egui::TextEdit::singleline(&mut self.filament_filter.search)
+                .hint_text(Msg::FilamentSearchHint.tr(lang))
+                .desired_width(panels::path_field_width(ui.available_width(), 0.0)),
+        );
         ui.horizontal(|ui| {
             ui.label(Msg::FilamentMaterial.tr(lang));
             let shown = self
                 .filament_filter
                 .material
                 .map_or(Msg::FilterAll.tr(lang).to_string(), |m| {
-                    m.name().to_uppercase()
+                    m.as_str().to_uppercase()
                 });
             egui::ComboBox::from_id_salt("material")
                 .selected_text(shown)
@@ -902,15 +1081,53 @@ impl App {
                         ui.selectable_value(
                             &mut self.filament_filter.material,
                             Some(m),
-                            m.name().to_uppercase(),
+                            m.as_str().to_uppercase(),
                         );
                     }
                 });
         });
+        ui.horizontal(|ui| {
+            ui.label(Msg::FilamentMaker.tr(lang));
+            let makers: Vec<String> = self
+                .filaments
+                .manufacturers()
+                .iter()
+                .map(|m| (*m).to_string())
+                .collect();
+            let shown = self
+                .filament_filter
+                .manufacturer
+                .clone()
+                .unwrap_or_else(|| Msg::FilterAll.tr(lang).to_string());
+            egui::ComboBox::from_id_salt("maker")
+                .selected_text(shown)
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(
+                        &mut self.filament_filter.manufacturer,
+                        None,
+                        Msg::FilterAll.tr(lang),
+                    );
+                    for m in makers {
+                        ui.selectable_value(
+                            &mut self.filament_filter.manufacturer,
+                            Some(m.clone()),
+                            m,
+                        );
+                    }
+                });
+            if self.filament_filter.is_active() && ui.small_button("x").clicked() {
+                self.filament_filter = FilamentFilter::default();
+            }
+        });
+        ui.checkbox(&mut self.nozzle_hardened, Msg::NozzleHardened.tr(lang));
         let nozzle = Nozzle {
             diameter_mm: self.nozzle_mm,
-            hardened: false,
+            hardened: self.nozzle_hardened,
         };
+        // the filter follows the nozzle when it is changed
+        if self.filament_filter.compatible_with.is_some() {
+            self.filament_filter.compatible_with = Some(nozzle);
+        }
         let mut only = self.filament_filter.compatible_with.is_some();
         if ui
             .checkbox(&mut only, Msg::FilamentCompatible.tr(lang))
@@ -940,11 +1157,21 @@ impl App {
             .iter()
             .map(|r| (r.profile.id.clone(), r.profile.name.clone()))
             .collect();
+        ui.label(
+            egui::RichText::new(fill(
+                Msg::FilamentsShown.tr(lang),
+                &[&rows.len().to_string(), &self.filaments.len().to_string()],
+            ))
+            .small()
+            .color(col(self.look.dim)),
+        );
+        // hundreds of filaments: only the rows in view are made
+        let row_height = ui.text_style_height(&egui::TextStyle::Body) + ui.spacing().item_spacing.y;
         egui::ScrollArea::vertical()
             .id_salt("filaments")
-            .max_height(140.0)
-            .show(ui, |ui| {
-                for (id, name) in &rows {
+            .max_height(row_height * 9.0)
+            .show_rows(ui, row_height, rows.len(), |ui, range| {
+                for (id, name) in &rows[range] {
                     let on = self.filament_id.as_deref() == Some(id.as_str());
                     if ui.selectable_label(on, name).clicked() {
                         self.filament_id = if on { None } else { Some(id.clone()) };
@@ -1060,46 +1287,207 @@ impl App {
         }
     }
 
-    fn prepare_left(&mut self, ui: &mut egui::Ui) {
+    // ---- the panels of the window: each one is drawn by the frame in the place the person put it
+
+    /// A panel that scrolls when it is short of room.
+    fn scrolled(
+        &mut self,
+        ui: &mut egui::Ui,
+        id: &str,
+        body: impl FnOnce(&mut App, &mut egui::Ui),
+    ) {
+        egui::ScrollArea::vertical()
+            .id_salt(id)
+            .auto_shrink([false, false])
+            .show(ui, |ui| body(self, ui));
+    }
+
+    /// A panel on the ground of the 3D views with a margin: the pages of the machine and of the project.
+    fn page(&mut self, ui: &mut egui::Ui, body: impl FnOnce(&mut App, &mut egui::Ui)) {
+        let ground = egui::Frame::NONE
+            .fill(col(self.look.panel))
+            .inner_margin(egui::Margin::same(12));
+        ground.show(ui, |ui| {
+            // the page takes the whole panel, so its ground has no gap under it
+            ui.set_min_size(ui.available_size());
+            body(self, ui);
+        });
+    }
+
+    fn panel_view3d(&mut self, ui: &mut egui::Ui) {
+        self.scene_view(ui);
+    }
+
+    fn panel_objects(&mut self, ui: &mut egui::Ui) {
+        self.scrolled(ui, "objects_scroll", |a, ui| a.objects_panel(ui));
+    }
+
+    fn panel_print_settings(&mut self, ui: &mut egui::Ui) {
+        self.scrolled(ui, "settings_scroll", |a, ui| {
+            let lang = a.lang();
+            a.hint(ui, "hint_prepare", Msg::HintPrepare.tr(lang));
+            a.slice_options(ui);
+        });
+    }
+
+    fn panel_materials(&mut self, ui: &mut egui::Ui) {
+        self.scrolled(ui, "materials_scroll", |a, ui| a.filament_section(ui));
+    }
+
+    /// The layers of the plan, with the slider of the layers on the right.
+    fn panel_preview(&mut self, ui: &mut egui::Ui) {
+        let r = ui.available_rect_before_wrap();
+        let (centre, slider) =
+            panels::split_right([r.min.x, r.min.y, r.max.x, r.max.y], SLIDER_WIDTH);
+        let rect =
+            |a: [f32; 4]| egui::Rect::from_min_max(Pos2::new(a[0], a[1]), Pos2::new(a[2], a[3]));
+        let (centre, slider) = (rect(centre), rect(slider));
+        ui.scope_builder(egui::UiBuilder::new().max_rect(slider), |ui| {
+            self.layer_slider(ui);
+        });
+        ui.scope_builder(egui::UiBuilder::new().max_rect(centre), |ui| {
+            self.preview_centre(ui);
+        });
+    }
+
+    fn panel_gcode(&mut self, ui: &mut egui::Ui) {
+        self.scrolled(ui, "gcode_scroll", |a, ui| a.preview_left(ui));
+    }
+
+    fn panel_printer(&mut self, ui: &mut egui::Ui) {
+        self.scrolled(ui, "printer_scroll", |a, ui| a.printer_section(ui));
+    }
+
+    fn panel_device(&mut self, ui: &mut egui::Ui) {
+        self.scrolled(ui, "device_scroll", |a, ui| a.device_left(ui));
+    }
+
+    fn panel_status(&mut self, ui: &mut egui::Ui) {
+        self.ensure_device_read();
+        self.page(ui, |a, ui| a.device_centre(ui));
+    }
+
+    fn panel_queue(&mut self, ui: &mut egui::Ui) {
+        self.ensure_device_read();
+        self.scrolled(ui, "queue_scroll", |a, ui| a.queue_section(ui));
+    }
+
+    fn panel_project(&mut self, ui: &mut egui::Ui) {
+        self.page(ui, |a, ui| {
+            egui::ScrollArea::vertical()
+                .id_salt("project")
+                .auto_shrink([false, false])
+                .show(ui, |ui| a.project_tab(ui));
+        });
+    }
+
+    /// What the program has to say: how the last thing went, the warnings of the bed and of the slice, and the advice of the filament.
+    fn panel_console(&mut self, ui: &mut egui::Ui) {
+        self.scrolled(ui, "console_scroll", |a, ui| a.console_lines(ui));
+    }
+
+    /// What to look at before printing, for the filament that is chosen; `None` when none is chosen or it is not in the database of the suite.
+    fn preflight_findings(&self) -> Option<Vec<preflight::Finding>> {
+        let (profile, nozzle) = self.chosen_filament()?;
+        let record = preflight::record(&profile.id)?;
+        let (config, temps_set) = match &self.preview.plan {
+            Some(plan) => (plan.config.clone(), true),
+            None => (self.preview.config.clone(), false),
+        };
+        let chamber = self
+            .state
+            .printer()
+            .and_then(|p| p.limits)
+            .is_some_and(|l| l.chamber_c.is_some());
+        Some(preflight::check(
+            record,
+            &config,
+            temps_set,
+            nozzle.hardened,
+            chamber,
+        ))
+    }
+
+    fn console_lines(&mut self, ui: &mut egui::Ui) {
         let lang = self.lang();
-        self.hint(ui, "hint_prepare", Msg::HintPrepare.tr(lang));
-        egui::CollapsingHeader::new(egui::RichText::new(Msg::Printer.tr(lang)).strong())
-            .id_salt("sec_printer")
-            .default_open(true)
-            .show(ui, |ui| {
-                self.printer_list(ui);
-                ui.separator();
-                for line in self.state.printer_report() {
-                    ui.label(egui::RichText::new(line).color(col(self.look.dim)));
-                }
-                let v = self.volume();
-                ui.label(fill(
-                    Msg::BedSize.tr(lang),
-                    &[
-                        &format!("{:.0}", v[0]),
-                        &format!("{:.0}", v[1]),
-                        &format!("{:.0}", v[2]),
-                    ],
-                ));
-                egui::CollapsingHeader::new(Msg::PanelLimits.tr(lang))
-                    .id_salt("sec_limits")
-                    .default_open(false)
-                    .show(ui, |ui| self.limits_editor(ui));
-            });
-        egui::CollapsingHeader::new(egui::RichText::new(Msg::PanelFilament.tr(lang)).strong())
-            .id_salt("sec_filament")
-            .default_open(true)
-            .show(ui, |ui| self.filament_section(ui));
-        egui::CollapsingHeader::new(egui::RichText::new(Msg::PanelProcess.tr(lang)).strong())
-            .id_salt("sec_process")
-            .default_open(true)
-            .show(ui, |ui| self.slice_options(ui));
+        let volume = self.volume();
+        let text = self.state.status.text(lang);
+        if !text.is_empty() {
+            let color = if self.state.status.is_problem() {
+                self.look.danger
+            } else {
+                self.look.good
+            };
+            ui.label(egui::RichText::new(text).color(col(color)));
+        }
+        if let Some(n) = &self.note {
+            ui.label(egui::RichText::new(n).color(col(self.look.good)));
+        }
+        if let Some(e) = &self.preview.error {
+            ui.label(
+                egui::RichText::new(fill(Msg::Problem.tr(lang), &[e])).color(col(self.look.danger)),
+            );
+        }
+        for w in self.studio.warnings(volume) {
+            ui.label(egui::RichText::new(w.text(lang)).color(col(self.look.danger)));
+        }
         ui.separator();
+        ui.label(egui::RichText::new(Msg::PfTitle.tr(lang)).strong());
+        match self.preflight_findings() {
+            Some(found) if found.is_empty() => {
+                ui.label(egui::RichText::new(Msg::PfClear.tr(lang)).color(col(self.look.good)));
+            }
+            Some(found) => {
+                for f in found {
+                    let color = match f.severity() {
+                        Severity::Warning => self.look.danger,
+                        Severity::Advice => self.look.accent,
+                    };
+                    ui.label(egui::RichText::new(f.text(lang)).color(col(color)));
+                }
+            }
+            None => {
+                // a filament that is not in the database has the advice of the check against the printer, in English
+                if self.filament_id.is_none() {
+                    ui.label(
+                        egui::RichText::new(Msg::PfNoFilament.tr(lang)).color(col(self.look.dim)),
+                    );
+                }
+                for advice in &self.preview.advice {
+                    ui.label(egui::RichText::new(advice).color(col(self.look.accent)));
+                }
+            }
+        }
+        ui.separator();
+        ui.label(egui::RichText::new(Msg::SimulatorOnly.tr(lang)).color(col(self.look.dim)));
         ui.label(
             egui::RichText::new(Msg::Safety.tr(lang))
-                .color(col(self.look.dim))
-                .small(),
+                .small()
+                .color(col(self.look.dim)),
         );
+    }
+
+    /// The printer: the list, what is known of it and the temperature limits.
+    fn printer_section(&mut self, ui: &mut egui::Ui) {
+        let lang = self.lang();
+        self.printer_list(ui);
+        ui.separator();
+        for line in self.state.printer_report() {
+            ui.label(egui::RichText::new(line).color(col(self.look.dim)));
+        }
+        let v = self.volume();
+        ui.label(fill(
+            Msg::BedSize.tr(lang),
+            &[
+                &format!("{:.0}", v[0]),
+                &format!("{:.0}", v[1]),
+                &format!("{:.0}", v[2]),
+            ],
+        ));
+        egui::CollapsingHeader::new(Msg::PanelLimits.tr(lang))
+            .id_salt("sec_limits")
+            .default_open(false)
+            .show(ui, |ui| self.limits_editor(ui));
     }
 
     // ---- the Prepare tab: the right panel
@@ -1121,7 +1509,7 @@ impl App {
             ui.add(
                 egui::TextEdit::singleline(&mut self.path_text)
                     .hint_text(Msg::OpenModelHint.tr(lang))
-                    .desired_width(150.0),
+                    .desired_width(panels::path_field_width(ui.available_width(), 70.0)),
             );
             if ui.button(Msg::Open.tr(lang)).clicked() {
                 self.open_model();
@@ -1385,25 +1773,6 @@ impl App {
         );
     }
 
-    fn prepare_panels(&mut self, ui: &mut egui::Ui) {
-        egui::Panel::left("prepare_left")
-            .default_size(310.0)
-            .resizable(true)
-            .show(ui, |ui| {
-                egui::ScrollArea::vertical()
-                    .id_salt("prepare_left_scroll")
-                    .show(ui, |ui| self.prepare_left(ui));
-            });
-        egui::Panel::right("prepare_right")
-            .default_size(290.0)
-            .resizable(true)
-            .show(ui, |ui| {
-                egui::ScrollArea::vertical()
-                    .id_salt("prepare_right_scroll")
-                    .show(ui, |ui| self.objects_panel(ui));
-            });
-    }
-
     // ---- the Preview tab
 
     /// The vertical slider of the layers: the top of the track is the last layer.
@@ -1557,20 +1926,6 @@ impl App {
             });
     }
 
-    fn preview_panels(&mut self, ui: &mut egui::Ui) {
-        egui::Panel::left("preview_left")
-            .default_size(260.0)
-            .resizable(true)
-            .show(ui, |ui| {
-                egui::ScrollArea::vertical()
-                    .id_salt("preview_left_scroll")
-                    .show(ui, |ui| self.preview_left(ui));
-            });
-        egui::Panel::right("preview_right")
-            .exact_size(86.0)
-            .show(ui, |ui| self.layer_slider(ui));
-    }
-
     fn preview_centre(&mut self, ui: &mut egui::Ui) {
         let lang = self.lang();
         let pal = self.look;
@@ -1623,6 +1978,7 @@ impl App {
             return;
         }
         self.preview.grid_mm = self.state.config.grid_mm;
+        self.preview.peek_wall_alpha = self.state.config.peek_wall_alpha;
         let frame = self.preview.frame(w, h);
         let at = |p: [f32; 2]| Pos2::new(rect.min.x + p[0], rect.min.y + p[1]);
         if let Some(q) = frame.bed.quad {
@@ -1644,7 +2000,10 @@ impl App {
                         Pos2::new(rect.min.x + s.a[0], rect.min.y + s.a[1]),
                         Pos2::new(rect.min.x + s.b[0], rect.min.y + s.b[1]),
                     ],
-                    Stroke::new(1.0, col_f(s.colour)),
+                    Stroke::new(
+                        1.0,
+                        alpha(col_f(s.colour), (s.alpha.clamp(0.0, 1.0) * 255.0) as u8),
+                    ),
                 )
             })
             .collect();
@@ -1875,25 +2234,6 @@ impl App {
             });
     }
 
-    fn device_panels(&mut self, ui: &mut egui::Ui) {
-        egui::Panel::left("device_left")
-            .default_size(310.0)
-            .resizable(true)
-            .show(ui, |ui| {
-                egui::ScrollArea::vertical()
-                    .id_salt("device_left_scroll")
-                    .show(ui, |ui| self.device_left(ui));
-            });
-        egui::Panel::right("device_right")
-            .default_size(330.0)
-            .resizable(true)
-            .show(ui, |ui| {
-                egui::ScrollArea::vertical()
-                    .id_salt("device_right_scroll")
-                    .show(ui, |ui| self.queue_section(ui));
-            });
-    }
-
     fn queue_section(&mut self, ui: &mut egui::Ui) {
         let lang = self.lang();
         ui.label(egui::RichText::new(Msg::QueueTitle.tr(lang)).strong());
@@ -1968,33 +2308,51 @@ impl App {
 
     fn project_tab(&mut self, ui: &mut egui::Ui) {
         let lang = self.lang();
-        egui::Grid::new("project_files")
-            .num_columns(3)
-            .spacing([10.0, 6.0])
-            .show(ui, |ui| {
-                ui.label(Msg::SaveToLabel.tr(lang));
-                ui.add(
-                    egui::TextEdit::singleline(&mut self.save_text)
-                        .hint_text(Msg::SavePathHint.tr(lang))
-                        .desired_width(360.0),
-                );
-                if ui.button(Msg::Save.tr(lang)).clicked() {
-                    let path = self.save_text.trim().to_string();
-                    self.state.save_project(&path, false);
-                }
-                ui.end_row();
-                ui.label(Msg::OpenFromLabel.tr(lang));
-                ui.add(
-                    egui::TextEdit::singleline(&mut self.project_text)
-                        .hint_text(Msg::OpenPathHint.tr(lang))
-                        .desired_width(360.0),
-                );
-                if ui.button(Msg::Open.tr(lang)).clicked() {
-                    let path = self.project_text.trim().to_string();
-                    self.state.load_project_info(&path);
-                }
-                ui.end_row();
-            });
+        // each path has the width of the panel (less its button), so a long one is read whole
+        let reserved = 96.0;
+        ui.label(Msg::SaveToLabel.tr(lang));
+        ui.horizontal(|ui| {
+            ui.add(
+                egui::TextEdit::singleline(&mut self.save_text)
+                    .hint_text(Msg::SavePathHint.tr(lang))
+                    .desired_width(panels::path_field_width(ui.available_width(), reserved)),
+            );
+            if ui.button(Msg::Save.tr(lang)).clicked() {
+                self.ask_save(false);
+            }
+        });
+        ui.add_space(6.0);
+        ui.label(Msg::OpenFromLabel.tr(lang));
+        ui.horizontal(|ui| {
+            ui.add(
+                egui::TextEdit::singleline(&mut self.project_text)
+                    .hint_text(Msg::OpenPathHint.tr(lang))
+                    .desired_width(panels::path_field_width(ui.available_width(), reserved)),
+            );
+            if ui.button(Msg::Open.tr(lang)).clicked() {
+                let path = self.project_text.trim().to_string();
+                self.state.load_project_info(&path);
+            }
+        });
+        ui.add_space(6.0);
+        ui.label(Msg::ExportToLabel.tr(lang));
+        ui.horizontal(|ui| {
+            ui.add(
+                egui::TextEdit::singleline(&mut self.export_text)
+                    .hint_text(Msg::ExportPathHint.tr(lang))
+                    .desired_width(panels::path_field_width(
+                        ui.available_width(),
+                        reserved + 40.0,
+                    )),
+            );
+            let can = self.preview.plan.is_some();
+            if ui
+                .add_enabled(can, egui::Button::new(Msg::ExportGcode.tr(lang)))
+                .clicked()
+            {
+                self.export_gcode();
+            }
+        });
         for line in self.state.project_info_lines() {
             ui.label(line);
         }
@@ -2083,22 +2441,6 @@ impl App {
                         );
                     });
             });
-    }
-
-    fn shortcuts_window(&mut self, ctx: &egui::Context) {
-        if !self.show_shortcuts {
-            return;
-        }
-        let lang = self.lang();
-        let mut open = true;
-        egui::Window::new(Msg::ShortcutsTitle.tr(lang))
-            .open(&mut open)
-            .show(ctx, |ui| {
-                for line in self.scheme.rows_text(lang) {
-                    ui.label(line);
-                }
-            });
-        self.show_shortcuts = open;
     }
 
     /// The help: what each tab is for, and the shortcuts.
@@ -2204,51 +2546,169 @@ fn demo_server() -> ServerUi {
     }
 }
 
-impl eframe::App for App {
+/// The window: the frame of the suite with the panels of the program in it, the menu bar above and the bars of the slice and of the state below.
+struct Shell {
+    app: Rc<RefCell<App>>,
+    dock: Dock,
+    bar: MenuBar<Cmd>,
+    /// The scheme the menu bar was made with: the bar is made again when a key changes.
+    bar_scheme: Scheme,
+    watch: LayoutWatch,
+    /// How many frames were drawn, so the arrangement is looked at a few times a second and not at every frame.
+    ticks: u32,
+    /// The tab at the end of the last frame, to know whether the program or the person changed the workspace.
+    last_tab: Tab,
+}
+
+/// How a panel of the window is drawn: with the program and the room the frame gives it.
+type PanelDraw = fn(&mut App, &mut egui::Ui);
+
+/// How often the arrangement of the panels is compared with what was written, in frames.
+const LAYOUT_CHECK_EVERY: u32 = 20;
+
+impl Shell {
+    /// `force_tab`: the window opens in the workspace of the tab that was asked for (a picture), and not in the one of the settings file.
+    fn new(app: App, force_tab: bool) -> Shell {
+        let tab = app.state.tab;
+        let scheme = app.scheme.clone();
+        let dock_text = app.state.config.dock_text();
+        let lang = app.lang();
+        let app = Rc::new(RefCell::new(app));
+        let mut dock = Dock::new(panels::defs(), panels::workspaces());
+        let draw: [(&str, PanelDraw); 12] = [
+            (pid::VIEW3D, App::panel_view3d),
+            (pid::OBJECTS, App::panel_objects),
+            (pid::PRINT_SETTINGS, App::panel_print_settings),
+            (pid::MATERIALS, App::panel_materials),
+            (pid::PREVIEW, App::panel_preview),
+            (pid::GCODE, App::panel_gcode),
+            (pid::PRINTER, App::panel_printer),
+            (pid::CONSOLE, App::panel_console),
+            (pid::DEVICE, App::panel_device),
+            (pid::STATUS, App::panel_status),
+            (pid::QUEUE, App::panel_queue),
+            (pid::PROJECT, App::panel_project),
+        ];
+        for (name, f) in draw {
+            let a = app.clone();
+            dock.register(name, move |ui| f(&mut a.borrow_mut(), ui));
+        }
+        dock.load_config(&dock_text);
+        dock.set_language(server_ui::view_lang(lang));
+        let watch = LayoutWatch::new(&dock.core().config_pairs());
+        let bar = panels::menu_bar(&scheme);
+        Shell {
+            app,
+            dock,
+            bar,
+            bar_scheme: scheme,
+            watch,
+            ticks: 0,
+            // a different tab makes the first frame put the workspace of the tab asked for
+            last_tab: if force_tab { tab.next() } else { tab },
+        }
+    }
+
+    /// What the program says about itself in the window «About».
+    fn about(lang: Lang) -> AboutInfo {
+        AboutInfo {
+            app_name: "EH3D-PHOENIX-3DP".to_string(),
+            version: crate::VERSION.to_string(),
+            license: "GPL-3.0-or-later".to_string(),
+            extra: vec![Msg::SimulatorOnly.tr(lang).to_string()],
+        }
+    }
+
+    /// Makes the workspace and the tab agree: when the program changed the tab (a key, a button, the queue) the workspace follows, and when the person chose a workspace the tab follows.
+    fn sync_tab(&mut self) {
+        let workspace = self.dock.core().workspaces().current_name().to_string();
+        let tab = self.app.borrow().state.tab;
+        match panels::sync(tab, self.last_tab, &workspace) {
+            panels::Sync::SwitchWorkspace(name) => {
+                let _ = self
+                    .dock
+                    .apply(DockAction::SwitchWorkspace(name.to_string()));
+            }
+            panels::Sync::SetTab(t) => self.app.borrow_mut().state.tab = t,
+            panels::Sync::Nothing => {}
+        }
+        self.last_tab = self.app.borrow().state.tab;
+    }
+
+    /// Does what was chosen in the menus and what the menus asked of the frame, and keeps the list of recent files.
+    fn after(&mut self, chosen: Option<Chosen<Cmd>>, ctx: &egui::Context) {
+        let mut app = self.app.borrow_mut();
+        match chosen {
+            Some(Chosen::App(cmd)) => app.run_cmd(cmd, ctx),
+            Some(Chosen::Recent(path)) => app.open_path(&path),
+            Some(Chosen::Dock(_)) | None => {}
+        }
+        for action in std::mem::take(&mut app.pending_dock) {
+            let _ = self.dock.apply(action);
+        }
+        for path in std::mem::take(&mut app.recent_added) {
+            self.dock.core_mut().recent_mut().push(&path);
+        }
+    }
+}
+
+impl eframe::App for Shell {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
-        self.apply_visuals(&ctx);
-        self.handle_keys(&ctx);
-        self.shot_tick(&ctx);
-        self.poll_slice(&ctx);
-        // the parts as meshes are made again when one moved; what is on the bed is the model of the program
-        let _ = self.studio.world_parts();
-        if self.studio.take_changed() {
-            self.studio.sync(&mut self.state);
-        }
-        self.top_bar(ui);
-        self.status_bar(ui);
-        let tab = self.state.tab;
-        if matches!(tab, Tab::Prepare | Tab::Preview) {
-            self.slice_bar(ui);
-        }
-        match tab {
-            Tab::Prepare => self.prepare_panels(ui),
-            Tab::Preview => self.preview_panels(ui),
-            Tab::Device => self.device_panels(ui),
-            Tab::Project => {}
-        }
-        // the pages of the Device and Project tabs have the ground of the 3D views and a margin, so the four tabs look like one program
-        let ground = match tab {
-            Tab::Prepare | Tab::Preview => egui::Frame::NONE,
-            Tab::Device | Tab::Project => egui::Frame::NONE
-                .fill(col(self.look.panel))
-                .inner_margin(egui::Margin::same(12)),
+        let (lang, facts) = {
+            let mut app = self.app.borrow_mut();
+            app.apply_visuals(&ctx);
+            app.handle_keys(&ctx);
+            app.shot_tick(&ctx);
+            app.poll_slice(&ctx);
+            // the parts as meshes are made again when one moved; what is on the bed is the model of the program
+            let _ = app.studio.world_parts();
+            if app.studio.take_changed() {
+                let a = &mut *app;
+                a.studio.sync(&mut a.state);
+            }
+            (app.lang(), app.menu_facts())
         };
+        self.sync_tab();
+        {
+            let app = self.app.borrow();
+            if app.scheme != self.bar_scheme {
+                self.bar_scheme = app.scheme.clone();
+                self.bar = panels::menu_bar(&self.bar_scheme);
+            }
+        }
+        self.dock.set_language(server_ui::view_lang(lang));
+        self.dock.set_about(Shell::about(lang));
+        self.dock
+            .set_menu_state(panels::disabled_entries(&facts), Vec::new());
+        // the menu bar, then the bar of the windows and the bars of the slice and of the state
+        let mut chosen = None;
+        egui::Panel::top("menu").show(ui, |ui| {
+            chosen = self.dock.menu_bar(ui, &self.bar);
+        });
+        {
+            let mut app = self.app.borrow_mut();
+            app.top_bar(ui);
+            app.status_bar(ui);
+            app.slice_bar(ui);
+        }
         egui::CentralPanel::default()
-            .frame(ground)
-            .show(ui, |ui| match tab {
-                Tab::Prepare => self.scene_view(ui),
-                Tab::Preview => self.preview_centre(ui),
-                Tab::Device => self.device_centre(ui),
-                Tab::Project => {
-                    egui::ScrollArea::vertical()
-                        .id_salt("project")
-                        .show(ui, |ui| self.project_tab(ui));
-                }
-            });
-        self.shortcuts_window(&ctx);
-        self.help_window(&ctx);
+            .frame(egui::Frame::NONE)
+            .show(ui, |ui| self.dock.show(ui));
+        self.after(chosen, &ctx);
+        self.sync_tab();
+        {
+            let mut app = self.app.borrow_mut();
+            app.help_window(&ctx);
+        }
+        // the arrangement is kept in the settings file when it changed
+        self.ticks = self.ticks.wrapping_add(1);
+        if self.ticks.is_multiple_of(LAYOUT_CHECK_EVERY) {
+            let pairs = self.dock.core().config_pairs();
+            if self.watch.changed(&pairs) {
+                self.app.borrow_mut().save_layout(&pairs);
+            }
+        }
     }
 }
 
@@ -2284,7 +2744,7 @@ pub fn run(config: AppConfig, lang: Lang, args: &WindowArgs) -> Result<(), Strin
     let mut state = AppState::new(config, lang)
         .map_err(|e| e.to_string())?
         .with_limit_overrides();
-    if let Some(id) = &args.printer {
+    if let Some(id) = &shot::start_printer(args) {
         if !state.select_printer(id) {
             return Err(format!("{id}: no such printer"));
         }
@@ -2322,7 +2782,7 @@ pub fn run(config: AppConfig, lang: Lang, args: &WindowArgs) -> Result<(), Strin
             if start.slice {
                 app.slice_blocking();
             }
-            Ok(Box::new(app))
+            Ok(Box::new(Shell::new(app, start.window.is_some())))
         }),
     )
     .map_err(|e| e.to_string())?;

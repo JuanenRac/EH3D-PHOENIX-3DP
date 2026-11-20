@@ -8,10 +8,13 @@
 
 use crate::filament::Range;
 use crate::profile::{PrinterProfile, ProfileError, Technology};
+use eh3d_printmaterials::model::{Resin as Record, ResinKind as DbKind, Solvent};
+use eh3d_printmaterials::query::Database;
 use p3dp_core::kv;
+use std::sync::OnceLock;
 
-/// The table of the program.
-pub const DATA: &str = include_str!("../data/resins.tsv");
+/// The printer of the database whose exposures are the starting points of the generic resins: a monochrome screen printer in general.
+pub const GENERIC_PRINTER: &str = "generic-msla";
 
 /// The kind of a resin.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -141,11 +144,11 @@ impl ResinProfile {
         if id.is_empty()
             || !id
                 .bytes()
-                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b"-/._+".contains(&b))
         {
             return Err(bad(
                 id,
-                "the id must be lower case letters, digits and hyphens",
+                "the id must be lower case letters, digits, hyphens, dots, plus signs, underscores and slashes",
             ));
         }
         if self.name.trim().is_empty() {
@@ -341,94 +344,112 @@ impl ResinProfile {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ResinCatalog {
     pub profiles: Vec<ResinProfile>,
+    /// The identifiers this program used before it read the database of the suite, each with the identifier that stands for it now.
+    pub aliases: Vec<(String, String)>,
 }
 
-fn num(line: usize, name: &str, v: &str) -> Result<f64, ProfileError> {
-    v.trim()
-        .parse::<f64>()
-        .ok()
-        .filter(|n| n.is_finite())
-        .ok_or_else(|| ProfileError(format!("line {line}: {name} {v:?} is not a number")))
+impl ResinKind {
+    /// The kind of this program that stands for a kind of the database: the six of the generic profiles, and the nearest one for the others (a hard resin and a high-temperature one are tough, a
+    /// water-washable one is standard, and the rest that has no place here is standard too, with its own name in the database).
+    pub fn of_database(kind: DbKind) -> ResinKind {
+        match kind {
+            DbKind::Hard | DbKind::AbsLike | DbKind::HighTemperature | DbKind::Ceramic => {
+                ResinKind::Tough
+            }
+            DbKind::Flexible => ResinKind::Flexible,
+            DbKind::Castable => ResinKind::Castable,
+            DbKind::Clear => ResinKind::Clear,
+            DbKind::HighDetail => ResinKind::HighDetail,
+            DbKind::Standard | DbKind::WaterWashable | DbKind::Dental | DbKind::Other => {
+                ResinKind::Standard
+            }
+        }
+    }
 }
+
+/// A range of the database, in the unit of this program (`scale` turns millimetres into micrometres), from the lowest, the best and the highest; the best is the value itself when the record
+/// gives no bounds.
+fn range_of(best: f64, lowest: Option<f64>, highest: Option<f64>, scale: f64) -> Range {
+    // rounded to a millionth, so 0.05 mm is 50 um and not 50.00000000000001
+    let to_unit = |v: f64| (v * scale * 1e6).round() / 1e6;
+    Range {
+        best: to_unit(best),
+        lowest: to_unit(lowest.unwrap_or(best).min(best)),
+        highest: to_unit(highest.unwrap_or(best).max(best)),
+    }
+}
+
+/// The profile of a record of the database, from its exposure for the generic printer at the layer height it recommends. A resin with no such point, or a value out of range, gives nothing.
+fn profile_of(r: &Record) -> Option<ResinProfile> {
+    let layer = r.layer_mm?;
+    let rec = layer.recommended?;
+    let point = r
+        .exposures
+        .iter()
+        .find(|e| e.printer == GENERIC_PRINTER && (e.layer_mm - rec).abs() < 1e-9)
+        .or_else(|| r.exposures.iter().find(|e| e.printer == GENERIC_PRINTER))?;
+    let wash = match r.wash.map(|w| w.solvent) {
+        Some(Solvent::Water) => Wash::Water,
+        _ => Wash::Alcohol,
+    };
+    let p = ResinProfile {
+        id: r.id.clone(),
+        name: r.name.clone(),
+        kind: ResinKind::of_database(r.kind),
+        layer_um: range_of(rec, layer.min, layer.max, 1000.0),
+        normal_exposure_s: range_of(point.normal_s, point.normal_s_min, point.normal_s_max, 1.0),
+        bottom_exposure_s: range_of(point.base_s?, point.base_s_min, point.base_s_max, 1.0),
+        bottom_layers: point.base_layers?,
+        lift_mm: point.lift_mm?,
+        lift_speed_mm_min: point.lift_speed_mm_min?,
+        wavelength_nm: r.wavelength_nm?,
+        density_g_ml: r.density_g_cm3?,
+        wash,
+        verified: r.verified && point.verified,
+    };
+    p.validate().ok()?;
+    Some(p)
+}
+
+static BUILTIN: OnceLock<Result<ResinCatalog, String>> = OnceLock::new();
 
 impl ResinCatalog {
-    /// The resins that come with the program.
+    /// The resins of the database of the suite (`eh3d-printmaterials`), the only source of this program. The catalog is made once and copied after that.
     pub fn builtin() -> Result<ResinCatalog, ProfileError> {
-        ResinCatalog::parse(DATA)
+        BUILTIN
+            .get_or_init(|| {
+                let db = Database::embedded().map_err(|e| {
+                    e.first()
+                        .map_or("the database of materials is not valid".to_string(), |x| {
+                            x.to_string()
+                        })
+                })?;
+                Ok(ResinCatalog::from_database(&db))
+            })
+            .clone()
+            .map_err(ProfileError)
     }
 
-    /// Reads a table of resins; a row that makes no sense, a repeated id or a row with the wrong number of columns is an error that names the line.
-    pub fn parse(text: &str) -> Result<ResinCatalog, ProfileError> {
-        let mut profiles: Vec<ResinProfile> = Vec::new();
-        for (i, raw) in text.lines().enumerate() {
-            let ln = i + 1;
-            let line = raw.trim();
-            if line.is_empty() || line.starts_with('#') {
+    /// The catalog of a database: the resins that have settings for the generic printer, in the order of the database, and the old identifiers (the `source_ref` of the generic profiles) as aliases.
+    pub fn from_database(db: &Database) -> ResinCatalog {
+        let mut profiles = Vec::new();
+        let mut aliases = Vec::new();
+        for r in db.resins() {
+            let Some(p) = profile_of(r) else {
                 continue;
-            }
-            let c: Vec<&str> = line.split('|').map(str::trim).collect();
-            if c.len() != 19 {
-                return Err(ProfileError(format!(
-                    "line {ln}: {} columns, expected 19",
-                    c.len()
-                )));
-            }
-            let range = |name: &str, a: usize| -> Result<Range, ProfileError> {
-                Ok(Range {
-                    best: num(ln, name, c[a])?,
-                    lowest: num(ln, name, c[a + 1])?,
-                    highest: num(ln, name, c[a + 2])?,
-                })
             };
-            let p = ResinProfile {
-                id: c[0].to_string(),
-                name: c[1].to_string(),
-                kind: ResinKind::from_name(c[2]).ok_or_else(|| {
-                    ProfileError(format!("line {ln}: the kind {:?} is not known", c[2]))
-                })?,
-                layer_um: range("layer height", 3)?,
-                normal_exposure_s: range("exposure", 6)?,
-                bottom_exposure_s: range("bottom exposure", 9)?,
-                bottom_layers: c[12].parse::<u32>().map_err(|_| {
-                    ProfileError(format!(
-                        "line {ln}: the bottom layers {:?} is not a whole number",
-                        c[12]
-                    ))
-                })?,
-                lift_mm: num(ln, "lift", c[13])?,
-                lift_speed_mm_min: num(ln, "lift speed", c[14])?,
-                wavelength_nm: num(ln, "wavelength", c[15])?,
-                density_g_ml: num(ln, "density", c[16])?,
-                wash: Wash::from_name(c[17]).ok_or_else(|| {
-                    ProfileError(format!(
-                        "line {ln}: the wash {:?} is not alcohol or water",
-                        c[17]
-                    ))
-                })?,
-                verified: match c[18] {
-                    "true" => true,
-                    "false" => false,
-                    other => {
-                        return Err(ProfileError(format!(
-                            "line {ln}: verified {other:?} is not true or false"
-                        )))
-                    }
-                },
-            };
-            p.validate()
-                .map_err(|e| ProfileError(format!("line {ln}: {e}")))?;
-            if profiles.iter().any(|q| q.id == p.id) {
-                return Err(ProfileError(format!(
-                    "line {ln}: the id {} is used twice",
-                    p.id
-                )));
+            if r.manufacturer.eq_ignore_ascii_case("generic") {
+                if let Some(old) = r
+                    .source_ref
+                    .as_deref()
+                    .filter(|s| s.starts_with("generic-"))
+                {
+                    aliases.push((old.to_string(), p.id.clone()));
+                }
             }
             profiles.push(p);
         }
-        if profiles.is_empty() {
-            return Err(ProfileError("the table has no resins".to_string()));
-        }
-        Ok(ResinCatalog { profiles })
+        ResinCatalog { profiles, aliases }
     }
 
     pub fn len(&self) -> usize {
@@ -439,9 +460,14 @@ impl ResinCatalog {
         self.profiles.is_empty()
     }
 
-    /// The resin with an id (any case).
+    /// The resin with an id (any case), or with one of the identifiers the program used before the database.
     pub fn find(&self, id: &str) -> Option<&ResinProfile> {
         let want = id.trim().to_ascii_lowercase();
+        let want = self
+            .aliases
+            .iter()
+            .find(|(old, _)| *old == want)
+            .map_or(want, |(_, new)| new.clone());
         self.profiles.iter().find(|p| p.id == want)
     }
 
@@ -527,7 +553,8 @@ mod tests {
         for p in ResinCatalog::builtin().unwrap().profiles {
             assert_eq!(ResinProfile::from_text(&p.to_text()).unwrap(), p);
         }
-        let good = resin("generic-tough").to_text();
+        let tough = resin("generic-tough");
+        let good = tough.to_text();
         for (from, to, want) in [
             ("kind = tough", "kind = jelly", "kind"),
             ("lift_mm = 6", "lift_mm = 99", "lift_mm"),
@@ -537,7 +564,7 @@ mod tests {
             ("bottom_layers = 5", "bottom_layers = 0", "bottom_layers"),
             ("verified = off", "verified = maybe", "verified"),
             ("bottom_layers = 5\n", "", "bottom_layers"),
-            ("id = generic-tough", "id = Bad Id", "id"),
+            (&format!("id = {}", tough.id), "id = Bad Id", "id"),
         ] {
             let text = good.replacen(from, to, 1);
             assert_ne!(text, good, "{from}");
@@ -554,29 +581,98 @@ mod tests {
     }
 
     #[test]
-    fn rows_that_make_no_sense_are_refused_with_the_line() {
-        let row = "x-1|X|standard|50|25|100|2.5|1.5|4|25|15|40|5|6|150|405|1.10|alcohol|false";
-        assert!(ResinCatalog::parse(row).is_ok());
-        for (text, want) in [
-            (row.replace("|405|", "|9000|"), "wavelength"),
-            (row.replace("|standard|", "|jelly|"), "kind"),
-            (row.replace("|alcohol|", "|soap|"), "wash"),
-            (row.replace("|false", "|perhaps"), "verified"),
-            (row.replace("|5|6|150", "|x|6|150"), "bottom layers"),
-            (format!("# c\n{row}\n{row}"), "used twice"),
+    #[allow(clippy::type_complexity)]
+    fn the_old_identifiers_still_find_their_resin_and_the_values_are_the_ones_of_the_old_table() {
+        let c = ResinCatalog::builtin().unwrap();
+        assert_eq!(c.aliases.len(), 7);
+        // (old id, kind, layer um best/lowest/highest, exposure, bottom exposure, bottom layers, lift, speed, wash)
+        let want: [(
+            &str,
+            ResinKind,
+            [f64; 3],
+            [f64; 3],
+            [f64; 3],
+            u32,
+            f64,
+            f64,
+            Wash,
+        ); 3] = [
             (
-                row.replace("|25|15|40|", "|1|1|1|"),
-                "bottom layers must be exposed",
+                "generic-standard",
+                ResinKind::Standard,
+                [50.0, 25.0, 100.0],
+                [2.5, 1.5, 4.0],
+                [25.0, 15.0, 40.0],
+                5,
+                6.0,
+                150.0,
+                Wash::Alcohol,
             ),
-            (row.replace("|50|25|100|", "|50|60|100|"), "layer height"),
-            ("a|b|c".to_string(), "3 columns"),
-            ("# only a comment".to_string(), "no resins"),
-        ] {
-            let e = ResinCatalog::parse(&text).unwrap_err().to_string();
-            assert!(e.contains(want), "{text} -> {e}");
-            if text.contains(row.split('|').next().unwrap()) {
-                assert!(e.contains("line"), "{e}");
-            }
+            (
+                "generic-flexible",
+                ResinKind::Flexible,
+                [50.0, 50.0, 100.0],
+                [4.0, 3.0, 6.0],
+                [30.0, 20.0, 45.0],
+                6,
+                5.0,
+                90.0,
+                Wash::Alcohol,
+            ),
+            (
+                "generic-water-washable",
+                ResinKind::Standard,
+                [50.0, 25.0, 100.0],
+                [2.8, 2.0, 4.5],
+                [25.0, 15.0, 40.0],
+                5,
+                6.0,
+                150.0,
+                Wash::Water,
+            ),
+        ];
+        for (id, kind, layer, normal, bottom, layers, lift, speed, wash) in want {
+            let r = c.find(id).unwrap_or_else(|| panic!("{id}"));
+            let t = |x: Range| [x.best, x.lowest, x.highest];
+            assert_eq!(r.kind, kind, "{id}");
+            assert_eq!(t(r.layer_um), layer, "{id}");
+            assert_eq!(t(r.normal_exposure_s), normal, "{id}");
+            assert_eq!(t(r.bottom_exposure_s), bottom, "{id}");
+            assert_eq!(
+                (r.bottom_layers, r.lift_mm, r.lift_speed_mm_min),
+                (layers, lift, speed)
+            );
+            assert_eq!((r.wash, r.wavelength_nm), (wash, 405.0), "{id}");
+            assert!(r.id.starts_with("generic/"), "{}", r.id);
+            // the new identifier finds it as well
+            assert_eq!(c.find(&r.id).map(|x| x.id.as_str()), Some(r.id.as_str()));
         }
+    }
+
+    #[test]
+    fn a_record_of_the_database_that_makes_no_sense_gives_no_profile() {
+        let db = Database::embedded().unwrap();
+        let good = db.resins()[0].clone();
+        assert!(profile_of(&good).is_some());
+        let none = |f: &dyn Fn(&mut Record)| {
+            let mut r = good.clone();
+            f(&mut r);
+            profile_of(&r).is_none()
+        };
+        assert!(none(&|r| r.wavelength_nm = Some(9000.0)));
+        assert!(none(&|r| r.wavelength_nm = None));
+        assert!(none(&|r| r.density_g_cm3 = Some(9.0)));
+        assert!(none(&|r| r.layer_mm = None));
+        assert!(none(&|r| r.exposures.clear()));
+        assert!(none(
+            &|r| r.exposures[0].printer = "another-printer".to_string()
+        ));
+        assert!(none(&|r| r.exposures[0].base_s = None));
+        assert!(none(&|r| r.exposures[0].base_s = Some(0.1)));
+        assert!(none(&|r| r.exposures[0].lift_mm = Some(99.0)));
+        // the kinds of the database that have no place here go to the nearest one
+        assert_eq!(ResinKind::of_database(DbKind::Dental), ResinKind::Standard);
+        assert_eq!(ResinKind::of_database(DbKind::AbsLike), ResinKind::Tough);
+        assert_eq!(ResinKind::of_database(DbKind::Ceramic), ResinKind::Tough);
     }
 }

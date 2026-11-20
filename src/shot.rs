@@ -6,6 +6,18 @@ use crate::app_state::Tab;
 use crate::i18n::Lang;
 use std::path::{Path, PathBuf};
 
+/// The printer a demonstration starts with when none is given: the first of the two machines of the server made in memory, so the Prepare and the Device windows show the same printer.
+pub const DEMO_PRINTER: &str = "bambu-lab-p1s";
+
+/// The printer to start with: the one asked for with `--printer`, else, in a demonstration, the one of the demonstration server.
+pub fn start_printer(args: &WindowArgs) -> Option<String> {
+    match (&args.printer, args.demo) {
+        (Some(id), _) => Some(id.clone()),
+        (None, true) => Some(DEMO_PRINTER.to_string()),
+        (None, false) => None,
+    }
+}
+
 /// The smallest side of the window of a picture, in pixels.
 pub const SIZE_MIN: u32 = 320;
 /// The largest side of the window of a picture, in pixels.
@@ -371,5 +383,18 @@ mod tests {
         // the size must agree with the pixels
         assert!(write_png(&path, true, 5, 5, &px).is_err());
         let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn a_demonstration_starts_with_the_printer_of_its_server_unless_another_is_asked_for() {
+        let demo = parse_window_args(&args("--shot a.png --demo")).unwrap();
+        assert_eq!(start_printer(&demo).as_deref(), Some(DEMO_PRINTER));
+        let other = parse_window_args(&args("--shot a.png --demo --printer prusa-mk4s")).unwrap();
+        assert_eq!(start_printer(&other).as_deref(), Some("prusa-mk4s"));
+        let plain = parse_window_args(&args("--shot a.png")).unwrap();
+        assert_eq!(start_printer(&plain), None);
+        // the printer of the demonstration is one of the catalog, and the one the server made in memory lists first
+        let cat = p3dp_profiles::Catalog::builtin().unwrap();
+        assert!(cat.find(DEMO_PRINTER).is_some());
     }
 }

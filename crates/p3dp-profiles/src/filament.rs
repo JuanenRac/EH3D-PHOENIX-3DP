@@ -6,48 +6,14 @@
 //! replace any row. None of them has been tried on a machine.
 
 use crate::profile::{PrinterProfile, ProfileError, Technology};
+use eh3d_printmaterials::model::Filament as Record;
+use eh3d_printmaterials::query::Database;
 use p3dp_core::kv;
+use std::collections::HashMap;
+use std::sync::OnceLock;
 
-/// The table of the program.
-pub const DATA: &str = include_str!("../data/filaments.tsv");
-
-/// The families of material.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Material {
-    Pla,
-    Petg,
-    Abs,
-    Asa,
-    Tpu,
-    Pa,
-}
-
-impl Material {
-    pub const ALL: [Material; 6] = [
-        Material::Pla,
-        Material::Petg,
-        Material::Abs,
-        Material::Asa,
-        Material::Tpu,
-        Material::Pa,
-    ];
-
-    pub fn name(self) -> &'static str {
-        match self {
-            Material::Pla => "pla",
-            Material::Petg => "petg",
-            Material::Abs => "abs",
-            Material::Asa => "asa",
-            Material::Tpu => "tpu",
-            Material::Pa => "pa",
-        }
-    }
-
-    pub fn from_name(name: &str) -> Option<Material> {
-        let want = name.trim().to_ascii_lowercase();
-        Material::ALL.into_iter().find(|m| m.name() == want)
-    }
-}
+/// The polymers of the database of the suite (the same type, so a program that reads that database and this catalog speaks of the same materials).
+pub use eh3d_printmaterials::model::Material;
 
 /// A range with the value to start from: `lowest <= best <= highest`.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -79,7 +45,10 @@ impl Range {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FilamentProfile {
     pub id: String,
+    /// The name to show: the maker and the product (a profile of the generic family has no maker in it).
     pub name: String,
+    /// The maker, as the database writes it (empty for a profile that has none).
+    pub manufacturer: String,
     pub material: Material,
     pub nozzle_c: Range,
     pub bed_c: Range,
@@ -191,10 +160,10 @@ impl FilamentProfile {
         if id.is_empty()
             || !id
                 .bytes()
-                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b"-/._+".contains(&b))
         {
             return Err(ProfileError(format!(
-                "filament {id}: the id must be lower case letters, digits and hyphens"
+                "filament {id}: the id must be lower case letters, digits, hyphens, dots, plus signs, underscores and slashes"
             )));
         }
         self.nozzle_c.check("the nozzle", id, 500.0)?;
@@ -223,10 +192,15 @@ impl FilamentProfile {
         let r = |a: &Range| format!("{}, {}, {}", a.best, a.lowest, a.highest);
         let onoff = |b: bool| if b { "on" } else { "off" };
         format!(
-            "id = {}\nname = {}\nmaterial = {}\nnozzle_c = {}\nbed_c = {}\nfan_percent = {}\ndensity_g_cm3 = {}\ndiameter_mm = {}\nmin_nozzle_mm = {}\nabrasive = {}\nenclosure_advised = {}\ndirect_drive_advised = {}\nverified = {}\n",
+            "id = {}\nname = {}\n{}material = {}\nnozzle_c = {}\nbed_c = {}\nfan_percent = {}\ndensity_g_cm3 = {}\ndiameter_mm = {}\nmin_nozzle_mm = {}\nabrasive = {}\nenclosure_advised = {}\ndirect_drive_advised = {}\nverified = {}\n",
             self.id,
             self.name,
-            self.material.name(),
+            if self.manufacturer.is_empty() {
+                String::new()
+            } else {
+                format!("manufacturer = {}\n", self.manufacturer)
+            },
+            self.material.as_str(),
             r(&self.nozzle_c),
             r(&self.bed_c),
             r(&self.fan_percent),
@@ -242,9 +216,10 @@ impl FilamentProfile {
 
     /// Reads a profile file. Every key of `to_text` is understood; an unknown key, a missing one or a value out of range is an error that names the key. The last line of a key wins.
     pub fn from_text(text: &str) -> Result<FilamentProfile, ProfileError> {
-        const KNOWN: [&str; 13] = [
+        const KNOWN: [&str; 14] = [
             "id",
             "name",
+            "manufacturer",
             "material",
             "nozzle_c",
             "bed_c",
@@ -301,9 +276,10 @@ impl FilamentProfile {
         let id = need("id")?.to_string();
         let p = FilamentProfile {
             name: need("name")?.to_string(),
+            manufacturer: get("manufacturer").unwrap_or("").to_string(),
             material: Material::from_name(need("material")?).ok_or_else(|| {
                 ProfileError(format!(
-                    "filament {id}: material: not one of pla, petg, abs, asa, tpu, pa"
+                    "filament {id}: material: not one of the polymers of the database (pla, petg, abs, asa, tpu, tpe, pa, pc, pp, pva, bvoh, hips, pet, ppa, pps, peek, pei, other)"
                 ))
             })?,
             nozzle_c: range("nozzle_c", 500.0)?,
@@ -386,87 +362,127 @@ impl FilamentProfile {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FilamentCatalog {
     pub profiles: Vec<FilamentProfile>,
+    /// The identifiers this program used before it read the database of the suite, each with the identifier that stands for it now (`generic-pla` is `generic/generic-pla`), so a settings file or a
+    /// project that names an old one still finds its filament.
+    pub aliases: Vec<(String, String)>,
 }
 
-fn num(line: usize, name: &str, v: &str) -> Result<f64, ProfileError> {
-    v.trim()
-        .parse::<f64>()
-        .ok()
-        .filter(|n| n.is_finite())
-        .ok_or_else(|| ProfileError(format!("line {line}: {name} {v:?} is not a number")))
-}
+type DbRange = eh3d_printmaterials::model::Range;
 
-fn flag(line: usize, name: &str, v: &str) -> Result<bool, ProfileError> {
-    match v.trim() {
-        "true" => Ok(true),
-        "false" => Ok(false),
-        other => Err(ProfileError(format!(
-            "line {line}: {name} {other:?} is not true or false"
-        ))),
+/// A range of the database as the three figures this program works with, or nothing when the record gives no lowest and highest.
+fn range_of(r: Option<DbRange>) -> Option<Range> {
+    let r = r?;
+    let (lo, hi) = (r.min?, r.max?);
+    if lo > hi {
+        return None;
     }
+    Some(Range {
+        best: r.recommended.unwrap_or((lo + hi) / 2.0).clamp(lo, hi),
+        lowest: lo,
+        highest: hi,
+    })
 }
+
+/// The profile of a record of the database. What the record does not say (the temperatures and the fan of a filament whose maker publishes none, the density) comes from the generic profile of the
+/// same polymer; a record with nothing to take from, or with a value out of range, gives nothing.
+fn profile_of(f: &Record, generic: &HashMap<Material, &Record>) -> Option<FilamentProfile> {
+    let base = generic.get(&f.material).copied();
+    let nozzle_c = range_of(f.nozzle_c).or_else(|| range_of(base.and_then(|b| b.nozzle_c)))?;
+    let bed_c = range_of(f.bed_c).or_else(|| range_of(base.and_then(|b| b.bed_c)))?;
+    let fan_percent = range_of(f.fan_pct).or_else(|| range_of(base.and_then(|b| b.fan_pct)))?;
+    let density_g_cm3 = f
+        .density_g_cm3
+        .or_else(|| base.and_then(|b| b.density_g_cm3))?;
+    let manufacturer = f.manufacturer.trim().to_string();
+    let own_name = manufacturer.is_empty()
+        || manufacturer.eq_ignore_ascii_case("generic")
+        || f.name
+            .to_ascii_lowercase()
+            .starts_with(&manufacturer.to_ascii_lowercase());
+    let p = FilamentProfile {
+        id: f.id.clone(),
+        name: if own_name {
+            f.name.clone()
+        } else {
+            format!("{manufacturer} {}", f.name)
+        },
+        manufacturer,
+        material: f.material,
+        nozzle_c,
+        bed_c,
+        fan_percent,
+        density_g_cm3,
+        diameter_mm: f.diameter_or_default(None).unwrap_or(1.75),
+        min_nozzle_mm: f
+            .min_nozzle_mm
+            .or_else(|| base.and_then(|b| b.min_nozzle_mm))
+            .unwrap_or(0.2),
+        abrasive: f.needs_hardened_nozzle(),
+        enclosure_advised: f
+            .enclosure_advised
+            .or_else(|| base.and_then(|b| b.enclosure_advised))
+            .unwrap_or(false),
+        direct_drive_advised: f
+            .direct_drive_advised
+            .or_else(|| base.and_then(|b| b.direct_drive_advised))
+            .unwrap_or(false),
+        verified: f.verified,
+    };
+    p.validate().ok()?;
+    Some(p)
+}
+
+static BUILTIN: OnceLock<Result<FilamentCatalog, String>> = OnceLock::new();
 
 impl FilamentCatalog {
-    /// The filaments that come with the program.
+    /// The filaments of the database of the suite (`eh3d-printmaterials`), the only source of this program: the generic profiles of the six families and every filament a maker publishes with
+    /// its temperatures. A record that gives no temperature takes the one of the generic profile of its polymer; one that has none to take, or a value out of range, is left out.
+    /// The catalog is made once and copied after that.
     pub fn builtin() -> Result<FilamentCatalog, ProfileError> {
-        FilamentCatalog::parse(DATA)
+        BUILTIN
+            .get_or_init(|| {
+                let db = Database::embedded().map_err(|e| {
+                    e.first()
+                        .map_or("the database of materials is not valid".to_string(), |x| {
+                            x.to_string()
+                        })
+                })?;
+                Ok(FilamentCatalog::from_database(&db))
+            })
+            .clone()
+            .map_err(ProfileError)
     }
 
-    /// Reads a table of filaments; a row that makes no sense, a repeated id or a row with the wrong number of columns is an error that names the line.
-    pub fn parse(text: &str) -> Result<FilamentCatalog, ProfileError> {
-        let mut profiles: Vec<FilamentProfile> = Vec::new();
-        for (i, raw) in text.lines().enumerate() {
-            let ln = i + 1;
-            let line = raw.trim();
-            if line.is_empty() || line.starts_with('#') {
+    /// The catalog of a database: the profiles in the order of the database, and the old identifiers (the `source_ref` of the generic profiles) as aliases.
+    pub fn from_database(db: &Database) -> FilamentCatalog {
+        let is_generic = |f: &Record| f.manufacturer.eq_ignore_ascii_case("generic");
+        let generic: HashMap<Material, &Record> = db
+            .filaments()
+            .iter()
+            .filter(|f| {
+                is_generic(f)
+                    && f.source_ref.as_deref() == Some(&format!("generic-{}", f.material.as_str()))
+            })
+            .map(|f| (f.material, f))
+            .collect();
+        let mut profiles = Vec::new();
+        let mut aliases = Vec::new();
+        for f in db.filaments() {
+            let Some(p) = profile_of(f, &generic) else {
                 continue;
-            }
-            let c: Vec<&str> = line.split('|').collect();
-            if c.len() != 19 {
-                return Err(ProfileError(format!(
-                    "line {ln}: {} columns, expected 19",
-                    c.len()
-                )));
-            }
-            let material = Material::from_name(c[2]).ok_or_else(|| {
-                ProfileError(format!("line {ln}: the material {:?} is not known", c[2]))
-            })?;
-            let range = |name: &str, a: usize| -> Result<Range, ProfileError> {
-                Ok(Range {
-                    best: num(ln, name, c[a])?,
-                    lowest: num(ln, name, c[a + 1])?,
-                    highest: num(ln, name, c[a + 2])?,
-                })
             };
-            let p = FilamentProfile {
-                id: c[0].trim().to_string(),
-                name: c[1].trim().to_string(),
-                material,
-                nozzle_c: range("nozzle", 3)?,
-                bed_c: range("bed", 6)?,
-                fan_percent: range("fan", 9)?,
-                density_g_cm3: num(ln, "density", c[12])?,
-                diameter_mm: num(ln, "diameter", c[13])?,
-                min_nozzle_mm: num(ln, "smallest nozzle", c[14])?,
-                abrasive: flag(ln, "abrasive", c[15])?,
-                enclosure_advised: flag(ln, "enclosure", c[16])?,
-                direct_drive_advised: flag(ln, "direct drive", c[17])?,
-                verified: flag(ln, "verified", c[18])?,
-            };
-            p.validate()
-                .map_err(|e| ProfileError(format!("line {ln}: {e}")))?;
-            if profiles.iter().any(|q| q.id == p.id) {
-                return Err(ProfileError(format!(
-                    "line {ln}: the id {} is used twice",
-                    p.id
-                )));
+            if is_generic(f) {
+                if let Some(old) = f
+                    .source_ref
+                    .as_deref()
+                    .filter(|r| r.starts_with("generic-"))
+                {
+                    aliases.push((old.to_string(), p.id.clone()));
+                }
             }
             profiles.push(p);
         }
-        if profiles.is_empty() {
-            return Err(ProfileError("the table has no filaments".to_string()));
-        }
-        Ok(FilamentCatalog { profiles })
+        FilamentCatalog { profiles, aliases }
     }
 
     pub fn len(&self) -> usize {
@@ -477,15 +493,33 @@ impl FilamentCatalog {
         self.profiles.is_empty()
     }
 
-    /// The filament with an id (any case).
+    /// The filament with an id (any case), or with one of the identifiers the program used before the database.
     pub fn find(&self, id: &str) -> Option<&FilamentProfile> {
         let want = id.trim().to_ascii_lowercase();
+        let want = self
+            .aliases
+            .iter()
+            .find(|(old, _)| *old == want)
+            .map_or(want, |(_, new)| new.clone());
         self.profiles.iter().find(|p| p.id == want)
     }
 
     /// The filaments of a material.
     pub fn of(&self, m: Material) -> Vec<&FilamentProfile> {
         self.profiles.iter().filter(|p| p.material == m).collect()
+    }
+
+    /// The makers that have a filament in the catalog, in alphabetical order (upper and lower case count the same).
+    pub fn manufacturers(&self) -> Vec<&str> {
+        let mut v: Vec<&str> = self
+            .profiles
+            .iter()
+            .map(|p| p.manufacturer.as_str())
+            .filter(|m| !m.is_empty())
+            .collect();
+        v.sort_by_key(|m| m.to_ascii_lowercase());
+        v.dedup_by(|a, b| a.eq_ignore_ascii_case(b));
+        v
     }
 }
 
@@ -581,7 +615,10 @@ mod tests {
         let e = FilamentProfile::from_text(&format!("{good}colour = red\n"))
             .unwrap_err()
             .to_string();
-        assert!(e.contains("colour") && e.contains("line 14"), "{e}");
+        assert!(
+            e.contains("colour") && e.contains(&format!("line {}", good.lines().count() + 1)),
+            "{e}"
+        );
         // a flag left out is off, and the last line of a key wins
         let short = good.replace("verified = off\n", "");
         assert!(!FilamentProfile::from_text(&short).unwrap().verified);
@@ -589,39 +626,311 @@ mod tests {
         assert_eq!(FilamentProfile::from_text(&hot).unwrap().bed_c.best, 85.0);
     }
 
+    /// The twelve filaments this program carried before it read the database of the suite: (old id, material, nozzle, bed, fan, density, smallest nozzle, abrasive, enclosure, direct drive).
+    #[allow(clippy::type_complexity)]
+    const OLD_TABLE: [(
+        &str,
+        Material,
+        [f64; 3],
+        [f64; 3],
+        [f64; 3],
+        f64,
+        f64,
+        bool,
+        bool,
+        bool,
+    ); 12] = [
+        (
+            "generic-pla",
+            Material::Pla,
+            [210.0, 190.0, 230.0],
+            [60.0, 0.0, 70.0],
+            [100.0, 80.0, 100.0],
+            1.24,
+            0.2,
+            false,
+            false,
+            false,
+        ),
+        (
+            "generic-petg",
+            Material::Petg,
+            [235.0, 220.0, 250.0],
+            [80.0, 70.0, 90.0],
+            [40.0, 30.0, 60.0],
+            1.27,
+            0.2,
+            false,
+            false,
+            false,
+        ),
+        (
+            "generic-abs",
+            Material::Abs,
+            [245.0, 230.0, 260.0],
+            [100.0, 90.0, 110.0],
+            [10.0, 0.0, 30.0],
+            1.04,
+            0.3,
+            false,
+            true,
+            false,
+        ),
+        (
+            "generic-asa",
+            Material::Asa,
+            [250.0, 235.0, 260.0],
+            [100.0, 90.0, 110.0],
+            [20.0, 0.0, 30.0],
+            1.07,
+            0.3,
+            false,
+            true,
+            false,
+        ),
+        (
+            "generic-tpu",
+            Material::Tpu,
+            [225.0, 210.0, 240.0],
+            [50.0, 0.0, 60.0],
+            [60.0, 30.0, 100.0],
+            1.21,
+            0.4,
+            false,
+            false,
+            true,
+        ),
+        (
+            "generic-pa",
+            Material::Pa,
+            [260.0, 240.0, 280.0],
+            [80.0, 70.0, 100.0],
+            [10.0, 0.0, 30.0],
+            1.14,
+            0.4,
+            false,
+            true,
+            false,
+        ),
+        (
+            "generic-pla-plus",
+            Material::Pla,
+            [215.0, 200.0, 235.0],
+            [60.0, 0.0, 70.0],
+            [100.0, 70.0, 100.0],
+            1.24,
+            0.2,
+            false,
+            false,
+            false,
+        ),
+        (
+            "generic-pla-cf",
+            Material::Pla,
+            [220.0, 200.0, 240.0],
+            [60.0, 0.0, 70.0],
+            [100.0, 70.0, 100.0],
+            1.30,
+            0.4,
+            true,
+            false,
+            false,
+        ),
+        (
+            "generic-petg-cf",
+            Material::Petg,
+            [250.0, 230.0, 270.0],
+            [80.0, 70.0, 90.0],
+            [40.0, 20.0, 60.0],
+            1.30,
+            0.4,
+            true,
+            false,
+            false,
+        ),
+        (
+            "generic-asa-cf",
+            Material::Asa,
+            [255.0, 240.0, 270.0],
+            [100.0, 90.0, 110.0],
+            [20.0, 0.0, 30.0],
+            1.12,
+            0.4,
+            true,
+            true,
+            false,
+        ),
+        (
+            "generic-abs-gf",
+            Material::Abs,
+            [250.0, 235.0, 270.0],
+            [100.0, 90.0, 110.0],
+            [10.0, 0.0, 30.0],
+            1.12,
+            0.4,
+            true,
+            true,
+            false,
+        ),
+        (
+            "generic-pa-cf",
+            Material::Pa,
+            [280.0, 260.0, 300.0],
+            [90.0, 70.0, 110.0],
+            [10.0, 0.0, 30.0],
+            1.20,
+            0.4,
+            true,
+            true,
+            false,
+        ),
+    ];
+
     #[test]
-    fn the_six_families_are_there_with_ranges_that_make_sense() {
+    fn the_twelve_old_filaments_are_found_by_their_old_id_with_the_values_they_had() {
         let c = FilamentCatalog::builtin().unwrap();
-        assert_eq!(c.len(), 12, "the six generic ones and six variants");
-        for m in Material::ALL {
-            assert!(!c.of(m).is_empty(), "{}", m.name());
+        assert!(
+            c.len() > 400,
+            "the database of the suite is the only source: {}",
+            c.len()
+        );
+        assert_eq!(c.aliases.len(), 12);
+        for (id, m, nozzle, bed, fan, density, smallest, abrasive, enclosure, direct) in OLD_TABLE {
+            let p = c.find(id).unwrap_or_else(|| panic!("{id}"));
+            let t = |r: Range| [r.best, r.lowest, r.highest];
+            assert_eq!(p.material, m, "{id}");
+            assert_eq!(t(p.nozzle_c), nozzle, "{id}");
+            assert_eq!(t(p.bed_c), bed, "{id}");
+            assert_eq!(t(p.fan_percent), fan, "{id}");
             assert_eq!(
-                c.of(m)
-                    .iter()
-                    .filter(|p| p.id == format!("generic-{}", m.name()))
-                    .count(),
-                1,
-                "{}",
-                m.name()
+                (p.density_g_cm3, p.diameter_mm, p.min_nozzle_mm),
+                (density, 1.75, smallest),
+                "{id}"
             );
-            assert_eq!(Material::from_name(&m.name().to_uppercase()), Some(m));
+            assert_eq!(
+                (p.abrasive, p.enclosure_advised, p.direct_drive_advised),
+                (abrasive, enclosure, direct),
+                "{id}"
+            );
+            assert!(!p.verified, "{id}");
+            // the id of the database finds it as well, and an upper case old id too
+            assert!(p.id.starts_with("generic/"), "{}", p.id);
+            assert_eq!(c.find(&p.id), Some(p));
+            assert_eq!(c.find(&id.to_uppercase()), Some(p));
+        }
+        assert!(c.find("unobtainium").is_none());
+    }
+
+    #[test]
+    fn the_database_gives_every_family_and_each_profile_makes_sense() {
+        let c = FilamentCatalog::builtin().unwrap();
+        for m in [
+            Material::Pla,
+            Material::Petg,
+            Material::Abs,
+            Material::Asa,
+            Material::Tpu,
+            Material::Pa,
+        ] {
+            assert!(c.of(m).len() > 1, "{}", m.as_str());
+            assert_eq!(Material::from_name(&m.as_str().to_uppercase()), Some(m));
         }
         assert_eq!(Material::from_name("wood"), None);
         for p in &c.profiles {
             p.validate().unwrap();
             assert!(!p.verified, "{}", p.id);
-            assert_eq!(
-                p.abrasive,
-                p.id.ends_with("-cf") || p.id.ends_with("-gf"),
+            assert!(
+                !p.name.trim().is_empty() && !p.manufacturer.is_empty(),
                 "{}",
                 p.id
             );
         }
-        // the families by heat: PLA is the coolest, PA the hottest
-        let t = |m| c.of(m)[0].nozzle_c.best;
-        assert!(t(Material::Pla) < t(Material::Petg) && t(Material::Abs) < t(Material::Pa));
+        // the ids are unique, and the makers come from the database
+        let mut ids: Vec<&str> = c.profiles.iter().map(|p| p.id.as_str()).collect();
+        ids.sort_unstable();
+        ids.dedup();
+        assert_eq!(ids.len(), c.len());
+        let makers = c.manufacturers();
         assert!(
-            c.of(Material::Abs)[0].enclosure_advised && c.of(Material::Tpu)[0].direct_drive_advised
+            makers.len() > 10 && makers.contains(&"Generic"),
+            "{makers:?}"
+        );
+        // the families by heat: PLA is the coolest, PA the hottest
+        let t = |id: &str| c.find(id).unwrap().nozzle_c.best;
+        assert!(t("generic-pla") < t("generic-petg") && t("generic-abs") < t("generic-pa"));
+        // a filled filament wears a brass nozzle
+        assert!(c
+            .profiles
+            .iter()
+            .any(|p| p.abrasive && p.id != "generic/generic-pla-with-carbon-fibre"));
+    }
+
+    #[test]
+    fn a_record_without_temperatures_takes_the_ones_of_its_polymer_and_one_with_nothing_to_take_is_left_out(
+    ) {
+        let db = Database::embedded().unwrap();
+        let generic = FilamentCatalog::from_database(&db);
+        let records = db.filaments();
+        let base: HashMap<Material, &Record> = records
+            .iter()
+            .filter(|f| {
+                f.id.starts_with("generic/")
+                    && f.source_ref.as_deref() == Some(&format!("generic-{}", f.material.as_str()))
+            })
+            .map(|f| (f.material, f))
+            .collect();
+        let mut r = records
+            .iter()
+            .find(|f| f.material == Material::Pla && !f.id.starts_with("generic/"))
+            .unwrap()
+            .clone();
+        r.nozzle_c = None;
+        r.bed_c = None;
+        r.fan_pct = None;
+        r.density_g_cm3 = None;
+        let p = profile_of(&r, &base).unwrap();
+        let g = generic.find("generic-pla").unwrap();
+        assert_eq!(
+            (p.nozzle_c, p.bed_c, p.fan_percent, p.density_g_cm3),
+            (g.nozzle_c, g.bed_c, g.fan_percent, g.density_g_cm3)
+        );
+        // a polymer with no generic profile and no temperatures gives nothing
+        let mut peek = r.clone();
+        peek.material = Material::Peek;
+        assert!(profile_of(&peek, &base).is_none());
+        // a range the wrong way round, or a value out of range, gives nothing
+        let mut bad = r.clone();
+        bad.nozzle_c = Some(eh3d_printmaterials::model::Range {
+            min: Some(300.0),
+            max: Some(200.0),
+            recommended: None,
+        });
+        bad.bed_c = None;
+        assert_eq!(
+            profile_of(&bad, &base).map(|p| p.nozzle_c),
+            Some(g.nozzle_c)
+        );
+        let mut hot = r.clone();
+        hot.nozzle_c = Some(eh3d_printmaterials::model::Range {
+            min: Some(100.0),
+            max: Some(900.0),
+            recommended: None,
+        });
+        assert!(profile_of(&hot, &base).is_none());
+        // no recommended value: the middle of the range
+        let mut mid = r.clone();
+        mid.nozzle_c = Some(eh3d_printmaterials::model::Range {
+            min: Some(200.0),
+            max: Some(220.0),
+            recommended: None,
+        });
+        assert_eq!(profile_of(&mid, &base).unwrap().nozzle_c.best, 210.0);
+        // a maker's name goes before the product unless the product already starts with it
+        assert!(
+            p.name.starts_with(&p.manufacturer)
+                || r.name
+                    .to_ascii_lowercase()
+                    .starts_with(&p.manufacturer.to_ascii_lowercase())
         );
     }
 
@@ -741,47 +1050,5 @@ mod tests {
         let c = fil("generic-pla").check(&resin, N04);
         assert_eq!(c.issues, vec![Issue::NotAFilamentPrinter]);
         assert!(!c.ok() && c.issues[0].text().contains("resin"));
-    }
-
-    #[test]
-    fn a_bad_table_is_refused_with_its_line() {
-        let row =
-            "x-pla|X PLA|pla|210|190|230|60|0|70|100|80|100|1.24|1.75|0.2|false|false|false|false";
-        assert_eq!(FilamentCatalog::parse(row).unwrap().len(), 1);
-        for (bad, want) in [
-            ("x|X|pla|210", "columns"),
-            (
-                "x|X|wood|210|190|230|60|0|70|100|80|100|1.24|1.75|0.2|false|false|false|false",
-                "material",
-            ),
-            (
-                "x|X|pla|180|190|230|60|0|70|100|80|100|1.24|1.75|0.2|false|false|false|false",
-                "range",
-            ),
-            (
-                "x|X|pla|210|190|230|60|0|70|100|80|100|1.24|1.5|0.2|false|false|false|false",
-                "diameter",
-            ),
-            (
-                "x|X|pla|210|190|230|60|0|70|100|80|100|1.24|1.75|0.2|maybe|false|false|false",
-                "abrasive",
-            ),
-            (
-                "X Y|X|pla|210|190|230|60|0|70|100|80|100|1.24|1.75|0.2|false|false|false|false",
-                "id",
-            ),
-            (
-                "x|X|pla|210|190|230|60|0|70|100|80|100|1.24|1.75|9|false|false|false|false",
-                "smallest nozzle",
-            ),
-        ] {
-            let e = FilamentCatalog::parse(bad).unwrap_err().to_string();
-            assert!(e.contains(want), "{bad} -> {e}");
-        }
-        assert!(FilamentCatalog::parse(&format!("{row}\n{row}"))
-            .unwrap_err()
-            .to_string()
-            .contains("twice"));
-        assert!(FilamentCatalog::parse("# nothing\n").is_err());
     }
 }

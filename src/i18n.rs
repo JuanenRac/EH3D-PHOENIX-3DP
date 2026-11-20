@@ -279,10 +279,34 @@ pub enum Msg {
     DeviceTimeLeft,
     DevicePower,
     SettingsFileTitle,
+    PanelStatus,
+    SendToQueue,
+    ExportGcode,
+    ExportToLabel,
+    ExportPathHint,
+    Exported,
+    NothingToExport,
+    UpdatesViaUpdater,
+    OpenTypePath,
+    SaveTypePath,
+    FilamentSearchHint,
+    FilamentMaker,
+    FilamentsShown,
+    PfTitle,
+    PfNoFilament,
+    PfClear,
+    PfNozzleTemp,
+    PfBedTemp,
+    PfFlow,
+    PfDry,
+    PfHardened,
+    PfEnclosure,
+    PfDirectDrive,
+    NozzleHardened,
 }
 
 impl Msg {
-    pub const ALL: [Msg; 205] = [
+    pub const ALL: [Msg; 229] = [
         Msg::TabPrepare,
         Msg::TabPreview,
         Msg::TabDevice,
@@ -488,6 +512,30 @@ impl Msg {
         Msg::DeviceTimeLeft,
         Msg::DevicePower,
         Msg::SettingsFileTitle,
+        Msg::PanelStatus,
+        Msg::SendToQueue,
+        Msg::ExportGcode,
+        Msg::ExportToLabel,
+        Msg::ExportPathHint,
+        Msg::Exported,
+        Msg::NothingToExport,
+        Msg::UpdatesViaUpdater,
+        Msg::OpenTypePath,
+        Msg::SaveTypePath,
+        Msg::FilamentSearchHint,
+        Msg::FilamentMaker,
+        Msg::FilamentsShown,
+        Msg::PfTitle,
+        Msg::PfNoFilament,
+        Msg::PfClear,
+        Msg::PfNozzleTemp,
+        Msg::PfBedTemp,
+        Msg::PfFlow,
+        Msg::PfDry,
+        Msg::PfHardened,
+        Msg::PfEnclosure,
+        Msg::PfDirectDrive,
+        Msg::NozzleHardened,
     ];
 
     /// The texts in the order English, Spanish, German, French, Italian, Japanese, Chinese, Portuguese (Portugal).
@@ -707,6 +755,30 @@ impl Msg {
             Msg::DeviceTimeLeft => ["Time left: {}", "Tiempo restante: {}", "Verbleibende Zeit: {}", "Temps restant : {}", "Tempo rimanente: {}", "残り時間: {}", "剩余时间:{}", "Tempo restante: {}"],
             Msg::DevicePower => ["Power: {} %", "Potencia: {} %", "Leistung: {} %", "Puissance : {} %", "Potenza: {} %", "出力: {} %", "功率:{} %", "Potência: {} %"],
             Msg::SettingsFileTitle => ["Settings file (read only)", "Fichero de ajustes (solo lectura)", "Einstellungsdatei (nur lesen)", "Fichier de réglages (lecture seule)", "File delle impostazioni (sola lettura)", "設定ファイル(読み取り専用)", "设置文件(只读)", "Ficheiro de definições (só de leitura)"],
+            Msg::PanelStatus => ["Machine status", "Estado de la máquina", "Maschinenstatus", "État de la machine", "Stato della macchina", "マシンの状態", "设备状态", "Estado da máquina"],
+            Msg::SendToQueue => ["Send to the queue", "Enviar a la cola", "An die Warteschlange senden", "Envoyer à la file d'attente", "Invia alla coda", "キューに送る", "发送到队列", "Enviar para a fila"],
+            Msg::ExportGcode => ["Export G-code", "Exportar G-code", "G-Code exportieren", "Exporter le G-code", "Esporta il G-code", "Gコードを書き出す", "导出 G 代码", "Exportar o G-code"],
+            Msg::ExportToLabel => ["Export to", "Exportar a", "Exportieren nach", "Exporter vers", "Esporta in", "書き出し先", "导出到", "Exportar para"],
+            Msg::ExportPathHint => ["Name of the .gcode file to write", "Nombre del fichero .gcode que se escribe", "Name der zu schreibenden .gcode-Datei", "Nom du fichier .gcode à écrire", "Nome del file .gcode da scrivere", "書き込む .gcode ファイル名", "要写入的 .gcode 文件名", "Nome do ficheiro .gcode a escrever"],
+            Msg::Exported => ["G-code written to {}", "G-code escrito en {}", "G-Code nach {} geschrieben", "G-code écrit dans {}", "G-code scritto in {}", "G コードを {} に書き込みました", "G 代码已写入 {}", "G-code escrito em {}"],
+            Msg::NothingToExport => ["Slice first: there is no G-code to write yet", "Lamine primero: todavía no hay G-code que escribir", "Zuerst slicen: Es gibt noch keinen G-Code zum Schreiben", "Découpez d'abord : il n'y a pas encore de G-code à écrire", "Elabora prima: non c'è ancora G-code da scrivere", "先にスライスしてください。書き出す G コードがまだありません", "请先切片:还没有可写入的 G 代码", "Fatie primeiro: ainda não há G-code para escrever"],
+            Msg::UpdatesViaUpdater => ["Updates are looked for with the Electro Hobby 3D updater: open it to see if there is a newer version", "Las actualizaciones se buscan con el actualizador de Electro Hobby 3D: ábralo para ver si hay una versión más nueva", "Aktualisierungen sucht der Electro-Hobby-3D-Updater: Öffnen Sie ihn, um zu sehen, ob es eine neuere Version gibt", "Les mises à jour se cherchent avec l'outil de mise à jour d'Electro Hobby 3D : ouvrez-le pour voir s'il existe une version plus récente", "Gli aggiornamenti si cercano con l'updater di Electro Hobby 3D: aprilo per vedere se c'è una versione più recente", "更新は Electro Hobby 3D のアップデーターで確認します。開いて新しいバージョンがあるか確かめてください", "更新通过 Electro Hobby 3D 更新程序查找:打开它即可查看是否有新版本", "As atualizações procuram-se com o atualizador da Electro Hobby 3D: abra-o para ver se há uma versão mais recente"],
+            Msg::OpenTypePath => ["Type the path of a model in the Objects panel and press Open", "Escriba la ruta de un modelo en el panel de objetos y pulse Abrir", "Geben Sie im Objektbereich den Pfad eines Modells ein und drücken Sie Öffnen", "Saisissez le chemin d'un modèle dans le panneau des objets, puis appuyez sur Ouvrir", "Digita il percorso di un modello nel pannello degli oggetti e premi Apri", "オブジェクトパネルにモデルのパスを入力して「開く」を押してください", "请在对象面板中输入模型路径,然后点击“打开”", "Escreva o caminho de um modelo no painel de objetos e prima Abrir"],
+            Msg::SaveTypePath => ["Type the name of the project in the Project panel and press Save", "Escriba el nombre del proyecto en el panel de proyecto y pulse Guardar", "Geben Sie im Projektbereich den Namen des Projekts ein und drücken Sie Speichern", "Saisissez le nom du projet dans le panneau du projet, puis appuyez sur Enregistrer", "Digita il nome del progetto nel pannello del progetto e premi Salva", "プロジェクトパネルにプロジェクト名を入力して「保存」を押してください", "请在项目面板中输入项目名称,然后点击“保存”", "Escreva o nome do projeto no painel do projeto e prima Guardar"],
+            Msg::FilamentSearchHint => ["Maker, material or name", "Fabricante, material o nombre", "Hersteller, Material oder Name", "Fabricant, matière ou nom", "Produttore, materiale o nome", "メーカー、素材、名前", "品牌、材料或名称", "Fabricante, material ou nome"],
+            Msg::FilamentMaker => ["Maker", "Fabricante", "Hersteller", "Fabricant", "Produttore", "メーカー", "品牌", "Fabricante"],
+            Msg::FilamentsShown => ["{} of {} filaments", "{} de {} filamentos", "{} von {} Filamenten", "{} filaments sur {}", "{} filamenti su {}", "{} / {} 件のフィラメント", "{} / {} 种耗材", "{} de {} filamentos"],
+            Msg::PfTitle => ["Before printing", "Antes de imprimir", "Vor dem Drucken", "Avant d'imprimer", "Prima di stampare", "印刷の前に", "打印前", "Antes de imprimir"],
+            Msg::PfNoFilament => ["Choose a filament to check it before printing", "Elija un filamento para comprobarlo antes de imprimir", "Wählen Sie ein Filament, um es vor dem Drucken zu prüfen", "Choisissez un filament pour le vérifier avant d'imprimer", "Scegli un filamento per controllarlo prima di stampare", "印刷前に確認するフィラメントを選んでください", "请选择一种耗材,以便在打印前检查", "Escolha um filamento para o verificar antes de imprimir"],
+            Msg::PfClear => ["Nothing to warn about for this filament", "Nada que advertir para este filamento", "Für dieses Filament gibt es keine Warnung", "Rien à signaler pour ce filament", "Niente da segnalare per questo filamento", "このフィラメントについて警告はありません", "这种耗材没有需要提醒的事项", "Nada a avisar para este filamento"],
+            Msg::PfNozzleTemp => ["The nozzle is set to {} C, outside the {} to {} C of this filament", "La boquilla está a {} C, fuera de los {} a {} C de este filamento", "Die Düse ist auf {} C eingestellt, außerhalb der {} bis {} C dieses Filaments", "La buse est réglée à {} C, hors des {} à {} C de ce filament", "L'ugello è a {} C, fuori dai {} - {} C di questo filamento", "ノズルは {} C に設定されていますが、このフィラメントの {} ~ {} C の範囲外です", "喷嘴设为 {} C,超出此耗材的 {} 至 {} C 范围", "O bico está a {} C, fora dos {} a {} C deste filamento"],
+            Msg::PfBedTemp => ["The bed is set to {} C, outside the {} to {} C of this filament", "La cama está a {} C, fuera de los {} a {} C de este filamento", "Das Bett ist auf {} C eingestellt, außerhalb der {} bis {} C dieses Filaments", "Le plateau est réglé à {} C, hors des {} à {} C de ce filament", "Il piano è a {} C, fuori dai {} - {} C di questo filamento", "ベッドは {} C に設定されていますが、このフィラメントの {} ~ {} C の範囲外です", "热床设为 {} C,超出此耗材的 {} 至 {} C 范围", "A mesa está a {} C, fora dos {} a {} C deste filamento"],
+            Msg::PfFlow => ["The flow of {} mm3/s is over the {} mm3/s this filament takes: slow the print down", "El caudal de {} mm3/s supera los {} mm3/s que admite este filamento: reduzca la velocidad", "Der Durchfluss von {} mm3/s liegt über den {} mm3/s dieses Filaments: Drucken Sie langsamer", "Le débit de {} mm3/s dépasse les {} mm3/s que ce filament supporte : ralentissez l'impression", "Il flusso di {} mm3/s supera i {} mm3/s di questo filamento: rallenta la stampa", "流量 {} mm3/s がこのフィラメントの上限 {} mm3/s を超えています。速度を下げてください", "流量 {} mm3/s 超过此耗材可承受的 {} mm3/s:请降低打印速度", "O caudal de {} mm3/s excede os {} mm3/s que este filamento aceita: reduza a velocidade"],
+            Msg::PfDry => ["Dry the filament before printing: {} C for {} h", "Seque el filamento antes de imprimir: {} C durante {} h", "Trocknen Sie das Filament vor dem Drucken: {} C für {} h", "Séchez le filament avant d'imprimer : {} C pendant {} h", "Asciuga il filamento prima di stampare: {} C per {} h", "印刷前にフィラメントを乾燥してください: {} C で {} 時間", "打印前请先烘干耗材:{} C,{} 小时", "Seque o filamento antes de imprimir: {} C durante {} h"],
+            Msg::PfHardened => ["This filament wears a brass nozzle: use a hardened one", "Este filamento desgasta una boquilla de latón: use una endurecida", "Dieses Filament verschleißt eine Messingdüse: Verwenden Sie eine gehärtete", "Ce filament use une buse en laiton : utilisez une buse durcie", "Questo filamento consuma un ugello in ottone: usa uno temprato", "このフィラメントは真鍮ノズルを摩耗させます。硬化ノズルを使ってください", "此耗材会磨损黄铜喷嘴:请使用硬化喷嘴", "Este filamento desgasta um bico de latão: use um endurecido"],
+            Msg::PfEnclosure => ["A closed printer is advised for this filament", "Se aconseja una impresora cerrada para este filamento", "Für dieses Filament wird ein geschlossener Drucker empfohlen", "Une imprimante fermée est conseillée pour ce filament", "Per questo filamento è consigliata una stampante chiusa", "このフィラメントには密閉型プリンターをお勧めします", "此耗材建议使用封闭式打印机", "Aconselha-se uma impressora fechada para este filamento"],
+            Msg::PfDirectDrive => ["A direct drive extruder is advised for this filament", "Se aconseja un extrusor de accionamiento directo para este filamento", "Für dieses Filament wird ein Direktantrieb empfohlen", "Une extrusion directe est conseillée pour ce filament", "Per questo filamento è consigliato un estrusore diretto", "このフィラメントにはダイレクトドライブのエクストルーダーをお勧めします", "此耗材建议使用直驱挤出机", "Aconselha-se um extrusor de acionamento direto para este filamento"],
+            Msg::NozzleHardened => ["Hardened nozzle", "Boquilla endurecida", "Gehärtete Düse", "Buse durcie", "Ugello temprato", "硬化ノズル", "硬化喷嘴", "Bico endurecido"],
         }
     }
 
@@ -927,7 +999,7 @@ mod tests {
         seen.sort_by_key(|m| format!("{m:?}"));
         seen.dedup();
         assert_eq!(seen.len(), Msg::ALL.len());
-        assert_eq!(Msg::ALL.len(), 205);
+        assert_eq!(Msg::ALL.len(), 229);
     }
 
     #[test]
@@ -1071,7 +1143,7 @@ mod tests {
     #[test]
     fn the_texts_of_the_studio_window_have_their_places_in_every_language_and_the_words_of_portugal(
     ) {
-        let new = &Msg::ALL[123..];
+        let new = &Msg::ALL[123..205];
         assert_eq!(new.len(), 82);
         let places = |m: Msg| match m {
             Msg::WarnOutOfBed
@@ -1208,5 +1280,45 @@ mod tests {
             "Paragem de emergência"
         );
         assert!(!state_text(JobState::Offline, Lang::Pt).contains("Desconectado"));
+    }
+
+    #[test]
+    fn the_texts_of_the_panels_the_menus_and_the_check_before_printing_have_their_places_and_the_words_of_portugal(
+    ) {
+        let new = &Msg::ALL[205..];
+        assert_eq!(new.len(), 24);
+        let places = |m: Msg| match m {
+            Msg::Exported => 1,
+            Msg::FilamentsShown | Msg::PfDry | Msg::PfFlow => 2,
+            Msg::PfNozzleTemp | Msg::PfBedTemp => 3,
+            _ => 0,
+        };
+        for m in new {
+            for l in Lang::ALL {
+                assert_eq!(
+                    m.tr(l).matches("{}").count(),
+                    places(*m),
+                    "{m:?} in {}",
+                    l.code()
+                );
+            }
+        }
+        // the words of Portugal, and the formal register in the languages that have one
+        assert!(Msg::PanelStatus.tr(Lang::Pt).contains("máquina"));
+        assert!(Msg::NothingToExport.tr(Lang::Pt).starts_with("Fatie"));
+        assert!(Msg::UpdatesViaUpdater.tr(Lang::Pt).contains("atualizador"));
+        assert!(
+            Msg::OpenTypePath.tr(Lang::Pt).contains("ficheiro")
+                || Msg::OpenTypePath.tr(Lang::Pt).contains("caminho")
+        );
+        assert!(Msg::ExportPathHint.tr(Lang::Pt).contains("ficheiro"));
+        assert!(Msg::SaveTypePath.tr(Lang::De).contains("Sie"));
+        assert!(Msg::PfNoFilament.tr(Lang::Fr).starts_with("Choisissez"));
+        assert!(Msg::PfDry.tr(Lang::Es).starts_with("Seque"));
+        let both = |m: Msg, l: Lang| fill(m.tr(l), &["a", "b"]);
+        assert!(
+            both(Msg::FilamentsShown, Lang::En).contains('a')
+                && both(Msg::FilamentsShown, Lang::En).contains('b')
+        );
     }
 }

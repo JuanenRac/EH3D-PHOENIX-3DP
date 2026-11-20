@@ -22,6 +22,8 @@ pub struct Segment {
     pub a: [f32; 2],
     pub b: [f32; 2],
     pub colour: [f32; 3],
+    /// How opaque it is, from 0 to 1: the walls are faint when the person looks inside, so the infill behind them shows.
+    pub alpha: f32,
 }
 
 /// The lines for one frame.
@@ -121,6 +123,8 @@ pub struct PreviewState {
     pub peek_inside: bool,
     /// The spacing of the grid of the bed under the plan, in millimetres.
     pub grid_mm: f64,
+    /// How opaque the walls are when the person looks inside (from the settings file); the rest of the lines stay solid.
+    pub peek_wall_alpha: f32,
     /// The density of the plastic of the last slice, for the weight in the report.
     pub density_g_cm3: f64,
     /// What every layer of the plan comes to, worked out once when the plan is made.
@@ -145,6 +149,7 @@ impl Default for PreviewState {
             show_travel: false,
             peek_inside: false,
             grid_mm: 10.0,
+            peek_wall_alpha: crate::config::PEEK_WALL_ALPHA_DEFAULT,
             density_g_cm3: report::DEFAULT_DENSITY_G_CM3,
             summaries: Vec::new(),
             progress: Vec::new(),
@@ -360,9 +365,28 @@ impl PreviewState {
         }
         let mut batches = Vec::new();
         if let Some(r) = self.range() {
-            batches.push(lines_of(plan, &r, &self.shown_filter()));
+            let shown = self.shown_filter();
+            if self.peek_inside && shown.perimeters {
+                // looking inside: the walls are drawn first and faint, and everything else over them, so the infill is seen through the walls and not only at the mouth of the part
+                let walls = KindFilter {
+                    perimeters: true,
+                    infill: false,
+                    solid: false,
+                    bridges: false,
+                    supports: false,
+                    adhesion: false,
+                };
+                batches.push((lines_of(plan, &r, &walls), self.peek_wall_alpha));
+                let rest = KindFilter {
+                    perimeters: false,
+                    ..shown
+                };
+                batches.push((lines_of(plan, &r, &rest), 1.0));
+            } else {
+                batches.push((lines_of(plan, &r, &shown), 1.0));
+            }
             if self.show_travel {
-                batches.push(travel_lines(plan, &r));
+                batches.push((travel_lines(plan, &r), 1.0));
             }
         }
         let mut frame = Frame {
@@ -370,7 +394,7 @@ impl PreviewState {
             ..Frame::default()
         };
         frame.bed.lines.retain(|l| l.kind != LineKind::Volume);
-        for batch in &batches {
+        for (batch, alpha) in &batches {
             for v in batch.vertices.as_chunks::<{ FLOATS_PER_VERTEX * 2 }>().0 {
                 if frame.segments.len() >= MAX_SEGMENTS {
                     frame.left_out += 1;
@@ -388,6 +412,7 @@ impl PreviewState {
                         a: [a[0] as f32, a[1] as f32],
                         b: [b[0] as f32, b[1] as f32],
                         colour: [v[3], v[4], v[5]],
+                        alpha: *alpha,
                     });
                 }
             }
@@ -787,5 +812,39 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn looking_inside_draws_the_walls_faint_so_the_infill_shows_through_and_looking_from_outside_is_solid(
+    ) {
+        let (mut s, _) = sliced();
+        let outside = s.frame(800.0, 600.0);
+        assert!(!outside.segments.is_empty());
+        assert!(outside.segments.iter().all(|g| g.alpha == 1.0));
+        s.peek_inside = true;
+        s.peek_wall_alpha = 0.3;
+        let inside = s.frame(800.0, 600.0);
+        let wall = p3dp_viewer::layers::colour_of(Kind::ExternalPerimeter);
+        let infill = p3dp_viewer::layers::colour_of(Kind::Infill);
+        let faint: Vec<&Segment> = inside.segments.iter().filter(|g| g.alpha < 1.0).collect();
+        assert!(!faint.is_empty());
+        assert!(faint.iter().all(|g| g.alpha == 0.3));
+        let wall_colours = [wall, p3dp_viewer::layers::colour_of(Kind::Perimeter)];
+        assert!(faint.iter().all(|g| wall_colours.contains(&g.colour)));
+        // the infill is there and solid, and it comes after the walls so it is drawn over them
+        let first_solid = inside.segments.iter().position(|g| g.alpha == 1.0).unwrap();
+        let last_faint = inside.segments.iter().rposition(|g| g.alpha < 1.0).unwrap();
+        assert!(last_faint < first_solid);
+        assert!(inside
+            .segments
+            .iter()
+            .any(|g| g.colour == infill && g.alpha == 1.0));
+        // with the walls switched off there is nothing faint
+        s.filter.perimeters = false;
+        assert!(s
+            .frame(800.0, 600.0)
+            .segments
+            .iter()
+            .all(|g| g.alpha == 1.0));
     }
 }

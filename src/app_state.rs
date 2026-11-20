@@ -85,6 +85,8 @@ pub enum Status {
     None,
     Loaded(String),
     Saved(String),
+    /// The G-code was written to this file.
+    Exported(String),
     Problem(String),
 }
 
@@ -94,6 +96,7 @@ impl Status {
             Status::None => String::new(),
             Status::Loaded(n) => fill(Msg::Loaded.tr(lang), &[n]),
             Status::Saved(n) => fill(Msg::Saved.tr(lang), &[n]),
+            Status::Exported(n) => fill(Msg::Exported.tr(lang), &[n]),
             Status::Problem(p) => fill(Msg::Problem.tr(lang), &[p]),
         }
     }
@@ -738,5 +741,30 @@ mod tests {
         }
         let resin = s.catalog.find("elegoo-mars-4").unwrap();
         assert!(demo_device(resin).is_err());
+    }
+
+    #[test]
+    fn what_the_window_says_of_a_file_it_wrote_names_the_file_in_every_language() {
+        for l in Lang::ALL {
+            for status in [
+                Status::Loaded("a.stl".to_string()),
+                Status::Saved("a.3mf".to_string()),
+                Status::Exported("a.gcode".to_string()),
+            ] {
+                let text = status.text(l);
+                let name = match &status {
+                    Status::Loaded(n) | Status::Saved(n) | Status::Exported(n) => n,
+                    _ => unreachable!(),
+                };
+                assert!(
+                    text.contains(name.as_str()) && !text.contains("{}"),
+                    "{text} in {}",
+                    l.code()
+                );
+                assert!(!status.is_problem());
+            }
+        }
+        assert!(Status::Problem("x".to_string()).is_problem());
+        assert_eq!(Status::None.text(Lang::En), "");
     }
 }

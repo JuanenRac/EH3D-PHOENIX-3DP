@@ -40,7 +40,7 @@ path = "src/main.rs"
 [features]
 default = []
 # the window (egui): `cargo run --release --features gui`
-gui = ["dep:eframe", "eh3d-view/gui"]
+gui = ["dep:eframe", "eh3d-view/gui", "eh3d-dock/gui"]
 
 [dependencies]
 p3dp-core = { path = "crates/p3dp-core" }
@@ -55,6 +55,12 @@ p3dp-viewer = { path = "crates/p3dp-viewer" }
 # the client of the suite for the EH3D server and the panel of its settings, the state of the link and the login that the other programs of the suite show (the sibling folder EH3D-COMMON is needed)
 eh3d-serverclient = { version = ">=0.0.1", path = "../EH3D-COMMON/crates/serverclient" }
 eh3d-view = { version = ">=0.0.1", path = "../EH3D-COMMON/crates/view", default-features = false }
+
+# the frame of the window: panels that dock, float and fold, workspaces, the menu bar and the shortcuts; the model has no window, the drawing is the feature `gui`
+eh3d-dock = { version = ">=0.0.1", path = "../EH3D-COMMON/crates/dock", default-features = false }
+
+# the database of printing materials of the suite (the catalog of filaments and resins of the profiles reads it; the check before printing asks it for the flow and the drying)
+eh3d-printmaterials = { version = ">=0.0.1", path = "../EH3D-COMMON/crates/printmaterials" }
 
 # the window
 eframe = { version = "0.37.0", default-features = false, features = ["glow", "default_fonts"], optional = true }

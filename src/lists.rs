@@ -76,8 +76,11 @@ impl PrinterFilter {
 /// What chooses the filaments that are listed.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct FilamentFilter {
+    /// Words to look for in the name, the maker, the material and the id: every word has to be in at least one of them (`pla silk polymaker`).
     pub search: String,
     pub material: Option<Material>,
+    /// Only the filaments of this maker (upper and lower case count the same).
+    pub manufacturer: Option<String>,
     /// Only the filaments the printer can use with this nozzle: the printer chosen and the nozzle of the program.
     pub compatible_with: Option<Nozzle>,
 }
@@ -90,20 +93,51 @@ pub struct FilamentRow<'a> {
 }
 
 impl FilamentFilter {
+    /// Whether every word is in the name, the maker, the material or the id of the filament.
+    fn matches_words(&self, f: &FilamentProfile, words: &[String]) -> bool {
+        if words.is_empty() {
+            return true;
+        }
+        let haystack = format!(
+            "{} {} {} {}",
+            f.name,
+            f.manufacturer,
+            f.material.as_str(),
+            f.id
+        )
+        .to_ascii_lowercase();
+        words.iter().all(|w| haystack.contains(w.as_str()))
+    }
+
+    /// Whether any filter is on.
+    pub fn is_active(&self) -> bool {
+        !self.search.trim().is_empty()
+            || self.material.is_some()
+            || self.manufacturer.is_some()
+            || self.compatible_with.is_some()
+    }
+
     /// The filaments that pass for a printer, in the order of the catalog. The compatibility is worked out when it is asked for.
     pub fn apply<'a>(
         &self,
         filaments: &'a FilamentCatalog,
         printer: Option<&PrinterProfile>,
     ) -> Vec<FilamentRow<'a>> {
-        let q = self.search.trim().to_ascii_lowercase();
+        let words: Vec<String> = self
+            .search
+            .split_whitespace()
+            .map(str::to_ascii_lowercase)
+            .collect();
         filaments
             .profiles
             .iter()
-            .filter(|f| {
-                q.is_empty() || f.id.contains(&q) || f.name.to_ascii_lowercase().contains(&q)
-            })
+            .filter(|f| self.matches_words(f, &words))
             .filter(|f| self.material.is_none_or(|m| f.material == m))
+            .filter(|f| {
+                self.manufacturer
+                    .as_deref()
+                    .is_none_or(|m| f.manufacturer.eq_ignore_ascii_case(m))
+            })
             .filter_map(|f| {
                 let compatibility = match (self.compatible_with, printer) {
                     (Some(nozzle), Some(p)) => {
@@ -231,10 +265,12 @@ mod tests {
             search: "PETG".to_string(),
             ..FilamentFilter::default()
         };
-        assert!(by_name
-            .apply(&fil, None)
-            .iter()
-            .all(|r| r.profile.material == Material::Petg));
+        let named = by_name.apply(&fil, None);
+        assert!(!named.is_empty());
+        assert!(named.iter().all(|r| {
+            let p = r.profile;
+            p.material == Material::Petg || p.name.to_ascii_lowercase().contains("petg")
+        }));
         // a printer that cannot reach the heat of the engineering materials leaves them out
         let nozzle = Nozzle {
             diameter_mm: 0.4,
@@ -263,5 +299,56 @@ mod tests {
         // a resin printer takes none
         let resin = c.find("elegoo-mars-4").unwrap();
         assert!(ok_only.apply(&fil, Some(resin)).is_empty());
+    }
+
+    #[test]
+    fn the_filaments_are_looked_for_by_maker_and_by_material_with_several_words() {
+        let fil = FilamentCatalog::builtin().unwrap();
+        let makers = fil.manufacturers();
+        let maker = makers
+            .iter()
+            .find(|m| !m.eq_ignore_ascii_case("generic"))
+            .unwrap();
+        let by_maker = FilamentFilter {
+            manufacturer: Some(maker.to_ascii_uppercase()),
+            ..FilamentFilter::default()
+        };
+        let rows = by_maker.apply(&fil, None);
+        assert!(!rows.is_empty() && by_maker.is_active());
+        assert!(rows
+            .iter()
+            .all(|r| r.profile.manufacturer.eq_ignore_ascii_case(maker)));
+        // the words of the search meet in the maker, the material and the name, in any order
+        let words = FilamentFilter {
+            search: format!("  {}   PLA ", maker.to_ascii_lowercase()),
+            ..FilamentFilter::default()
+        };
+        let found = words.apply(&fil, None);
+        assert!(found.len() <= rows.len());
+        for r in &found {
+            assert!(r.profile.manufacturer.eq_ignore_ascii_case(maker));
+            let all = format!("{} {}", r.profile.name, r.profile.id).to_ascii_lowercase();
+            assert!(
+                r.profile.material == Material::Pla || all.contains("pla"),
+                "{}",
+                r.profile.id
+            );
+        }
+        // a word that is nowhere finds nothing, and the old id still finds the generic PLA
+        let none = FilamentFilter {
+            search: "pla zzzz-nothing".to_string(),
+            ..FilamentFilter::default()
+        };
+        assert!(none.apply(&fil, None).is_empty());
+        let old = FilamentFilter {
+            search: "generic pla".to_string(),
+            material: Some(Material::Pla),
+            ..FilamentFilter::default()
+        };
+        assert!(old
+            .apply(&fil, None)
+            .iter()
+            .any(|r| r.profile.id == "generic/generic-pla"));
+        assert!(!FilamentFilter::default().is_active());
     }
 }

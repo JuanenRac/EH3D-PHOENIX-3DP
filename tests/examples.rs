@@ -46,14 +46,16 @@ fn the_settings_example_is_valid_and_says_what_the_defaults_are() {
             c.grid_mm,
             c.arrange_gap_mm,
             c.arrange_on_add,
-            c.ui_hints
+            c.ui_hints,
+            c.peek_wall_alpha
         ),
         (
             d.theme,
             d.grid_mm,
             d.arrange_gap_mm,
             d.arrange_on_add,
-            d.ui_hints
+            d.ui_hints,
+            d.peek_wall_alpha
         )
     );
     assert!(c.limit_overrides.is_empty());

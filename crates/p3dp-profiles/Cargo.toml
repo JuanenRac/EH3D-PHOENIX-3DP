@@ -13,3 +13,5 @@ path = "src/lib.rs"
 
 [dependencies]
 p3dp-core = { path = "../p3dp-core" }
+# the database of printing materials of the suite (the sibling folder EH3D-COMMON is needed)
+eh3d-printmaterials = { version = ">=0.0.1", path = "../../../EH3D-COMMON/crates/printmaterials" }

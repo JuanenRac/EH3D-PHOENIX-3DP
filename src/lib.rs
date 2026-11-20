@@ -13,6 +13,8 @@ pub mod limits_ui;
 pub mod lists;
 pub mod look;
 pub mod objects;
+pub mod panels;
+pub mod preflight;
 pub mod preview;
 pub mod project;
 pub mod report;

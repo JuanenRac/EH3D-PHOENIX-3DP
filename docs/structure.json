@@ -307,6 +307,32 @@
           }
         },
         {
+          "name": "panels.rs",
+          "desc": {
+            "en": "the panels, workspaces and menus of the window as data, and the saving",
+            "es": "los paneles, espacios de trabajo y menús de la ventana como datos",
+            "de": "die Bereiche, Arbeitsbereiche und Menüs des Fensters als Daten",
+            "fr": "les panneaux, espaces de travail et menus de la fenêtre comme données",
+            "it": "i pannelli, le aree di lavoro e i menu della finestra come dati",
+            "ja": "ウィンドウのパネル・ワークスペース・メニューをデータとして持つ",
+            "zh": "以数据形式保存窗口的面板、工作区和菜单",
+            "pt": "os painéis, áreas de trabalho e menus da janela como dados"
+          }
+        },
+        {
+          "name": "preflight.rs",
+          "desc": {
+            "en": "what to look at before printing, from the materials database",
+            "es": "qué mirar antes de imprimir, según la base de materiales",
+            "de": "was vor dem Drucken zu prüfen ist, aus der Materialdatenbank",
+            "fr": "quoi vérifier avant d'imprimer, d'après la base de matériaux",
+            "it": "cosa guardare prima di stampare, dal database dei materiali",
+            "ja": "印刷前に確認すること（材料データベースから）",
+            "zh": "打印前要检查的事项（来自材料数据库）",
+            "pt": "o que ver antes de imprimir, a partir da base de materiais"
+          }
+        },
+        {
           "name": "preview.rs",
           "desc": {
             "en": "slicing from the window, the slider of layers, the plan on screen, the report",

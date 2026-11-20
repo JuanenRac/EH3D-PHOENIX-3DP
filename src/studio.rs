@@ -218,6 +218,21 @@ impl Studio {
         false
     }
 
+    /// Takes every part off the bed; the number of parts taken off.
+    pub fn clear_all(&mut self) -> usize {
+        let ids: Vec<u32> = self.plate.objects.iter().map(|o| o.id).collect();
+        let mut gone = 0;
+        for id in ids {
+            if self.plate.remove(id) {
+                gone += 1;
+            }
+        }
+        if gone > 0 {
+            self.touched();
+        }
+        gone
+    }
+
     pub fn remove_selected(&mut self) -> bool {
         let Some(id) = self.plate.selected else {
             return false;
@@ -755,5 +770,26 @@ mod tests {
             e.layers,
             "slicing is deterministic"
         );
+    }
+
+    #[test]
+    fn a_new_bed_takes_every_part_off_and_says_so_to_the_window_only_when_it_did() {
+        let mut s = Studio::new();
+        let c = config();
+        for i in 0..3 {
+            s.add_model(&format!("c{i}"), cube(20.0), VOL, &c).unwrap();
+        }
+        assert!(s.plate.selected.is_some());
+        let _ = s.take_changed();
+        assert_eq!(s.clear_all(), 3);
+        assert!(s.plate.is_empty() && s.plate.selected.is_none());
+        assert!(s.take_changed(), "the window has to draw the empty bed");
+        assert!(s.warnings(VOL).is_empty());
+        // an empty bed has nothing to take off and nothing to tell
+        assert_eq!(s.clear_all(), 0);
+        assert!(!s.take_changed());
+        // a part can be put on it again
+        assert!(s.add_model("again", cube(20.0), VOL, &c).is_some());
+        assert_eq!(s.plate.len(), 1);
     }
 }
