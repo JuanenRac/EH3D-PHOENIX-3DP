@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.4-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-479-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-537-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Contrôle d'honnêteté - ce qui fonctionne vraiment aujourd'hui :** un espace de travail Rust de huit bibliothèques et un programme en ligne de commande (`phoenix-3dp`) avec 479 tests qui s'exécutent sur un ordinateur. Il lit et vérifie des modèles STL, OBJ et 3MF, contient un catalogue de 120 profils d'imprimante construits à partir de données publiques (aucun essayé sur une machine), écrit du G-code pour les dialectes Marlin, Klipper, RepRapFirmware et Bambu avec des limites de température qui refusent une valeur au lieu de la rogner, et pilote des imprimantes Moonraker et OctoPrint et le serveur EH3D, mais seulement contre des simulateurs (en mémoire et sur un socket de cet ordinateur). Il découpe un modèle fermé en couches planes avec des périmètres, un remplissage rectiligne et des peaux pleines (un petit trancheur avec remplissage en grille et en gyroïde, ponts, supports simples, coutures, largeur variable, levée en déplacement, jupe, bordure ou radeau, mode vase, couches courtes ralenties, rétraction qui suit le déplacement et une estimation du temps avec accélération ; encore rien pour plusieurs matériaux) ; la fenêtre n'a pas été compilée ni vue sur un écran ; rien n'a tourné sur une vraie imprimante.
+**Contrôle d'honnêteté - ce qui fonctionne vraiment aujourd'hui :** un espace de travail Rust de huit bibliothèques et un programme en ligne de commande (`phoenix-3dp`) avec 537 tests qui s'exécutent sur un ordinateur. Il lit et vérifie des modèles STL, OBJ et 3MF, contient un catalogue de 120 profils d'imprimante construits à partir de données publiques (aucun essayé sur une machine), écrit du G-code pour les dialectes Marlin, Klipper, RepRapFirmware et Bambu avec des limites de température qui refusent une valeur au lieu de la rogner, et pilote des imprimantes Moonraker et OctoPrint et le serveur EH3D, mais seulement contre des simulateurs (en mémoire et sur un socket de cet ordinateur). Il découpe un modèle fermé en couches planes avec des périmètres, un remplissage rectiligne et des peaux pleines (un petit trancheur avec remplissage en grille et en gyroïde, ponts, supports simples, coutures, largeur variable, levée en déplacement, jupe, bordure ou radeau, mode vase, couches courtes ralenties, rétraction qui suit le déplacement et une estimation du temps avec accélération ; encore rien pour plusieurs matériaux) ; la fenêtre n'a pas été compilée ni vue sur un écran ; rien n'a tourné sur une vraie imprimante.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Version | `0.0.4` |
 | Maturité | Échafaudage |
-| Tests | 479 |
+| Tests | 537 |
 | Pile technique | Rust |
 | Sur du matériel réel | Pas essayé : rien de tout cela n'a tourné sur une imprimante, pas même sur une Bambu Lab A1 ou une P1S. |
 
@@ -49,13 +49,13 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 |---|---|---|
 | Cœur | 🟡 | unités en nanomètres, le maillage et ses vérifications, les limites des lecteurs, un petit lecteur JSON et un secret qui ne s'affiche jamais ; testé sur ordinateur avec des entrées normales et abîmées. |
 | Modèles et fichiers | 🟡 | STL (texte et binaire), OBJ et 3MF de base sont lus avec des limites de taille et des refus qui disent ce qu'ils ont trouvé ; le paquet 3MF propre, le STL binaire, l'OBJ et le fichier de G-code sont écrits ; des projets 3MF d'autres programmes on lit les objets, les plateaux et quelques réglages (lecture seule) ; vérifié avec des tests de fuzzing, pas avec une collection de vrais fichiers d'autres programmes. |
-| Profils d'imprimante | 🟠 | 120 modèles à partir de données publiques (volume, buses, dialecte, modes de connexion, limites du fabricant pour les 46 premiers, dont les Bambu Lab A1 et P1S, et limites prudentes du programme pour les autres, qui le disent ; six filaments génériques vérifiés contre l'imprimante et la buse) ; tous disent `verified = false`, car aucun n'a été essayé sur une machine. |
+| Profils d'imprimante | 🟠 | 120 modèles à partir de données publiques (volume, buses, dialecte, modes de connexion, limites du fabricant pour les 46 premiers, dont les Bambu Lab A1 et P1S, et limites prudentes du programme pour les autres, qui le disent ; douze filaments (six génériques et six avec fibres ou un mélange plus tenace) vérifiés contre l'imprimante et la buse, sept résines et des modifications d'un profil qui disent ce qui a changé) ; tous disent `verified = false`, car aucun n'a été essayé sur une machine. |
 | G-code | 🟡 | écrivains pour les quatre dialectes avec un début et une fin sûrs ; une température au-dessus de la limite est refusée et rien n'est écrit ; un vérificateur trouve les lignes d'un programme qui dépassent une limite ; jamais exécuté sur une imprimante. |
 | Pilotes d'imprimante | 🟠 | Moonraker et OctoPrint sur un transport, essayés seulement contre des simulateurs de leurs protocoles ; Bambu LAN est une conception marquée expérimentale qui ne se connecte pas. |
 | Liaison avec le serveur | 🟠 | les réglages de la liaison et un client du greffon d'imprimantes du serveur au-dessus du client commun de la suite (connexion, renouvellement, nouvelles tentatives, erreurs en huit langues), essayé contre un serveur en mémoire ; jamais contre le vrai serveur. |
 | Trancheur | 🟡 | couches planes d'un maillage fermé, périmètres, remplissage rectiligne, en grille ou en gyroïde, peaux pleines, ponts, supports simples, coutures, largeur variable, G-code par dialecte, un aperçu par couches sous forme de données et une estimation du temps avec accélération ; vérifié par des propriétés sur des formes à graine fixe (le plastique déposé est le volume de la pièce, rien ne sort du plateau, aucune température ne dépasse une limite) ; aucune impression n'en est sortie sur une imprimante. |
-| Ligne de commande | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `slice`, `project`, `version`) exécute les fonctions des bibliothèques et affiche le résultat ; chaque erreur revient sous forme de message et d'un code de sortie non nul. |
-| Tests | 🟡 | 479 tests réussissent (`cargo test --workspace`), avec des cas normaux, des cas limites, des entrées abîmées et une graine fixe là où il y a du hasard. |
+| Ligne de commande | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) exécute les fonctions des bibliothèques et affiche le résultat ; chaque erreur revient sous forme de message et d'un code de sortie non nul. |
+| Tests | 🟡 | 537 tests réussissent (`cargo test --workspace`), avec des cas normaux, des cas limites, des entrées abîmées et une graine fixe là où il y a du hasard. |
 | Sécurité | 🟡 | Rust sûr et simple (`forbid(unsafe_code)`) : une limite est un refus et jamais une coupe ; le jeton ne s'affiche jamais ; rien ne panique sur les fichiers reçus ; pas de revue indépendante. |
 | Fenêtre | 🔴 | Les quatre onglets (Préparer, Aperçu, Appareil, Projet) sont écrits avec `--features gui` : listes d'imprimantes et de filaments avec filtres, le plan par couches avec un curseur, la file du serveur avec un démarrage qui demande une confirmation, un arrêt d'urgence, des raccourcis modifiables et un mode image (`--shot`) ; la logique est testée sans écran, mais la fenêtre n'a pas encore été compilée ni vue sur un écran. |
 | Matériel réel | 🔴 | Pas essayé : rien de tout cela n'a tourné sur une imprimante, pas même sur une Bambu Lab A1 ou une P1S. |
@@ -65,13 +65,13 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 
 * **L'idée :** PHOENIX-3DP est le programme d'impression 3D de la famille PHOENIX. Le serveur EH3D et ses clients sont le centre de la suite : ce programme est un client de plus du serveur, et le mode autonome qui parle directement à une imprimante est une option désactivée par défaut.
 * **Les modèles** (`p3dp-formats`) : STL (texte et binaire), OBJ et 3MF de base sont lus avec des limites de taille, de nombre de triangles et de contenu d'un paquet ZIP ; ce qui ne peut pas être lu est refusé avec le nom de ce qui a été trouvé. Il écrit du STL binaire, de l'OBJ, son propre paquet 3MF et des fichiers de G-code. Les projets enregistrés en 3MF par d'autres programmes sont lus pour leurs objets, plateaux et quelques réglages (lecture seule, avec des limites contre les paquets conçus pour nuire).
-* **Les profils** (`p3dp-profiles`) : un catalogue de 120 modèles d'imprimante, FDM et résine, écrit à partir de faits publics : volume, buses, dialecte, modes de connexion, système multi-matériaux et températures maximales (le chiffre du fabricant pour les 46 premiers modèles, les limites prudentes du programme pour les autres, et chaque profil dit lesquelles). Six filaments génériques (PLA, PETG, ABS, ASA, TPU et PA) sont vérifiés contre l'imprimante et la buse : un couple qui ne convient pas est refusé avec les raisons. Chaque profil dit s'il a été essayé sur une machine ; aucun ne l'a été.
+* **Les profils** (`p3dp-profiles`) : un catalogue de 120 modèles d'imprimante, FDM et résine, écrit à partir de faits publics : volume, buses, dialecte, modes de connexion, système multi-matériaux et températures maximales (le chiffre du fabricant pour les 46 premiers modèles, les limites prudentes du programme pour les autres, et chaque profil dit lesquelles). Douze filaments (les six génériques, PLA, PETG, ABS, ASA, TPU et PA, et six avec fibre de carbone ou de verre ou un mélange plus tenace) sont vérifiés contre l'imprimante et la buse : un couple qui ne convient pas est refusé avec les raisons. Sept résines génériques (standard, lavable à l'eau, tenace, flexible, calcinable, transparente et haute définition) viennent avec les expositions et la levée de leur type comme points de départ. Un profil peut être modifié depuis la ligne de commande : le résultat est vérifié en entier, un profil modifié n'est plus `verified`, et une limite de température relevée au-delà du chiffre du fabricant (le plateau d'une Bambu Lab A1 mini, 80 C, relevé à la main à 100 C) est permise et signalée. Chaque profil dit s'il a été essayé sur une machine ; aucun ne l'a été.
 * **Le G-code** (`p3dp-gcode`) : des écrivains pour Marlin, Klipper, RepRapFirmware et Bambu, chacun avec un en-tête, un début et une fin sûrs ; une température ou un mouvement non permis est refusé, jamais rogné. Un vérificateur lit n'importe quel programme et trouve les lignes qui dépassent les limites d'un modèle.
 * **La liaison** (`p3dp-link`) : un trait de pilote, un état normalisé (quinze états, températures, travail, alertes) et une liste de commandes ; Moonraker et OctoPrint sont implémentés sur un transport (un HTTP simple écrit avec la bibliothèque standard, avec des limites de temps et de taille, essayé sur un socket de cet ordinateur) et testés contre un simulateur en mémoire de chaque protocole ; Bambu LAN est la conception de ses sujets et messages, marquée expérimentale.
 * **Le serveur** (`p3dp-server-bridge`) : les réglages `server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries` et `server_mdns`, et un client du greffon `printer3d` du serveur au-dessus du client commun de la suite (`eh3d-serverclient`) : les travaux entrent dans la file et attendent qu'une personne les lance, les limites de température sont vérifiées avant tout envoi, et il y a l'arrêt ; testé contre un serveur en mémoire.
 * **Le trancheur** (`p3dp-slicer`) : couches planes d'un maillage fermé, périmètres, remplissage rectiligne, en grille ou en gyroïde avec peaux pleines, ponts, supports simples, coutures, largeur variable, levée en déplacement, G-code pour les dialectes du programme via son écrivain et l'aperçu par couches sous forme de données, avec une estimation du temps qui utilise l'accélération ; il refuse, sans jamais rogner, ce qui ne tient pas sur le plateau, dépasse une limite de température ou n'est pas un maillage fermé.
 * **Le visualiseur** (`p3dp-viewer`) : le modèle du visualiseur 3D sans code graphique : une caméra orbitale en perspective, la sélection au clic et par cadre sur le plateau, la plage de couches et les lignes d'un plan pour une carte graphique. Le dessin avec wgpu est derrière une fonctionnalité, désactivée par défaut, et n'a jamais été compilé.
-* **Autres fichiers :** le G-code binaire (`bgcode`) et les paquets ouverts de couches de résine (`.sl1`) sont lus par leurs seuls en-têtes, avec une estimation du temps d'exposition ; les formats fermés des imprimantes à résine sont refusés avec la raison.
+* **Autres fichiers :** le G-code binaire (`bgcode`) et les paquets ouverts de couches de résine (`.sl1`) sont lus par leurs seuls en-têtes, avec une estimation du temps d'exposition ; les formats fermés des imprimantes à résine sont refusés avec la raison. Les vignettes d'un G-code binaire sont listées et la plus grande peut être extraite (`project FICHIER --thumbnail SORTIE`), et les chiffres et vignettes des commentaires d'un G-code simple (le filament utilisé, la durée, la hauteur de couche) sont lus de la même façon, seulement depuis son début et sa fin.
 * **Pas encore fait :** le dessin du visualiseur 3D (son modèle existe), un trancheur pour plusieurs matériaux, la liaison Bambu LAN et les autres transports. La feuille de route est dans `docs/ROADMAP.md` et ce qui manque dans `docs/NOT_YET.md`.
 
 ## 🧩 Rôle dans EH3D
@@ -122,17 +122,19 @@ phoenix-3dp printers [--vendor NAME] [--tech fdm|msla] [--search TEXT]
 phoenix-3dp info MODEL [--printer ID]
 phoenix-3dp check-profile ID [--gcode FILE]
 phoenix-3dp check-profile --file PROFILE [--gcode FILE]
+phoenix-3dp check-profile ID|--file PROFILE --set "key=value;key=value" [--save FILE] [--force]
 phoenix-3dp convert IN OUT [--printer ID] [--force]
 phoenix-3dp filaments [--printer ID] [--nozzle MM] [--hardened]
-phoenix-3dp slice MODEL --printer ID [--settings FILE] [--filament ID] [--nozzle MM] [--hardened] [--out FILE.gcode] [--force]
-phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.sl1 [--bottom-layers N] [--lift MM] [--light-power MW]
+phoenix-3dp resins [--kind KIND] [--printer ID] [--part-ml ML]
+phoenix-3dp slice MODEL --printer ID [--settings FILE] [--filament ID] [--nozzle MM] [--hardened] [--report] [--out FILE.gcode] [--force]
+phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.gcode|FILE.sl1 [--thumbnail FILE] [--force] [--bottom-layers N] [--lift MM] [--light-power MW]
 phoenix-3dp version
 phoenix-3dp gui [SETTINGS] [--shot FILE.png]                       the window (a build with --features gui)
 ```
 
 ## ⚙️ Configuration
 
-Les réglages sont un fichier de lignes `clé = valeur` (`--config FICHIER`) : les limites des lecteurs (`limit_*`), la liaison avec le serveur (`server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries`, `server_mdns`, `server_max_answer_mib`), `direct_mode` (autonome, désactivé par défaut), `lang` et `default_printer`. Un profil d'imprimante est un autre fichier du même genre (`examples/my-printer.cfg`). Une clé inconnue ou une valeur hors plage est une erreur qui nomme sa ligne ; toutes les valeurs par défaut sont prudentes. Voir `examples/phoenix-3dp.cfg`.
+Les réglages sont un fichier de lignes `clé = valeur` (`--config FICHIER`) : les limites des lecteurs (`limit_*`), la liaison avec le serveur (`server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries`, `server_mdns`, `server_max_answer_mib`), `direct_mode` (autonome, désactivé par défaut), `lang` et `default_printer`, les prix (`price_filament_per_kg`, `price_resin_per_litre`, `resin_waste_percent`), le rapport (`report_slowest_layers`, `report_short_layer_s`), la file (`queue_refuse_duplicates`, `queue_max_waiting`) et jusqu'où un G-code simple est parcouru (`limit_gcode_head_kib`, `limit_gcode_tail_kib`, `limit_gcode_thumbnails`). Un profil d'imprimante est un autre fichier du même genre (`examples/my-printer.cfg`). Une clé inconnue ou une valeur hors plage est une erreur qui nomme sa ligne ; toutes les valeurs par défaut sont prudentes. Voir `examples/phoenix-3dp.cfg`.
 
 ## 🚀 Démarrage rapide
 
@@ -150,7 +152,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Tests
 
-La suite compte 479 tests (`cargo test --workspace`, exécutés sous Windows et Linux dans la CI), avec une graine fixe là où il y a du hasard. Ils vérifient les cas normaux, les cas limites et les entrées abîmées : des fichiers coupés, du bruit et des en-têtes hostiles ne font jamais paniquer, et aucune température d'aucune imprimante du catalogue ne dépasse sa limite. La CI exécute aussi `cargo fmt --all --check`, `cargo clippy` avec les avertissements en erreurs et `python -I tools/ci_validate.py`.
+La suite compte 537 tests (`cargo test --workspace`, exécutés sous Windows et Linux dans la CI), avec une graine fixe là où il y a du hasard. Ils vérifient les cas normaux, les cas limites et les entrées abîmées : des fichiers coupés, du bruit et des en-têtes hostiles ne font jamais paniquer, et aucune température d'aucune imprimante du catalogue ne dépasse sa limite. La CI exécute aussi `cargo fmt --all --check`, `cargo clippy` avec les avertissements en erreurs et `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilation et publication
 
@@ -169,26 +171,27 @@ La version vit dans `Cargo.toml` et dans `eh3d.project.json` ; chaque version a 
 EH3D-PHOENIX-3DP/
 ├── crates/
 │   ├── p3dp-core/                               unités, maillage et vérifications, limites, JSON, réglages
-│   ├── p3dp-formats/                            lecteurs de STL, OBJ, 3MF, projets, bgcode et résine ; écrivains, ZIP, PNG, contrôle de la résine
-│   ├── p3dp-profiles/                           imprimantes à partir de faits publics, filaments, le fichier de profil
+│   ├── p3dp-formats/                            lecteurs de STL, OBJ, 3MF, projets, bgcode, commentaires de G-code et résine ; écrivains, ZIP, PNG
+│   ├── p3dp-profiles/                           imprimantes à partir de faits publics, filaments, résines, le fichier de profil et ses modifications
 │   ├── p3dp-gcode/                              écrivains de G-code pour quatre dialectes, le vérificateur
 │   ├── p3dp-link/                               pilotes, état normalisé, TCP, simulateurs, Bambu LAN (octets du protocole, pas de connexion)
-│   ├── p3dp-server-bridge/                      réglages de la liaison au serveur, client du greffon
+│   ├── p3dp-server-bridge/                      réglages de la liaison au serveur, client du greffon, règles et tableau de la file
 │   ├── p3dp-slicer/                             le trancheur : couches, périmètres, remplissage, ponts, supports, jupe, bordure, radeau, G-code
-│   └── p3dp-viewer/                             le modèle du visualiseur 3D : caméra, sélection, couches
+│   └── p3dp-viewer/                             le modèle du visualiseur 3D : caméra, sélection, couches, déplacements
 ├── src/
 │   ├── lib.rs                                   la bibliothèque du programme : ce qu'utilisent la ligne de commande et la fenêtre
 │   ├── main.rs                                  la ligne de commande et le démarrage de la fenêtre
-│   ├── cli.rs                                   les commandes : printers, info, check-profile, convert, filaments, slice, project, version
+│   ├── cli.rs                                   les commandes : printers, info, check-profile, convert, filaments, resins, slice, project, version
 │   ├── app_state.rs                             l'état de la fenêtre sans fenêtre : onglets, imprimante, modèle, rapports, appareil simulé
-│   ├── config.rs                                le fichier de réglages : limites, liaison serveur, langue et imprimante par défaut
-│   ├── device.rs                                les imprimantes du serveur, la file, un démarrage avec confirmation, l'arrêt d'urgence
+│   ├── config.rs                                le fichier de réglages : limites, liaison serveur, langue, imprimante par défaut, prix, rapport et file
+│   ├── device.rs                                les imprimantes du serveur, la file et ses règles, un démarrage confirmé, l'arrêt d'urgence
 │   ├── i18n.rs                                  les textes du programme dans les huit langues
 │   ├── keys.rs                                  les raccourcis clavier : le schéma de la famille, un schéma propre et les changements
 │   ├── lists.rs                                 les listes d'imprimantes et de filaments avec leurs filtres
 │   ├── look.rs                                  les couleurs, la marque et les dessins de la fenêtre et sa disposition selon la taille
-│   ├── preview.rs                               découper depuis la fenêtre, le curseur de couches et les lignes du plan à l'écran
+│   ├── preview.rs                               découper depuis la fenêtre, le curseur de couches, le plan à l'écran, le rapport
 │   ├── project.rs                               le projet : un modèle et son imprimante dans le paquet 3MF propre
+│   ├── report.rs                                les mots des rapports : découpe, résine, vignettes et modifications de profil, en huit langues
 │   ├── server_ui.rs                             les réglages du serveur, l'état du lien et la connexion, sur le panneau de la suite
 │   ├── shot.rs                                  le mode image de la fenêtre (--shot) et le fichier PNG qu'il écrit
 │   ├── view.rs                                  la caméra orbitale qui transforme un maillage en lignes pour l'aperçu

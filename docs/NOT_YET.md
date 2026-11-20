@@ -34,12 +34,14 @@ The projects that other programs save as 3MF are read for their metadata only (w
 
 ## Resin printers
 
-The catalog has resin (mSLA) printers, with their volume and how they connect, but they take layers and not G-code: the writer refuses them and the drivers do not exist yet. The open packages of layers (`.sl1`) are read by their headers, with an estimate of the exposure, and nothing else: no layer image is decoded, no file is written, and the closed formats of the makers are refused. Binary G-code is read the same way, by its headers, following the public description of the format and tried only on files that the tests make by it.
+The catalog has resin (mSLA) printers, with their volume and how they connect, but they take layers and not G-code: the writer refuses them and the drivers do not exist yet. The open packages of layers (`.sl1`) are read by their headers, with an estimate of the exposure, and nothing else: no layer image is decoded, no file is written, and the closed formats of the makers are refused. Binary G-code is read the same way, by its headers, following the public description of the format and tried only on files that the tests make by it: its thumbnails are listed and one can be taken out, but no block of G-code is unpacked and the program writes no binary G-code. Asking the EH3D server to convert a plain G-code file to binary G-code is not done: it needs a route on the server, and the program shows the metadata and the thumbnails of a file instead. The catalog of resins (seven generic ones) holds starting points for the exposures, not the figures of a bottle, and none has been tried on a machine; the resin a part takes is the volume of its mesh with a percentage for the waste, not the volume of the layers.
 
 ## The window
 
 It has four tabs (lists with filters, the plan by layers with a slider, the queue of the server with a confirmed start and an emergency stop, shortcuts that can be changed) and a picture mode, and the logic is tested without a screen, but it has not been built or looked at on a screen. The model of the 3D viewer is the crate `p3dp-viewer` (camera, picking, selection box, range of layers, lines of a plan); the drawing with wgpu is behind its feature `gui`, never built, and the window does not use it yet: today the preview is lines. The texts of the panels and controls are in the eight languages. The names of the fifteen printer states are translated in the eight languages.
 
 ## The server
+
+The rules for putting a job in the queue (no repeated name, a longest line) are kept by this program before it sends anything and are set in the settings file; the server keeps its own rules, and a job that this program lets through can still be refused there.
 
 The client speaks the routes of the `printer3d` plugin of the server through the common client of the suite, but has only met a double of them in memory: it has never talked to a running `eh3d-server`. The name `phoenix-3dp` is not among the applications the server knows by default, so a login needs it in `auth_extra_apps` (or a token of a program).

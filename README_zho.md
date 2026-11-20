@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.4-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-479-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-537-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**诚实检查 - 今天真正能运行的内容：** 一个由八个库和一个命令行程序（`phoenix-3dp`）组成的 Rust 工作区，带有 479 个可在电脑上运行的测试。它读取并检查 STL、OBJ 和 3MF 模型，包含一个由公开数据建立的 120 个打印机配置的目录（没有一个在机器上试过），为 Marlin、Klipper、RepRapFirmware 和 Bambu 方言写出 G 代码，温度上限会拒绝超限的值而不是截断它，并能操作 Moonraker 和 OctoPrint 打印机以及 EH3D 服务器，但仅限模拟器（内存中的，以及本机的套接字）。它能把封闭模型切成平整的层，生成外壁、直线填充和实心表层（一个小型切片器，有网格和螺旋体填充、桥接、简易支撑、接缝、可变线宽、移动时抬升、裙边/帽檐/筏板、花瓶模式、短层降速、随移动距离变化的回抽，以及带加速度的时间估算；尚无多材料功能）；窗口尚未构建，也没有在屏幕上看过；没有任何内容在真实打印机上运行过。
+**诚实检查 - 今天真正能运行的内容：** 一个由八个库和一个命令行程序（`phoenix-3dp`）组成的 Rust 工作区，带有 537 个可在电脑上运行的测试。它读取并检查 STL、OBJ 和 3MF 模型，包含一个由公开数据建立的 120 个打印机配置的目录（没有一个在机器上试过），为 Marlin、Klipper、RepRapFirmware 和 Bambu 方言写出 G 代码，温度上限会拒绝超限的值而不是截断它，并能操作 Moonraker 和 OctoPrint 打印机以及 EH3D 服务器，但仅限模拟器（内存中的，以及本机的套接字）。它能把封闭模型切成平整的层，生成外壁、直线填充和实心表层（一个小型切片器，有网格和螺旋体填充、桥接、简易支撑、接缝、可变线宽、移动时抬升、裙边/帽檐/筏板、花瓶模式、短层降速、随移动距离变化的回抽，以及带加速度的时间估算；尚无多材料功能）；窗口尚未构建，也没有在屏幕上看过；没有任何内容在真实打印机上运行过。
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | 版本 | `0.0.4` |
 | 成熟度 | 脚手架 |
-| 测试 | 479 |
+| 测试 | 537 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试验：这里的任何内容都没有在打印机上运行过，包括 Bambu Lab A1 和 P1S。 |
 
@@ -49,13 +49,13 @@
 |---|---|---|
 | 核心 | 🟡 | 以纳米为单位的长度、网格及其检查、读取器的上限、一个小型 JSON 读取器和一个绝不会打印出来的机密值；已在电脑上用正常和损坏的输入测试。 |
 | 模型和文件 | 🟡 | 读取 STL（文本和二进制）、OBJ 和基础 3MF，带有大小限制，遇到不支持的内容会指明并拒绝；写出自有的 3MF 包、二进制 STL、OBJ 和 G 代码文件；其他程序的 3MF 项目会读取其中的对象、构建板和部分设置（只读）；已用模糊测试检查，没有用其他程序的真实文件集合检查。 |
-| 打印机配置 | 🟠 | 由公开数据建立的 120 个型号（打印空间、喷嘴、方言、连接方式、前 46 个型号为厂商标称的上限（包括 Bambu Lab A1 和 P1S），其余为程序的保守上限，各配置会注明是哪一种；六种通用耗材会对照打印机和喷嘴检查）；没有一个在机器上试过，所以全部标为 `verified = false`。 |
+| 打印机配置 | 🟠 | 由公开数据建立的 120 个型号（打印空间、喷嘴、方言、连接方式、前 46 个型号为厂商标称的上限（包括 Bambu Lab A1 和 P1S），其余为程序的保守上限，各配置会注明是哪一种；十二种耗材（六种通用耗材和六种含纤维或更坚韧配方的耗材）会对照打印机和喷嘴检查，另有七种树脂，编辑配置时会说明改了什么）；没有一个在机器上试过，所以全部标为 `verified = false`。 |
 | G 代码 | 🟡 | 四种方言的写出器，带有安全的开头和结尾；超过上限的温度会被拒绝且不写入任何内容；检查器能找出程序中超限的行；从未在打印机上运行过。 |
 | 打印机驱动 | 🟠 | Moonraker 和 OctoPrint 通过传输层工作，只用它们协议的模拟器试过；Bambu LAN 是标为实验性的设计，不会连接。 |
 | 服务器连接 | 🟠 | 连接的设置，以及建立在套件通用客户端（登录、续期、重试、八种语言的错误信息）之上的服务器打印机插件客户端，已针对内存中的服务器试过；从未对真实服务器试过。 |
 | 切片器 | 🟡 | 封闭网格的平整层、外壁、直线、网格或螺旋体填充、实心表层、桥接、简易支撑、接缝、可变线宽、按方言生成的 G 代码、以数据形式提供的逐层预览，以及带加速度的时间估算；已用固定种子形状上的性质测试检查（挤出的塑料量等于零件体积，没有任何内容超出热床，没有温度超过上限）；还没有用它在打印机上打印过。 |
-| 命令行 | 🟡 | `phoenix-3dp`（`printers`、`info`、`check-profile`、`convert`、`filaments`、`slice`、`project`、`version`）运行库中的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 479 个测试通过（`cargo test --workspace`），包含正常情况、边界情况、损坏的输入，涉及随机的地方使用固定种子。 |
+| 命令行 | 🟡 | `phoenix-3dp`（`printers`、`info`、`check-profile`、`convert`、`filaments`、`resins`、`slice`、`project`、`version`）运行库中的函数并打印结果；每个错误都以消息和非零退出码返回。 |
+| 测试 | 🟡 | 537 个测试通过（`cargo test --workspace`），包含正常情况、边界情况、损坏的输入，涉及随机的地方使用固定种子。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：上限是拒绝而不是截断；令牌绝不打印；收到的文件不会引发 panic；没有独立审查。 |
 | 窗口 | 🔴 | 四个标签页（准备、预览、设备、项目）已用 `--features gui` 写好：带筛选的打印机和耗材列表、带滑块的分层方案、需要确认才能开始的服务器队列、紧急停止、可修改的快捷键和图片模式（`--shot`）；逻辑已在无屏幕下测试，但窗口尚未构建，也没有在屏幕上看过。 |
 | 真实硬件 | 🔴 | 未试验：这里的任何内容都没有在打印机上运行过，包括 Bambu Lab A1 和 P1S。 |
@@ -65,13 +65,13 @@
 
 * **理念：** PHOENIX-3DP 是 PHOENIX 家族中的 3D 打印程序。EH3D 服务器及其客户端是整个套件的中心：本程序只是服务器的又一个客户端，直接与打印机通信的独立模式是默认关闭的选项。
 * **模型**（`p3dp-formats`）：读取 STL（文本和二进制）、OBJ 和基础 3MF，对大小、三角形数量和 ZIP 包内容设有限制；读不了的内容会带着所发现内容的名称被拒绝。可写出二进制 STL、OBJ、自有的 3MF 包和 G 代码文件。其他程序保存为 3MF 的项目，会读取其中的对象、构建板和部分设置（只读，并设有防范恶意包的限制）。
-* **配置**（`p3dp-profiles`）：一个包含 120 款打印机（FDM 和树脂）的目录，依据公开事实编写：打印空间、喷嘴、方言、连接方式、多材料系统，以及最高温度（前 46 个型号为厂商标称值，其余为程序的保守上限，每个配置都会注明是哪一种）。六种通用耗材（PLA、PETG、ABS、ASA、TPU 和 PA）会对照打印机和喷嘴检查：不合适的组合会连同原因一起被拒绝。每个配置都会说明是否在机器上试过；目前没有一个试过。
+* **配置**（`p3dp-profiles`）：一个包含 120 款打印机（FDM 和树脂）的目录，依据公开事实编写：打印空间、喷嘴、方言、连接方式、多材料系统，以及最高温度（前 46 个型号为厂商标称值，其余为程序的保守上限，每个配置都会注明是哪一种）。十二种耗材（六种通用耗材 PLA、PETG、ABS、ASA、TPU 和 PA，以及六种含碳纤维或玻璃纤维、或配方更坚韧的耗材）会对照打印机和喷嘴检查：不合适的组合会连同原因一起被拒绝。七种通用树脂（标准、水洗、坚韧、柔性、可铸造、透明和高精度）自带各自类型的曝光和抬升值作为起点。配置可以在命令行中编辑：结果会作为整体检查，编辑过的配置不再是 `verified`，把温度上限提高到厂商标称值之上（Bambu Lab A1 mini 的热床 80 C 手动提高到 100 C）是允许的，并会给出提示。每个配置都会说明是否在机器上试过；目前没有一个试过。
 * **G 代码**（`p3dp-gcode`）：Marlin、Klipper、RepRapFirmware 和 Bambu 的写出器，各自带有安全的文件头、开头和结尾；不允许的温度或移动会被拒绝，绝不截断。检查器可读取任何程序，找出超过型号上限的行。
 * **连接**（`p3dp-link`）：一个驱动 trait、一套规范化状态（十五种状态、温度、作业、警报）和一份命令列表；Moonraker 和 OctoPrint 基于传输层实现（仅用标准库编写的普通 HTTP，带时间和大小限制，已在本机套接字上试过），并针对各协议的内存模拟器测试；Bambu LAN 是其主题和消息的设计，标为实验性。
 * **服务器**（`p3dp-server-bridge`）：设置项 `server_address`、`server_token`、`server_machine`、`server_timeout_s`、`server_retries` 和 `server_mdns`，以及建立在套件通用客户端（`eh3d-serverclient`）之上的服务器 `printer3d` 插件客户端：作业进入队列并等待有人启动，温度上限在发送任何内容之前检查，并提供停止；已用内存中的服务器测试。
 * **切片器**（`p3dp-slicer`）：封闭网格的平整层、外壁、带实心表层的直线、网格或螺旋体填充、桥接、简易支撑、接缝、可变线宽、移动时抬升、通过程序的写出器生成各方言的 G 代码，以及以数据形式提供的逐层预览和使用加速度的时间估算；放不进热床、超过温度上限或不是封闭网格的内容会被拒绝，绝不截断。
 * **查看器**（`p3dp-viewer`）：不含图形代码的 3D 查看器模型：透视的环绕相机、在热床上的点击选择和框选、层的范围，以及供显卡使用的计划线条。用 wgpu 绘制的部分在默认关闭的功能之后，从未构建过。
-* **其他文件：** 二进制 G 代码（`bgcode`）和开放的树脂层包（`.sl1`）只读取文件头，并给出曝光时间估算；树脂打印机的封闭格式会连同原因一起被拒绝。
+* **其他文件：** 二进制 G 代码（`bgcode`）和开放的树脂层包（`.sl1`）只读取文件头，并给出曝光时间估算；树脂打印机的封闭格式会连同原因一起被拒绝。二进制 G 代码的缩略图会被列出，最大的一张可以取出（`project 文件 --thumbnail 输出`）；普通 G 代码注释中的数值和缩略图（用丝量、时间、层高）也以同样方式读取，只读开头和结尾。
 * **尚未完成：** 3D 查看器的绘制（其模型已有）、多材料切片器、Bambu LAN 连接以及其他传输层。路线图在 `docs/ROADMAP.md`，缺少的内容在 `docs/NOT_YET.md`。
 
 ## 🧩 在 EH3D 中的角色
@@ -122,17 +122,19 @@ phoenix-3dp printers [--vendor NAME] [--tech fdm|msla] [--search TEXT]
 phoenix-3dp info MODEL [--printer ID]
 phoenix-3dp check-profile ID [--gcode FILE]
 phoenix-3dp check-profile --file PROFILE [--gcode FILE]
+phoenix-3dp check-profile ID|--file PROFILE --set "key=value;key=value" [--save FILE] [--force]
 phoenix-3dp convert IN OUT [--printer ID] [--force]
 phoenix-3dp filaments [--printer ID] [--nozzle MM] [--hardened]
-phoenix-3dp slice MODEL --printer ID [--settings FILE] [--filament ID] [--nozzle MM] [--hardened] [--out FILE.gcode] [--force]
-phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.sl1 [--bottom-layers N] [--lift MM] [--light-power MW]
+phoenix-3dp resins [--kind KIND] [--printer ID] [--part-ml ML]
+phoenix-3dp slice MODEL --printer ID [--settings FILE] [--filament ID] [--nozzle MM] [--hardened] [--report] [--out FILE.gcode] [--force]
+phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.gcode|FILE.sl1 [--thumbnail FILE] [--force] [--bottom-layers N] [--lift MM] [--light-power MW]
 phoenix-3dp version
 phoenix-3dp gui [SETTINGS] [--shot FILE.png]                       the window (a build with --features gui)
 ```
 
 ## ⚙️ 配置
 
-设置是一个由 `键 = 值` 行组成的文件（`--config 文件`）：读取器上限（`limit_*`）、与服务器的连接（`server_address`、`server_token`、`server_machine`、`server_timeout_s`、`server_retries`、`server_mdns`、`server_max_answer_mib`）、`direct_mode`（独立模式，默认关闭）、`lang` 和 `default_printer`。打印机配置是同类的另一个文件（`examples/my-printer.cfg`）。未知的键或超出范围的值都是会指明所在行的错误；所有默认值都偏保守。参见 `examples/phoenix-3dp.cfg`。
+设置是一个由 `键 = 值` 行组成的文件（`--config 文件`）：读取器上限（`limit_*`）、与服务器的连接（`server_address`、`server_token`、`server_machine`、`server_timeout_s`、`server_retries`、`server_mdns`、`server_max_answer_mib`）、`direct_mode`（独立模式，默认关闭）、`lang`、`default_printer`、价格(`price_filament_per_kg`, `price_resin_per_litre`, `resin_waste_percent`)、报告(`report_slowest_layers`, `report_short_layer_s`)、队列(`queue_refuse_duplicates`, `queue_max_waiting`)以及普通 G 代码的搜索范围(`limit_gcode_head_kib`, `limit_gcode_tail_kib`, `limit_gcode_thumbnails`)。打印机配置是同类的另一个文件（`examples/my-printer.cfg`）。未知的键或超出范围的值都是会指明所在行的错误；所有默认值都偏保守。参见 `examples/phoenix-3dp.cfg`。
 
 ## 🚀 快速开始
 
@@ -150,7 +152,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 测试
 
-测试套件有 479 个测试（`cargo test --workspace`，CI 中在 Windows 和 Linux 上运行），涉及随机的地方使用固定种子。它们检查正常情况、边界情况和损坏的输入：被截断的文件、乱码和恶意文件头绝不会 panic，目录中任何打印机的温度都不会超过其上限。CI 还会运行 `cargo fmt --all --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
+测试套件有 537 个测试（`cargo test --workspace`，CI 中在 Windows 和 Linux 上运行），涉及随机的地方使用固定种子。它们检查正常情况、边界情况和损坏的输入：被截断的文件、乱码和恶意文件头绝不会 panic，目录中任何打印机的温度都不会超过其上限。CI 还会运行 `cargo fmt --all --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 
@@ -169,26 +171,27 @@ cargo run --release --features gui -- gui   # the window
 EH3D-PHOENIX-3DP/
 ├── crates/
 │   ├── p3dp-core/                               单位、网格及检查、上限、JSON、设置
-│   ├── p3dp-formats/                            STL、OBJ、3MF、项目、bgcode 和树脂的读取器；写出器、ZIP、PNG、树脂控制
-│   ├── p3dp-profiles/                           依据公开事实的打印机、耗材、配置文件
+│   ├── p3dp-formats/                            STL、OBJ、3MF、项目、bgcode、G-code 注释和树脂的读取器；写出器、ZIP、PNG
+│   ├── p3dp-profiles/                           依据公开事实的打印机、耗材、树脂、配置文件及其编辑
 │   ├── p3dp-gcode/                              四种方言的 G 代码写出器和检查器
 │   ├── p3dp-link/                               驱动、规范化状态、TCP、模拟器、Bambu LAN（协议字节，不建立连接）
-│   ├── p3dp-server-bridge/                      服务器连接设置和插件客户端
+│   ├── p3dp-server-bridge/                      服务器连接设置、插件客户端、队列规则和看板
 │   ├── p3dp-slicer/                             切片器：层、外壁、填充、桥接、支撑、裙边、帽檐、筏板、G-code
-│   └── p3dp-viewer/                             3D 查看器的模型：相机、选择、层
+│   └── p3dp-viewer/                             3D 查看器的模型：相机、选择、层、空走
 ├── src/
 │   ├── lib.rs                                   程序的库：命令行和窗口使用的部分
 │   ├── main.rs                                  命令行和窗口的启动
-│   ├── cli.rs                                   命令：printers、info、check-profile、convert、filaments、slice、project、version
+│   ├── cli.rs                                   命令：printers、info、check-profile、convert、filaments、resins、slice、project、version
 │   ├── app_state.rs                             无窗口的窗口状态：标签页、打印机、模型、报告、模拟设备
-│   ├── config.rs                                设置文件：上限、服务器连接、语言和默认打印机
-│   ├── device.rs                                服务器的打印机、队列、需确认的开始、紧急停止
+│   ├── config.rs                                设置文件：上限、服务器连接、语言、默认打印机、价格、报告和队列
+│   ├── device.rs                                服务器的打印机、队列及其规则、需确认的开始、紧急停止
 │   ├── i18n.rs                                  程序的八种语言文字
 │   ├── keys.rs                                  键盘快捷键：系列通用方案、自定义方案和修改
 │   ├── lists.rs                                 打印机和耗材列表及其筛选
 │   ├── look.rs                                  窗口的颜色、标志、图案及按大小的布局
-│   ├── preview.rs                               在窗口中切片、层滑块和屏幕上的方案线条
+│   ├── preview.rs                               在窗口中切片、层滑块、屏幕上的方案、报告
 │   ├── project.rs                               项目：模型及其打印机，保存在自有的 3MF 包中
+│   ├── report.rs                                报告的文字：切片、树脂、缩略图和配置编辑（八种语言）
 │   ├── server_ui.rs                             服务器设置、连接状态和登录，基于套件的共用面板
 │   ├── shot.rs                                  窗口的图片模式（--shot）及其写出的 PNG 文件
 │   ├── view.rs                                  把网格变成预览线条的轨道相机

@@ -42,27 +42,27 @@
         {
           "name": "p3dp-formats/",
           "desc": {
-            "en": "STL, OBJ, 3MF, project, bgcode and resin readers; writers, ZIP, PNG, resin control",
-            "es": "lectores de STL, OBJ, 3MF, proyectos, bgcode y resina; escritores, ZIP, PNG, control de resina",
-            "de": "Leser für STL, OBJ, 3MF, Projekte, bgcode und Harz; Schreiber, ZIP, PNG, Harzsteuerung",
-            "fr": "lecteurs de STL, OBJ, 3MF, projets, bgcode et résine ; écrivains, ZIP, PNG, contrôle de la résine",
-            "it": "lettori di STL, OBJ, 3MF, progetti, bgcode e resina; scrittori, ZIP, PNG, controllo della resina",
-            "ja": "STL・OBJ・3MF・プロジェクト・bgcode・レジンの読み込み、書き出し、ZIP、PNG、レジン制御",
-            "zh": "STL、OBJ、3MF、项目、bgcode 和树脂的读取器；写出器、ZIP、PNG、树脂控制",
-            "pt": "leitores de STL, OBJ, 3MF, projetos, bgcode e resina; escritores, ZIP, PNG, controlo da resina"
+            "en": "STL, OBJ, 3MF, projects, bgcode, G-code comments, resin; writers, ZIP, PNG",
+            "es": "lectores de STL, OBJ, 3MF, proyectos, bgcode, comentarios de G-code y resina; escritores, ZIP, PNG",
+            "de": "Leser für STL, OBJ, 3MF, Projekte, bgcode, G-Code-Kommentare und Harz; Schreiber, ZIP, PNG",
+            "fr": "lecteurs de STL, OBJ, 3MF, projets, bgcode, commentaires de G-code et résine ; écrivains, ZIP, PNG",
+            "it": "lettori di STL, OBJ, 3MF, progetti, bgcode, commenti del G-code e resina; scrittori, ZIP, PNG",
+            "ja": "STL・OBJ・3MF・プロジェクト・bgcode・G-code コメント・レジンの読み込み、書き出し、ZIP、PNG",
+            "zh": "STL、OBJ、3MF、项目、bgcode、G-code 注释和树脂的读取器；写出器、ZIP、PNG",
+            "pt": "leitores de STL, OBJ, 3MF, projetos, bgcode, comentários de G-code e resina; escritores, ZIP, PNG"
           }
         },
         {
           "name": "p3dp-profiles/",
           "desc": {
-            "en": "printers from public facts, filaments, the profile file",
-            "es": "impresoras con hechos públicos, filamentos, el archivo de perfil",
-            "de": "Drucker aus öffentlichen Fakten, Filamente, die Profildatei",
-            "fr": "imprimantes à partir de faits publics, filaments, le fichier de profil",
-            "it": "stampanti da fatti pubblici, filamenti, il file di profilo",
-            "ja": "公開情報によるプリンター、フィラメント、プロファイル ファイル",
-            "zh": "依据公开事实的打印机、耗材、配置文件",
-            "pt": "impressoras com factos públicos, filamentos, o ficheiro de perfil"
+            "en": "printers from public facts, filaments, resins, the profile file and its edits",
+            "es": "impresoras con hechos públicos, filamentos, resinas, el archivo de perfil y sus ediciones",
+            "de": "Drucker aus öffentlichen Fakten, Filamente, Harze, die Profildatei und ihre Änderungen",
+            "fr": "imprimantes à partir de faits publics, filaments, résines, le fichier de profil et ses modifications",
+            "it": "stampanti da fatti pubblici, filamenti, resine, il file di profilo e le sue modifiche",
+            "ja": "公開情報によるプリンター、フィラメント、レジン、プロファイル ファイルとその編集",
+            "zh": "依据公开事实的打印机、耗材、树脂、配置文件及其编辑",
+            "pt": "impressoras com factos públicos, filamentos, resinas, o ficheiro de perfil e as suas edições"
           }
         },
         {
@@ -94,14 +94,14 @@
         {
           "name": "p3dp-server-bridge/",
           "desc": {
-            "en": "settings of the server link, client of the printer plugin",
-            "es": "ajustes del enlace con el servidor, cliente del complemento",
-            "de": "Einstellungen der Serververbindung, Client des Plugins",
-            "fr": "réglages de la liaison au serveur, client du greffon",
-            "it": "impostazioni del collegamento al server, client del plugin",
-            "ja": "サーバー接続の設定とプラグインのクライアント",
-            "zh": "服务器连接设置和插件客户端",
-            "pt": "definições da ligação ao servidor, cliente do plugin"
+            "en": "settings of the server link, client of the printer plugin, rules and board of the queue",
+            "es": "ajustes del enlace con el servidor, cliente del complemento, reglas y tablero de la cola",
+            "de": "Einstellungen der Serververbindung, Client des Plugins, Regeln und Übersicht der Warteschlange",
+            "fr": "réglages de la liaison au serveur, client du greffon, règles et tableau de la file",
+            "it": "impostazioni del collegamento al server, client del plugin, regole e quadro della coda",
+            "ja": "サーバー接続の設定、プラグインのクライアント、キューの規則と一覧",
+            "zh": "服务器连接设置、插件客户端、队列规则和看板",
+            "pt": "definições da ligação ao servidor, cliente do plugin, regras e quadro da fila"
           }
         },
         {
@@ -120,14 +120,14 @@
         {
           "name": "p3dp-viewer/",
           "desc": {
-            "en": "the model of the 3D viewer: camera, picking, layers",
-            "es": "el modelo del visor 3D: cámara, selección, capas",
-            "de": "das Modell des 3D-Betrachters: Kamera, Auswahl, Schichten",
-            "fr": "le modèle du visualiseur 3D : caméra, sélection, couches",
-            "it": "il modello del visualizzatore 3D: camera, selezione, strati",
-            "ja": "3D ビューアーのモデル：カメラ、選択、層",
-            "zh": "3D 查看器的模型：相机、选择、层",
-            "pt": "o modelo do visualizador 3D: câmara, seleção, camadas"
+            "en": "the model of the 3D viewer: camera, picking, layers, travel moves",
+            "es": "el modelo del visor 3D: cámara, selección, capas, desplazamientos",
+            "de": "das Modell des 3D-Betrachters: Kamera, Auswahl, Schichten, Leerfahrten",
+            "fr": "le modèle du visualiseur 3D : caméra, sélection, couches, déplacements",
+            "it": "il modello del visualizzatore 3D: camera, selezione, strati, spostamenti",
+            "ja": "3D ビューアーのモデル：カメラ、選択、層、移動",
+            "zh": "3D 查看器的模型：相机、选择、层、空走",
+            "pt": "o modelo do visualizador 3D: câmara, seleção, camadas, deslocações"
           }
         }
       ]
@@ -166,14 +166,14 @@
         {
           "name": "cli.rs",
           "desc": {
-            "en": "the commands: printers, info, check-profile, convert, filaments, slice, project, version",
-            "es": "las órdenes: printers, info, check-profile, convert, filaments, slice, project, version",
-            "de": "die Befehle: printers, info, check-profile, convert, filaments, slice, project, version",
-            "fr": "les commandes : printers, info, check-profile, convert, filaments, slice, project, version",
-            "it": "i comandi: printers, info, check-profile, convert, filaments, slice, project, version",
-            "ja": "コマンド：printers、info、check-profile、convert、filaments、slice、project、version",
-            "zh": "命令：printers、info、check-profile、convert、filaments、slice、project、version",
-            "pt": "os comandos: printers, info, check-profile, convert, filaments, slice, project, version"
+            "en": "the commands: printers, info, check-profile, convert, filaments, resins, slice, project, version",
+            "es": "las órdenes: printers, info, check-profile, convert, filaments, resins, slice, project, version",
+            "de": "die Befehle: printers, info, check-profile, convert, filaments, resins, slice, project, version",
+            "fr": "les commandes : printers, info, check-profile, convert, filaments, resins, slice, project, version",
+            "it": "i comandi: printers, info, check-profile, convert, filaments, resins, slice, project, version",
+            "ja": "コマンド：printers、info、check-profile、convert、filaments、resins、slice、project、version",
+            "zh": "命令：printers、info、check-profile、convert、filaments、resins、slice、project、version",
+            "pt": "os comandos: printers, info, check-profile, convert, filaments, resins, slice, project, version"
           }
         },
         {
@@ -192,27 +192,27 @@
         {
           "name": "config.rs",
           "desc": {
-            "en": "the settings file: limits, server link, language and default printer",
-            "es": "el fichero de ajustes: límites, enlace con el servidor, idioma e impresora por defecto",
-            "de": "die Einstellungsdatei: Grenzen, Serververbindung, Sprache und Standarddrucker",
-            "fr": "le fichier de réglages : limites, liaison serveur, langue et imprimante par défaut",
-            "it": "il file di impostazioni: limiti, collegamento al server, lingua e stampante predefinita",
-            "ja": "設定ファイル：上限、サーバー接続、言語、既定のプリンター",
-            "zh": "设置文件：上限、服务器连接、语言和默认打印机",
-            "pt": "o ficheiro de definições: limites, ligação ao servidor, idioma e impressora por omissão"
+            "en": "the settings file: limits, server link, language, default printer, prices, report and queue",
+            "es": "el fichero de ajustes: límites, enlace con el servidor, idioma, impresora por defecto, precios, informe y cola",
+            "de": "die Einstellungsdatei: Grenzen, Serververbindung, Sprache, Standarddrucker, Preise, Bericht und Warteschlange",
+            "fr": "le fichier de réglages : limites, liaison serveur, langue, imprimante par défaut, prix, rapport et file",
+            "it": "il file di impostazioni: limiti, collegamento al server, lingua, stampante predefinita, prezzi, rapporto e coda",
+            "ja": "設定ファイル：上限、サーバー接続、言語、既定のプリンター、価格、レポート、キュー",
+            "zh": "设置文件：上限、服务器连接、语言、默认打印机、价格、报告和队列",
+            "pt": "o ficheiro de definições: limites, ligação ao servidor, idioma, impressora por omissão, preços, relatório e fila"
           }
         },
         {
           "name": "device.rs",
           "desc": {
-            "en": "the printers of the server, the queue, a start that needs a confirmation, the emergency stop",
-            "es": "las impresoras del servidor, la cola, un inicio que pide confirmación, la parada de emergencia",
-            "de": "die Drucker des Servers, die Warteschlange, ein Start mit Bestätigung, der Not-Halt",
-            "fr": "les imprimantes du serveur, la file, un démarrage avec confirmation, l'arrêt d'urgence",
-            "it": "le stampanti del server, la coda, un avvio con conferma, l'arresto di emergenza",
-            "ja": "サーバーのプリンター、キュー、確認付きの開始、非常停止",
-            "zh": "服务器的打印机、队列、需确认的开始、紧急停止",
-            "pt": "as impressoras do servidor, a fila, um arranque com confirmação, a paragem de emergência"
+            "en": "the printers of the server, the queue and its rules, a confirmed start, the emergency stop",
+            "es": "las impresoras del servidor, la cola y sus reglas, un inicio confirmado, la parada de emergencia",
+            "de": "die Drucker des Servers, die Warteschlange und ihre Regeln, ein bestätigter Start, der Not-Halt",
+            "fr": "les imprimantes du serveur, la file et ses règles, un démarrage confirmé, l'arrêt d'urgence",
+            "it": "le stampanti del server, la coda e le sue regole, un avvio confermato, l'arresto di emergenza",
+            "ja": "サーバーのプリンター、キューとその規則、確認付きの開始、非常停止",
+            "zh": "服务器的打印机、队列及其规则、需确认的开始、紧急停止",
+            "pt": "as impressoras do servidor, a fila e as suas regras, um arranque confirmado, a paragem de emergência"
           }
         },
         {
@@ -270,14 +270,14 @@
         {
           "name": "preview.rs",
           "desc": {
-            "en": "slicing from the window, the slider of layers and the lines of the plan on the screen",
-            "es": "laminar desde la ventana, el deslizador de capas y las líneas del plan en pantalla",
-            "de": "Slicen im Fenster, der Schichtenregler und die Linien des Plans auf dem Bildschirm",
-            "fr": "découper depuis la fenêtre, le curseur de couches et les lignes du plan à l'écran",
-            "it": "elaborare dalla finestra, il cursore degli strati e le linee del piano sullo schermo",
-            "ja": "ウィンドウからのスライス、層のスライダー、画面上のプランの線",
-            "zh": "在窗口中切片、层滑块和屏幕上的方案线条",
-            "pt": "fatiar a partir da janela, o cursor de camadas e as linhas do plano no ecrã"
+            "en": "slicing from the window, the slider of layers, the plan on screen, the report",
+            "es": "laminar desde la ventana, el deslizador de capas, el plan en pantalla, el informe",
+            "de": "Slicen im Fenster, der Schichtenregler, der Plan auf dem Bildschirm, der Bericht",
+            "fr": "découper depuis la fenêtre, le curseur de couches, le plan à l'écran, le rapport",
+            "it": "elaborare dalla finestra, il cursore degli strati, il piano sullo schermo, il rapporto",
+            "ja": "ウィンドウからのスライス、層のスライダー、画面上のプラン、レポート",
+            "zh": "在窗口中切片、层滑块、屏幕上的方案、报告",
+            "pt": "fatiar a partir da janela, o cursor de camadas, o plano no ecrã, o relatório"
           }
         },
         {
@@ -291,6 +291,19 @@
             "ja": "プロジェクト：モデルとそのプリンターを独自の 3MF パッケージに保存",
             "zh": "项目：模型及其打印机，保存在自有的 3MF 包中",
             "pt": "o projeto: um modelo e a sua impressora no pacote 3MF próprio"
+          }
+        },
+        {
+          "name": "report.rs",
+          "desc": {
+            "en": "the words of the reports: slice, resin, thumbnails and profile edits, in the eight languages",
+            "es": "las palabras de los informes: laminado, resina, miniaturas y ediciones de perfil, en los ocho idiomas",
+            "de": "die Worte der Berichte: Slicing, Harz, Vorschaubilder und Profiländerungen, in den acht Sprachen",
+            "fr": "les mots des rapports : découpe, résine, vignettes et modifications de profil, en huit langues",
+            "it": "le parole dei rapporti: elaborazione, resina, miniature e modifiche dei profili, nelle otto lingue",
+            "ja": "レポートの文言：スライス、レジン、サムネイル、プロファイル編集（8 言語）",
+            "zh": "报告的文字：切片、树脂、缩略图和配置编辑（八种语言）",
+            "pt": "as palavras dos relatórios: fatiamento, resina, miniaturas e edições de perfil, nas oito línguas"
           }
         },
         {
