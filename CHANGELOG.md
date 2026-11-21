@@ -3,6 +3,7 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+- **Behaviour tests at the exact edge of the core, the G-code and the link:** three new test files add 153 deterministic tests (the JSON and settings readers at their size and depth limits, the limits of the readers key by key, the lengths in nanometres, the mesh checks and their warnings, the temperature limits, the exact lines of each dialect for the temperatures, the fan, the moves, the start and the end of a job, the checker of programs, the tables of states of the four printer families, the pauses and the tries again, the helpers of the requests and the multipart bodies) without changing the behaviour; the absolute value of the most negative length no longer overflows (it saturates like the other operations).
 
 ## [0.0.8] - Adaptive layer height, elephant foot compensation, volumetric flow limit, time breakdown and the Bambu link seam with a simulated printer
 
