@@ -5,7 +5,7 @@
 //! Every limit is a refusal: a temperature over what the model allows, a model that does not fit the bed, a mesh that is not closed, a setting out of its range, a G-code line
 //! that would leave the bed, are all errors that name the cause, and nothing is cut down to make them pass. The infill may be rectilinear, grid or gyroid, the perimeters may
 //! be narrower where a part is thin, the seams may be put at the rear or lined up, a skin over nothing is a bridge, the overhangs may get plain supports, and the head may lift on
-//! a travel that retracts; the time is estimated with the acceleration of the machine. There is no multi-material yet; the document of the roadmap says so.
+//! a travel that retracts; the time is estimated with the acceleration of the machine. A print may use several materials, divided by height, with a purge tower (the module `multi`); painting a colour on a surface is not done.
 #![forbid(unsafe_code)]
 
 pub mod adhesion;
@@ -15,6 +15,7 @@ pub mod emit;
 pub mod error;
 pub mod geom;
 pub mod infill;
+pub mod multi;
 pub mod plan;
 pub mod report;
 pub mod support;
@@ -23,6 +24,7 @@ pub mod timing;
 pub use config::{Adhesion, InfillPattern, Placement, Seam, SliceConfig, Supports, ThinRegions};
 pub use emit::{LayerSummary, Move, TimeCheck};
 pub use error::SliceError;
+pub use multi::{MultiConfig, MultiJob, MultiReport, Tool, ToolChange};
 pub use plan::{plan, Kind, Layer, Machine, Path, Plan, Warning};
 
 /// The version of the slicer, written in the header of the G-code.

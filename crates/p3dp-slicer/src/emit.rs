@@ -99,6 +99,8 @@ impl Plan {
             Kind::Support => c.support_speed_mm_s,
             Kind::Adhesion => c.perimeter_speed_mm_s,
             Kind::Raft => c.solid_infill_speed_mm_s,
+            Kind::Tower => c.perimeter_speed_mm_s,
+            Kind::Ironing => c.ironing_speed_mm_s,
         }
     }
 
@@ -261,10 +263,10 @@ impl Plan {
                                 s.perimeter_mm += length_mm
                             }
                             Kind::Infill => s.infill_mm += length_mm,
-                            Kind::SolidInfill => s.solid_mm += length_mm,
+                            Kind::SolidInfill | Kind::Ironing => s.solid_mm += length_mm,
                             Kind::Bridge => s.bridge_mm += length_mm,
                             Kind::Support => s.support_mm += length_mm,
-                            Kind::Adhesion | Kind::Raft => s.adhesion_mm += length_mm,
+                            Kind::Adhesion | Kind::Raft | Kind::Tower => s.adhesion_mm += length_mm,
                         }
                         s.extrusion_mm3 +=
                             length_mm * self.line_area_mm2(l.height_mm, kind, width_mm);
@@ -273,9 +275,16 @@ impl Plan {
                     }
                 }
             }
-            s.time_s = timing::seconds(&blocks, c.accel_mm_s2, c.corner_speed_mm_s);
-            s.flat_time_s = timing::flat_seconds(&blocks);
-            s.stop_go_time_s = timing::stop_and_go_seconds(&blocks, c.accel_mm_s2);
+            // a change of tool takes the same time whatever the planner does
+            let change_s: f64 = self
+                .tool_changes
+                .iter()
+                .filter(|e| e.layer == l.index)
+                .map(|e| e.time_s)
+                .sum();
+            s.time_s = timing::seconds(&blocks, c.accel_mm_s2, c.corner_speed_mm_s) + change_s;
+            s.flat_time_s = timing::flat_seconds(&blocks) + change_s;
+            s.stop_go_time_s = timing::stop_and_go_seconds(&blocks, c.accel_mm_s2) + change_s;
             out.push(s);
         }
         out
@@ -339,6 +348,14 @@ impl Plan {
             fan_pct: c.fan_percent,
             estimated_minutes: Some(minutes),
         })?;
+        if c.pressure_advance > 0.0 {
+            w.comment(&format!("pressure advance {}", c.pressure_advance))?;
+            w.set_pressure_advance(c.pressure_advance)?;
+        }
+        if let Some(tool) = self.first_tool {
+            w.comment(&format!("starts with tool {tool}"))?;
+            w.select_tool(tool)?;
+        }
         let area_filament = c.filament_area_mm2();
         let mut carry = 0.0f64;
         let mut at: P = [0.0, 0.0];
@@ -349,6 +366,15 @@ impl Plan {
         let mut fan_now = 0.0f64;
         for l in &self.layers {
             w.layer(l.index as u32, l.z_mm)?;
+            for e in self.tool_changes.iter().filter(|e| e.layer == l.index) {
+                w.comment(&format!(
+                    "tool change to {} for {:.0} mm3 of purge",
+                    e.tool, e.purge_mm3
+                ))?;
+                // the new tool is brought to its temperature, and waited for, before the purge
+                w.set_nozzle(e.nozzle_c, true)?;
+                w.select_tool(e.tool)?;
+            }
             let layer_fan = self.fan_for_layer(l.index);
             if (layer_fan - fan_now).abs() > 1e-9 {
                 w.set_fan(layer_fan)?;

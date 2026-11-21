@@ -95,6 +95,8 @@ pub fn colour_of(kind: Kind) -> [f32; 3] {
         Kind::Support => [0.30, 0.72, 0.38],
         Kind::Adhesion => [0.90, 0.85, 0.30],
         Kind::Raft => [0.55, 0.55, 0.60],
+        Kind::Tower => [0.35, 0.55, 0.90],
+        Kind::Ironing => [0.85, 0.75, 0.95],
     }
 }
 
@@ -164,10 +166,10 @@ impl KindFilter {
         match kind {
             Kind::ExternalPerimeter | Kind::Perimeter => self.perimeters,
             Kind::Infill => self.infill,
-            Kind::SolidInfill => self.solid,
+            Kind::SolidInfill | Kind::Ironing => self.solid,
             Kind::Bridge => self.bridges,
             Kind::Support => self.supports,
-            Kind::Adhesion | Kind::Raft => self.adhesion,
+            Kind::Adhesion | Kind::Raft | Kind::Tower => self.adhesion,
         }
     }
 }

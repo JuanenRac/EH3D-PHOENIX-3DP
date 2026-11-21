@@ -4,11 +4,13 @@
 
 pub mod catalog;
 pub mod filament;
+pub mod multi;
 pub mod profile;
 pub mod resin;
 
 pub use catalog::Catalog;
 pub use filament::{FilamentCatalog, FilamentProfile, Material, Nozzle};
+pub use multi::{caps_of, MultiCaps, MultiKind};
 pub use profile::{
     Change, Connectivity, Edited, LimitSource, Notice, PrinterProfile, ProfileError, Technology,
 };

@@ -9,7 +9,7 @@ use crate::error::SliceError;
 use crate::plan::{Kind, Plan};
 
 /// The kinds of line, in the order they are reported.
-pub const KINDS: [Kind; 8] = [
+pub const KINDS: [Kind; 10] = [
     Kind::ExternalPerimeter,
     Kind::Perimeter,
     Kind::Infill,
@@ -18,6 +18,8 @@ pub const KINDS: [Kind; 8] = [
     Kind::Support,
     Kind::Adhesion,
     Kind::Raft,
+    Kind::Tower,
+    Kind::Ironing,
 ];
 
 /// What one kind of line takes.

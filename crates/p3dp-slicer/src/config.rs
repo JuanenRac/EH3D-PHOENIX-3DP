@@ -213,6 +213,14 @@ pub struct SliceConfig {
     pub retract_min_percent: f64,
     /// One wall, no infill and no top: a vase. The bottom layers stay solid.
     pub vase_mode: bool,
+    /// The pressure advance of the extruder, 0 to 2 (0 is off): written at the start of the program in the command of the firmware.
+    pub pressure_advance: f64,
+    /// The top of the print gets one more pass over its solid skin with very little plastic, to smooth it.
+    pub ironing: bool,
+    /// The plastic of an ironing pass against a normal line, in per cent.
+    pub ironing_flow_percent: f64,
+    /// The speed of an ironing pass.
+    pub ironing_speed_mm_s: f64,
 }
 
 impl Default for SliceConfig {
@@ -282,12 +290,16 @@ impl Default for SliceConfig {
             retract_full_travel_mm: 20.0,
             retract_min_percent: 30.0,
             vase_mode: false,
+            pressure_advance: 0.0,
+            ironing: false,
+            ironing_flow_percent: 10.0,
+            ironing_speed_mm_s: 20.0,
         }
     }
 }
 
 /// The keys, in the order of the file.
-pub const KEYS: [&str; 64] = [
+pub const KEYS: [&str; 68] = [
     "layer_height_mm",
     "first_layer_height_mm",
     "nozzle_diameter_mm",
@@ -352,6 +364,10 @@ pub const KEYS: [&str; 64] = [
     "retract_full_travel_mm",
     "retract_min_percent",
     "vase_mode",
+    "pressure_advance",
+    "ironing",
+    "ironing_flow_percent",
+    "ironing_speed_mm_s",
 ];
 
 fn invalid(msg: String) -> CoreError {
@@ -485,6 +501,10 @@ impl SliceConfig {
             "retract_full_travel_mm" => self.retract_full_travel_mm = f(1.0, 500.0)?,
             "retract_min_percent" => self.retract_min_percent = f(0.0, 100.0)?,
             "vase_mode" => self.vase_mode = kv::on_off(key, value)?,
+            "pressure_advance" => self.pressure_advance = f(0.0, 2.0)?,
+            "ironing" => self.ironing = kv::on_off(key, value)?,
+            "ironing_flow_percent" => self.ironing_flow_percent = f(1.0, 30.0)?,
+            "ironing_speed_mm_s" => self.ironing_speed_mm_s = f(1.0, 1000.0)?,
             other => return Err(invalid(format!("{other}: not a setting of the slicer"))),
         }
         Ok(())
@@ -562,6 +582,10 @@ impl SliceConfig {
             "retract_min_percent" => self.retract_min_percent.to_string(),
             "retract_adaptive" => on_off(self.retract_adaptive),
             "vase_mode" => on_off(self.vase_mode),
+            "pressure_advance" => self.pressure_advance.to_string(),
+            "ironing" => on_off(self.ironing),
+            "ironing_flow_percent" => self.ironing_flow_percent.to_string(),
+            "ironing_speed_mm_s" => self.ironing_speed_mm_s.to_string(),
             "adhesion" => self.adhesion.name().to_string(),
             "placement" => match self.placement {
                 Placement::Center => "center",
@@ -684,6 +708,22 @@ impl SliceConfig {
         }
         if self.vase_mode && self.adhesion == Adhesion::Raft {
             return bad("a vase cannot stand on a raft: use a skirt or a brim".to_string());
+        }
+        if self.ironing {
+            if self.vase_mode {
+                return bad("a vase has no solid top to iron: ironing = off".to_string());
+            }
+            if self.top_layers == 0 {
+                return bad(
+                    "ironing smooths the solid skin of the top: top_layers is 0".to_string()
+                );
+            }
+            if self.ironing_speed_mm_s > self.max_speed_mm_s {
+                return bad(format!(
+                    "ironing_speed_mm_s {} is above max_speed_mm_s {}",
+                    self.ironing_speed_mm_s, self.max_speed_mm_s
+                ));
+            }
         }
         Ok(())
     }
@@ -933,7 +973,7 @@ vase_mode = off
         );
         assert!(c.retract_adaptive && !c.vase_mode);
         assert_eq!(SliceConfig::from_text(&c.to_text()).unwrap(), c);
-        assert_eq!(KEYS.len(), 64);
+        assert_eq!(KEYS.len(), 68);
         for k in KEYS {
             assert!(c.value_of(k).is_some(), "{k}");
         }

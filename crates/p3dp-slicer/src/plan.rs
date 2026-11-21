@@ -7,6 +7,7 @@ use crate::cut::Cutter;
 use crate::error::SliceError;
 use crate::geom::{self, inset, Loop, P};
 use crate::infill::{fill_paths, order_paths, Fill};
+use crate::multi::ToolChange;
 use crate::support::support_paths;
 use p3dp_core::machine::Zone;
 use p3dp_core::{Dialect, Mesh, TempLimits};
@@ -56,6 +57,10 @@ pub enum Kind {
     Adhesion,
     /// A line of a raft.
     Raft,
+    /// The purge tower of a print with several materials: its walls and the lines that clean the nozzle after a change.
+    Tower,
+    /// A pass over the solid skin of the top with very little plastic, to smooth it.
+    Ironing,
 }
 
 impl Kind {
@@ -69,6 +74,8 @@ impl Kind {
             Kind::Support => "support",
             Kind::Adhesion => "adhesion",
             Kind::Raft => "raft",
+            Kind::Tower => "purge tower",
+            Kind::Ironing => "ironing",
         }
     }
 }
@@ -126,6 +133,10 @@ pub struct Plan {
     pub raft_layers: usize,
     /// The slowing down of each layer that would take less than `min_layer_time_s`: 1 is no change.
     pub layer_scales: Vec<f64>,
+    /// The tool the print starts with, when it has several materials (see the module `multi`).
+    pub first_tool: Option<u8>,
+    /// The changes of tool, in the order of the layers (none when the print has one material).
+    pub tool_changes: Vec<ToolChange>,
 }
 
 /// The heights of the layers: the first, then the height asked for, the last one whatever is left.
@@ -313,6 +324,28 @@ pub fn plan(mesh: &Mesh, machine: &Machine, config: &SliceConfig) -> Result<Plan
             paths: lead,
         });
     }
+    // ironing: one more pass over the solid skin of the top layer, backwards, with very little plastic
+    if config.ironing {
+        if let Some(top_layer) = layers.last_mut() {
+            let passes: Vec<Path> = top_layer
+                .paths
+                .iter()
+                .rev()
+                .filter(|p| p.kind == Kind::SolidInfill)
+                .map(|p| {
+                    let mut points = p.points.clone();
+                    points.reverse();
+                    Path {
+                        kind: Kind::Ironing,
+                        points,
+                        closed: p.closed,
+                        width_mm: p.width_mm,
+                    }
+                })
+                .collect();
+            top_layer.paths.extend(passes);
+        }
+    }
     // nothing may leave the bed (the model fits, and the paths are inside the model; this is the check that says so)
     for l in &layers {
         for p in l.paths.iter().flat_map(|p| &p.points) {
@@ -339,6 +372,8 @@ pub fn plan(mesh: &Mesh, machine: &Machine, config: &SliceConfig) -> Result<Plan
         model_volume_mm3: volume,
         raft_layers: raft,
         layer_scales: Vec::new(),
+        first_tool: None,
+        tool_changes: Vec::new(),
     };
     plan.layer_scales = plan.compute_layer_scales();
     Ok(plan)
@@ -543,10 +578,10 @@ impl Plan {
     /// bridge, its own flow.
     pub fn line_area_mm2(&self, layer_height: f64, kind: Kind, width: f64) -> f64 {
         let c = &self.config;
-        let flow = if kind == Kind::Bridge {
-            c.bridge_flow_ratio
-        } else {
-            1.0
+        let flow = match kind {
+            Kind::Bridge => c.bridge_flow_ratio,
+            Kind::Ironing => c.ironing_flow_percent / 100.0,
+            _ => 1.0,
         };
         c.line_area_for(width, layer_height) * c.extrusion_multiplier * flow
     }

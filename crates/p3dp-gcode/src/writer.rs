@@ -217,6 +217,35 @@ impl Writer {
         Ok(())
     }
 
+    /// Picks a tool (a spool of a feeder or a head of a toolchanger): `T0` to `T15`. The temperature of the new tool is set before, with [`Writer::set_nozzle`], so that it is
+    /// checked against the limits like every other.
+    pub fn select_tool(&mut self, tool: u8) -> Result<(), GcodeError> {
+        if tool > 15 {
+            return Err(GcodeError::Value(format!(
+                "the tool {tool} is not from 0 to 15"
+            )));
+        }
+        self.push(format!("T{tool}"));
+        Ok(())
+    }
+
+    /// The pressure advance (the extra push of the extruder that keeps the pressure in the nozzle in step with the speed), `0` to `2`: `0` is off. The command is the one of the
+    /// firmware: `SET_PRESSURE_ADVANCE ADVANCE=` for Klipper, `M572 D0 S` for RepRapFirmware and `M900 K` for the others.
+    pub fn set_pressure_advance(&mut self, advance: f64) -> Result<(), GcodeError> {
+        if !advance.is_finite() || !(0.0..=2.0).contains(&advance) {
+            return Err(GcodeError::Value(format!(
+                "the pressure advance {advance} is not from 0 to 2"
+            )));
+        }
+        let v = num(advance);
+        match self.dialect {
+            Dialect::Klipper => self.push(format!("SET_PRESSURE_ADVANCE ADVANCE={v}")),
+            Dialect::Rrf => self.push(format!("M572 D0 S{v}")),
+            _ => self.push(format!("M900 K{v}")),
+        }
+        Ok(())
+    }
+
     /// A move in a straight line. A coordinate outside the build volume, a number that is not finite or a feed that is not between 1 and 100000 mm/min is an error.
     pub fn linear_move(
         &mut self,
@@ -380,6 +409,25 @@ mod tests {
 
     fn writer(d: Dialect) -> Writer {
         Writer::new(d, L, V).unwrap()
+    }
+
+    #[test]
+    fn a_tool_is_picked_and_the_pressure_advance_follows_the_firmware() {
+        let mut w = writer(Dialect::Klipper);
+        w.select_tool(2).unwrap();
+        w.set_pressure_advance(0.045).unwrap();
+        assert_eq!(w.lines(), ["T2", "SET_PRESSURE_ADVANCE ADVANCE=0.045"]);
+        let mut w = writer(Dialect::Marlin);
+        w.set_pressure_advance(0.5).unwrap();
+        assert_eq!(w.lines(), ["M900 K0.5"]);
+        let mut w = writer(Dialect::Rrf);
+        w.set_pressure_advance(0.0).unwrap();
+        assert_eq!(w.lines(), ["M572 D0 S0"]);
+        for bad in [-0.1, 2.5, f64::NAN, f64::INFINITY] {
+            assert!(w.set_pressure_advance(bad).is_err(), "{bad}");
+        }
+        assert!(w.select_tool(16).is_err());
+        assert_eq!(w.lines().len(), 1, "a refusal writes nothing");
     }
 
     #[test]
