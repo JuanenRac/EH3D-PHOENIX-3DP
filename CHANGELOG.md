@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.0.8] - Adaptive layer height, elephant foot compensation, volumetric flow limit, time breakdown and the Bambu link seam with a simulated printer
+
 - A print can use several materials. The module `multi` of the slicer takes the tools (a spool of a feeder or a head of a toolchanger, each with its filament, temperature and colour), the layers at which the tool changes and a purge tower: a wall on every layer and, where the tool changes, as many lines inside it as the purge needs. The purge grows with the difference of temperature and, going from a dark colour to a light one, with the difference of brightness, and a pair can be given its own figure. A tower that is not inside the bed, that comes near the part or that is too small for the purge, a tool that is too hot for the printer, two materials too far apart in temperature, a filament of another diameter and a change to the tool already in use are refused, and the plan is left as it was.
 - The G-code of a print with several materials sets and waits for the temperature of the new tool and then picks it (`T0` to `T15`) before the purge, in the four dialects; the time of each change is in the estimate; the report says what each tool prints and what the purge and the tower cost.
 - The figures of a print with several materials (the place and size of the tower, the purge, the time of a change, the most changes, the greatest step of temperature, and whether an optional kit is fitted) are keys of a settings file read by `MultiConfig::from_text`, each checked against its range with the line of a mistake.
