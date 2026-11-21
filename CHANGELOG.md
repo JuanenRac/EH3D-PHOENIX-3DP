@@ -3,6 +3,12 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+- Fix the offset of a loop inwards: past the middle of a shape (a pin thinner than the perimeters, a square inset by more than half its side) the corners crossed over and a loop came out the same way round, a shape that is not there, so a perimeter was laid where there is no room; such a loop is now dropped.
+- Fix the profiles of printers, filaments and resins (security): a vendor, model or name with a line break or another control character could begin another line of the profile file it is written to (a key of its own, even `verified`), and one with ` #` was cut short when read back; both are now refused when the profile is checked.
+- Fix the figures of a print: a value written with a blank before it (` 0.2`) was dropped instead of read.
+- Fix the reading of a text STL whose name, or of an OBJ whose comment, is not UTF-8 (Latin-1 from some programs of Windows): the whole file was refused for a name that does not count; only the numbers are read.
+- Fix the reading of a binary STL whose 80-byte header starts like the text of an OBJ (a `#`, `v ` or `o `): it was taken for an OBJ and refused; the size of the file now decides first.
+- Add tests that hunt for bugs in the formats, the profiles and the slicer: the checksum and the inflate, the ZIP package, the XML reader, STL, OBJ and 3MF, the pictures, the thumbnails and the header of binary G-code, the catalogs and files of printers, filaments and resins, what a printer says about several materials, the geometry of a layer, the time of a run of moves, every range and rule of the settings and the refusals of a plan.
 - **Behaviour tests at the exact edge of the core, the G-code and the link:** three new test files add 153 deterministic tests (the JSON and settings readers at their size and depth limits, the limits of the readers key by key, the lengths in nanometres, the mesh checks and their warnings, the temperature limits, the exact lines of each dialect for the temperatures, the fan, the moves, the start and the end of a job, the checker of programs, the tables of states of the four printer families, the pauses and the tries again, the helpers of the requests and the multipart bodies) without changing the behaviour; the absolute value of the most negative length no longer overflows (it saturates like the other operations).
 
 ## [0.0.8] - Adaptive layer height, elephant foot compensation, volumetric flow limit, time breakdown and the Bambu link seam with a simulated printer

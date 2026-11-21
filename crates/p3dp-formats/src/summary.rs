@@ -45,7 +45,7 @@ const TIME: [&str; 2] = [
 
 /// The first number of a text like `12.5` or `0.4,0.4` (a list of nozzles gives the first); `None` when it does not start with a finite, non-negative number.
 pub fn first_number(text: &str) -> Option<f64> {
-    let head = text.split([',', ';', ' ']).next()?.trim();
+    let head = text.trim().split([',', ';', ' ']).next()?.trim();
     head.parse::<f64>()
         .ok()
         .filter(|v| v.is_finite() && *v >= 0.0)
