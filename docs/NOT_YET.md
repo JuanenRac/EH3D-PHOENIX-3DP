@@ -5,9 +5,9 @@ Good ideas that are not in the current version. Writing them here keeps anybody 
 | Idea | Why not yet | Revisit when |
 |---|---|---|
 | A real printer as the first proof | No driver has spoken to a real printer; the proof needs a person at a printer with the power switch in reach | the owner has a printer ready for the first print |
-| TLS for the Bambu local link and for https addresses | The standard library has none and the three ways to get one (through the server, a TLS crate behind a feature, the system library) are not chosen | the owner chooses one of the ways |
-| Several materials in one print (a purge tower, toolchangers, painting of colours) | The slicer prints with one material; the 3MF projects of other programs are read for their metadata only | the single-material slicer has printed on a real printer |
-| Tree supports, interface layers, ironing, pressure advance and adaptive layer height | The slicer has plain supports and the usual quality settings; the rest is not started | the plain supports have printed well on a real printer |
+| A TLS of the program itself, for the stand-alone Bambu link and for https addresses | The Bambu link goes through the server, which holds the TLS with the certificate pinned; the standard library has none, and a crate behind a feature is not in the offline cache | the owner wants the stand-alone Bambu link |
+| Painting of colours on a surface, the offsets of the heads of a toolchanger and the grouping of filaments by nozzle | A tool changes between layers, with a purge tower; nothing is painted on a surface and the heads of a toolchanger have no offsets | the change of tool and the tower have printed on a real printer |
+| Tree supports, interface layers and adaptive layer height | The slicer has plain supports, the ironing of the top, the pressure advance and the usual quality settings; the rest is not started | the plain supports have printed well on a real printer |
 | A driver for resin printers | The catalog lists resin printers, but they take layers and not G-code; the writer refuses them and no driver exists | the format of the layers of a printer is chosen |
 | The WebSocket push of Moonraker and OctoPrint | The drivers poll over plain HTTP; a push needs a WebSocket client written by hand | the polling is too slow for the window |
 | PrusaLink and Duet as drivers | The state tables exist; the drivers are not written | a printer of those families is in the workshop |
@@ -20,7 +20,7 @@ This page lists what the program does not do, and what each missing part needs. 
 
 ### A small slicer
 
-The program turns a closed model into flat layers, perimeters, a rectilinear, grid or gyroid infill with solid skins, bridges, plain supports, seams, variable width of the perimeters and G-code, and shows the plan by layers as data. It has no tree supports, interface layers or painting of supports, no ironing, pressure advance, adaptive layer height or multi-material (it does lay a skirt, a brim or a raft, slow a short layer, shorten the retraction of a short travel and print a vase as one wall of separate layers, not as a spiral); a bridge is laid across the gap but is not tuned (no flow test, no extra anchor); the supports are lines at a pitch, with no interface; the time it estimates has an acceleration and a speed at the corners from the settings, not the planner of the printer; and no print made from its G-code has been run on a printer. A model that is not closed, that faces inwards or that does not fit is refused, not repaired or scaled.
+The program turns a closed model into flat layers, perimeters, a rectilinear, grid or gyroid infill with solid skins, bridges, plain supports, seams, variable width of the perimeters and G-code, and shows the plan by layers as data. It has no tree supports, interface layers, painting of supports or adaptive layer height, and its several materials change tool between layers only, with a purge tower, and never inside a layer (it does iron the top layer, write the pressure advance, lay a skirt, a brim or a raft, slow a short layer, shorten the retraction of a short travel and print a vase as one wall of separate layers, not as a spiral); a bridge is laid across the gap but is not tuned (no flow test, no extra anchor); the supports are lines at a pitch, with no interface; the time it estimates has an acceleration and a speed at the corners from the settings, not the planner of the printer; and no print made from its G-code has been run on a printer. A model that is not closed, that faces inwards or that does not fit is refused, not repaired or scaled.
 
 ### Nothing has run on a printer
 
@@ -38,7 +38,7 @@ The drivers talk to an `HttpTransport`; `TcpTransport` is a plain HTTP/1.1 one w
 
 Pending, with the ways to close it:
 
-* **A. Through the EH3D server (the one this program recommends).** The server has the experimental Bambu LAN link with the fingerprint of the certificate; this program then needs no TLS at all and speaks the routes of the `printer3d` plugin it speaks already. It leaves the stand-alone mode without Bambu.
+* **A. Through the EH3D server (chosen).** The server has the experimental Bambu LAN link with the fingerprint of the certificate; this program then needs no TLS at all and speaks the routes of the `printer3d` plugin it speaks already. The client makes the machine with the fingerprint pinned and tells the troubles of the link by their codes (`SERVER.md`). It leaves the stand-alone mode without Bambu.
 * **B. A TLS library behind a feature.** A feature of `p3dp-link` that takes a TLS crate, off by default, with the fingerprint check of `pin` as the only way to accept a certificate. It breaks the rule of no outside crates for that feature and can only be tried in the CI or on a computer with the crates.
 * **C. The TLS of the system.** A different small binding for each system (SChannel, Secure Transport, the library of Linux): the most code and the least testable.
 

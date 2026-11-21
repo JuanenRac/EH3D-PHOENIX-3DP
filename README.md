@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.7-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-659-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-684-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Honesty check - what actually runs today:** a Rust workspace of eight libraries and a command line program (`phoenix-3dp`) with 659 tests that run on a computer. It reads STL, OBJ and 3MF models and checks them, holds a catalog of 120 printer profiles built from public data (none of them tried on a machine), writes G-code for the Marlin, Klipper, RepRapFirmware and Bambu dialects with temperature limits that refuse a value instead of cutting it down, and drives Moonraker and OctoPrint printers and the EH3D server, but only against simulators (in memory, and on a socket of this computer). It slices a closed model into flat layers with perimeters, a rectilinear infill and solid skins (a small slicer with grid and gyroid infill, bridges, plain supports, seams, variable width, a lift on travel, a skirt, a brim or a raft, a vase mode, slower short layers, retraction that follows the travel and an estimate of the time with acceleration; nothing for several materials yet); the window, the docking frame of the suite with five workspaces (built with `--features gui`), has not been looked at on a screen by a person; nothing has run on a real printer.
+**Honesty check - what actually runs today:** a Rust workspace of eight libraries and a command line program (`phoenix-3dp`) with 684 tests that run on a computer. It reads STL, OBJ and 3MF models and checks them, holds a catalog of 120 printer profiles built from public data (none of them tried on a machine), writes G-code for the Marlin, Klipper, RepRapFirmware and Bambu dialects with temperature limits that refuse a value instead of cutting it down, and drives Moonraker and OctoPrint printers and the EH3D server, but only against simulators (in memory, and on a socket of this computer). It slices a closed model into flat layers with perimeters, a rectilinear infill and solid skins (a small slicer with grid and gyroid infill, bridges, plain supports, seams, variable width, a lift on travel, a skirt, a brim or a raft, a vase mode, slower short layers, retraction that follows the travel and an estimate of the time with acceleration; several materials divided by height with a purge tower, ironing of the top and pressure advance, but no painting of colours yet); the window, the docking frame of the suite with five workspaces (built with `--features gui`), has not been looked at on a screen by a person; nothing has run on a real printer.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Version | `0.0.7` |
 | Maturity | Functional |
-| Tests | 659 |
+| Tests | 684 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a printer, not even on a Bambu Lab A1 or a P1S. |
 
@@ -55,7 +55,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Server link | 🟠 | the settings of the link and a client of the printer plugin of the server over the common client of the suite (login, renewal, retries, errors in eight languages), tried against a server in memory; never against the real server. |
 | Slicer | 🟡 | flat layers of a closed mesh, perimeters, rectilinear, grid or gyroid infill, solid skins, bridges, plain supports, seams, variable width, G-code per dialect, a preview by layers as data and an estimate of the time with acceleration; checked with properties on shapes from a fixed seed (the plastic laid down is the volume of the part, nothing leaves the bed, no temperature goes past a limit); no print has come out of it on a printer. |
 | Command line | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) runs the functions of the libraries and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 659 tests pass (`cargo test --workspace`), with normal cases, edge cases, damaged input and a fixed seed wherever they are random. |
+| Tests | 🟡 | 684 tests pass (`cargo test --workspace`), with normal cases, edge cases, damaged input and a fixed seed wherever they are random. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): a limit is a refusal and never a trim; the token never prints; nothing panics on the files it is given; no independent review. |
 | Window | 🟠 | Written with `--features gui` as the docking frame of the suite, with five workspaces (Prepare, Review, Run, Setup and Compact) whose panels can be taken away, put back, moved, tabbed, floated and folded, and a menu bar: lists of printers and filaments with filters, the plan by layers with a slider, the queue of the server with a start that needs a confirmation, an emergency stop, shortcuts that can be changed, a picture mode (`--shot`), a 3D view of the bed with the parts as shaded solids, a panel of the parts with auto-orient and arrange, slicing in the background with the estimates, temperature limits that can be edited and a dark and a light look; the arrangement is kept in the settings file; the logic is tested without a screen and the README shows drawings of the workspaces made from the model, but the panels have never been drawn on a screen and no person has looked at them. |
 | Real hardware | 🔴 | Not tried: nothing here has run on a printer, not even on a Bambu Lab A1 or a P1S. |
@@ -69,10 +69,10 @@ Each line is one part of this repository and the light says how far it is today.
 * **The G-code** (`p3dp-gcode`): writers for Marlin, Klipper, RepRapFirmware and Bambu, each with a header, a start and an end that are safe; a temperature or a move that is not allowed is refused, never cut down. A checker reads any program and finds the lines that go past the limits of a model.
 * **The link** (`p3dp-link`): one driver trait, one normalized state (fifteen states, temperatures, job, alerts) and one list of commands; Moonraker and OctoPrint are implemented over a transport (a plain HTTP one written with the standard library, with limits of time and size, tried against a socket of this computer) and tested against an in-memory simulator of each protocol; Bambu LAN is the design of its topics and messages, marked experimental.
 * **The server** (`p3dp-server-bridge`): the settings `server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries` and `server_mdns`, and a client of the `printer3d` plugin of the server over the common client of the suite (`eh3d-serverclient`): jobs join the queue and wait for a person to start them, the limits of temperature are checked before anything is sent, and there is the stop; tested against a server in memory.
-* **The slicer** (`p3dp-slicer`): flat layers of a closed mesh, perimeters, rectilinear, grid or gyroid infill with solid skins, bridges, plain supports, seams, variable width, a lift on travel, G-code for the dialects of the program through its writer and the preview by layers as data, with an estimate of the time that uses the acceleration; it refuses, never cuts down, what does not fit the bed, goes past a limit of temperature or is not a closed mesh.
+* **The slicer** (`p3dp-slicer`): flat layers of a closed mesh, perimeters, rectilinear, grid or gyroid infill with solid skins, bridges, plain supports, seams, variable width, a lift on travel, ironing of the top, pressure advance, several materials by height with a purge tower, G-code for the dialects of the program through its writer and the preview by layers as data, with an estimate of the time that uses the acceleration; it refuses, never cuts down, what does not fit the bed, goes past a limit of temperature or is not a closed mesh.
 * **The viewer** (`p3dp-viewer`): the model of the 3D viewer with no graphics code: an orbit camera with perspective, picking and a selection box on the plate, the range of layers and the lines of a plan for a graphics card. The drawing with wgpu is behind a feature, off by default, and has never been built.
 * **Other files:** binary G-code (`bgcode`) and open packages of resin layers (`.sl1`) are read by their headers only, with an estimate of the time to expose; the closed formats of resin printers are refused with the reason. The thumbnails of a binary G-code file are listed and the largest can be taken out (`project FILE --thumbnail OUT`), and the figures and thumbnails in the comments of a plain G-code file (the filament used, the time, the layer height) are read the same way, from its start and its end only.
-* **Not done yet:** the drawing of the 3D viewer (its model exists), a slicer for several materials, the Bambu LAN link and the other transports. The roadmap is in `docs/ROADMAP.md` and what is missing in `docs/NOT_YET.md`.
+* **Not done yet:** the drawing of the 3D viewer (its model exists), painting of colours, the Bambu LAN link and the other transports. The roadmap is in `docs/ROADMAP.md` and what is missing in `docs/NOT_YET.md`.
 
 ## 🧩 Role in EH3D
 
@@ -177,7 +177,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Testing
 
-The suite has 659 tests (`cargo test --workspace`, run on Windows and Linux in the CI), with a fixed seed wherever they are random. They check the normal cases, the edge cases and damaged input: cut files, garbage and hostile headers never panic, and no temperature of any printer of the catalog goes past its limit. The CI also runs `cargo fmt --all --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 684 tests (`cargo test --workspace`, run on Windows and Linux in the CI), with a fixed seed wherever they are random. They check the normal cases, the edge cases and damaged input: cut files, garbage and hostile headers never panic, and no temperature of any printer of the catalog goes past its limit. The CI also runs `cargo fmt --all --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 
@@ -271,10 +271,10 @@ EH3D-PHOENIX-3DP/
 
 **Known limits today**
 
-* The slicer is small: the supports are plain (no tree, no interface layers), the bridges are not tuned, there is nothing for several materials, and no print has come out of it on a printer.
+* The slicer is small: the supports are plain (no tree, no interface layers), the bridges are not tuned, several materials go by height only (no painting of colours, no offsets of the heads of a toolchanger), and no print has come out of it on a printer.
 * No printer has been connected, not even the Bambu Lab A1 or P1S; every profile says `verified = false`.
 * The 3MF reader takes the mesh only (components and the production extension are refused); the projects of other programs are read for their objects, plates and settings and never changed.
-* The drivers have a plain HTTP transport, tried only against a socket of this computer and the simulators; no TLS and no WebSocket push; Bambu LAN is a design that does not connect, and the cloud of Bambu is not part of it.
+* The drivers have a plain HTTP transport, tried only against a socket of this computer and the simulators; no TLS and no WebSocket push; Bambu LAN goes through the server, which holds the TLS with the certificate pinned (tried only against the server in memory), and the program opens none of its own, and the cloud of Bambu is not part of it.
 * The window (five workspaces in the docking frame of the suite) has not been looked at on a screen by a person; the pictures of the README are drawings made from its model.
 
 **Next**
@@ -282,8 +282,8 @@ EH3D-PHOENIX-3DP/
 * H1: the drawing of the 3D viewer with wgpu (its model exists) and the repair of meshes.
 * H2: a calibration cube printed on a real machine (the grid and gyroid infill, the seams, the variable width, the bridges and the plain supports are written and tested on shapes from a fixed seed).
 * H3: the editor of profiles with inheritance and the sync of profiles with the server.
-* H4 to H6: ironing and the rest of the quality settings, tree supports and advanced infill, and several materials.
-* H7: the other transports (WebSocket push, PrusaLink, Duet), the Bambu LAN link and the choice of its TLS.
+* H4 to H6: adaptive layer height and the rest of the quality settings, tree supports and advanced infill, and the painting of colours and the heads of a toolchanger.
+* H7: the other transports (WebSocket push, PrusaLink, Duet), the direct Bambu LAN link (its TLS is the server's).
 * H8: profiles with evidence from real machines (a Bambu Lab A1 and a P1S are the first planned), guided calibrations and a simulation of collisions. The whole plan is in `docs/ROADMAP.md`.
 
 ## 🌍 Languages

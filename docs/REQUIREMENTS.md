@@ -2,7 +2,7 @@
 
 This register is the single source of the state of each capability: `STATUS.md` and the README files cite it and never state a state that it does not. A state is one of `planned`, `prototype`, `implemented` and `validated`. `validated` means that a person has run the capability on a real machine and the evidence of the manifest says `bench` or `field`; nothing here is validated, because nothing of this program has run on a real printer, a real server or a screen: the printers are simulators (in memory and on a socket of the same computer), the server is a double, and every profile of the catalog says `verified = false`.
 
-The register has 99 requirements: 88 implemented, 5 prototype, 6 planned and 0 validated. By progress: 88 done, 5 partial, 3 pending and 3 blocked. High coverage is not proof of correctness, so each row says how it is checked: the test that names it, and what it shows.
+The register has 103 requirements: 92 implemented, 5 prototype, 6 planned and 0 validated. By progress: 92 done, 5 partial, 2 pending and 4 blocked. High coverage is not proof of correctness, so each row says how it is checked: the test that names it, and what it shows.
 
 ## How to read the register
 
@@ -73,8 +73,8 @@ The check is `tests/reqs.rs`: it reads this table, finds each test and fails whe
 | P3DP-042 | The estimate of the time with acceleration lies between the plain time and the stop-and-go time. | prototype | partial | host-test | `crates/p3dp-slicer/src/timing::the_estimate_lies_between_the_plain_time_and_the_stop_and_go_time` | Checked for consistency; never compared with the time a real printer takes. |
 | P3DP-043 | The material, the weight and the cost add up to the plan. | implemented | done | host-test | `crates/p3dp-slicer/src/report::the_material_adds_up_to_the_plan_and_the_weight_follows_the_density` | - |
 | P3DP-044 | Settings that do not go together are refused, not adjusted. | implemented | done | host-test | `crates/p3dp-slicer/src/config::settings_that_do_not_go_together_are_refused_not_adjusted` | - |
-| P3DP-045 | Slice with several materials: a purge tower, toolchangers and painting of colours. | planned | pending | none | `planned:multi_material::a_two_material_print_gets_a_purge_tower` | Not written: the slicer prints with one material. |
-| P3DP-046 | Tree supports, ironing, pressure advance and adaptive layer height. | planned | pending | none | `planned:quality::a_tree_support_holds_an_overhang_and_leaves_the_part` | Not written: only plain supports and the usual quality settings exist. |
+| P3DP-045 | A print with several materials changes tool between layers and cleans the nozzle in a purge tower, and a tower that does not fit, touches the part or is too small is refused. | implemented | done | host-test | `crates/p3dp-slicer/src/multi::a_two_material_print_gets_a_purge_tower` | Tools change between layers only; nothing is tried on a printer. |
+| P3DP-046 | The top is ironed with very little plastic and the pressure advance is written in the command of each firmware, both with their ranges checked. | implemented | done | host-test | `crates/p3dp-slicer/tests/quality::ironing_goes_over_the_top_skin_with_little_plastic` | The top layer only is ironed; the value of the pressure advance is the person's, not a calibration. |
 
 ## G-code and its check
 
@@ -110,7 +110,7 @@ The check is `tests/reqs.rs`: it reads this table, finds each test and fails whe
 | P3DP-069 | The local link of Bambu runs against a broker in memory and a wrong code is refused. | prototype | partial | simulator | `crates/p3dp-link/src/bambu::the_whole_exchange_runs_against_a_broker_in_memory_and_a_wrong_code_is_refused` | Bytes and text against a broker made in memory; there is no TLS to open the real connection and nothing has been tried on a Bambu printer. |
 | P3DP-070 | The upload commands of FTPS are in order and the password is not in the log. | implemented | done | simulator | `crates/p3dp-link/src/ftps::the_steps_of_an_upload_are_in_order_and_the_password_is_not_in_the_log` | - |
 | P3DP-071 | Drive a real Moonraker, OctoPrint or Bambu printer. | planned | blocked | none | `planned:real_printer::a_real_printer_prints_a_job_and_stops_on_the_emergency_stop` | No driver has spoken to a real printer; it needs a person at a real printer with the power switch in reach. |
-| P3DP-072 | TLS for the Bambu local link and for https addresses. | planned | pending | none | `planned:tls::a_tls_connection_is_opened_only_to_the_pinned_certificate` | Not written: the way to get TLS is not chosen. |
+| P3DP-072 | A TLS connection opened by the program itself (stand-alone mode) only to the pinned certificate. | planned | blocked | none | `planned:tls::a_tls_connection_is_opened_only_to_the_pinned_certificate` | Not written on purpose: the Bambu link goes through the server, which holds the TLS; a TLS of its own needs a crate behind a feature that is not in the offline cache (`SERVER.md` lists the tests that are missing). |
 
 ## The EH3D server
 
@@ -148,3 +148,12 @@ The check is `tests/reqs.rs`: it reads this table, finds each test and fails whe
 | P3DP-097 | The README states the real number of tests and shows only commands the program has. | implemented | done | host-test | `tests/readme::every_readme_states_the_real_number_of_tests` | - |
 | P3DP-098 | The settings are read, checked and written back, and the token is hidden when written for a screen. | implemented | done | host-test | `src/config::the_token_is_hidden_when_written_for_a_screen` | - |
 | P3DP-099 | A person looks at the window on a screen and uses it at a printer. | planned | blocked | none | `planned:operator::an_operator_prepares_and_starts_a_print_with_the_window` | Needs a person at a screen, at a printer. |
+
+## Several materials and the Bambu link through the server
+
+| ID | Requirement | State | Progress | Evidence | Test | Limits |
+|---|---|---|---|---|---|---|
+| P3DP-100 | A Bambu printer in LAN mode is made on the server with its certificate pinned, and its three troubles come back as stable codes in eight languages. | implemented | done | simulator | `crates/p3dp-server-bridge/tests/bambu_flow::a_certificate_that_is_not_the_pinned_one_is_untrusted_and_nothing_is_queued` | Tried only against the server in memory; nothing has run on a Bambu printer. |
+| P3DP-101 | The multi-material system of a printer gives the number of tools the slicer may be asked for, and a kit that may not be fitted needs the word of the owner. | implemented | done | host-test | `crates/p3dp-profiles/src/multi::every_row_of_the_catalog_with_words_gives_two_to_sixteen_tools` | - |
+| P3DP-102 | Tree supports, interface layers and adaptive layer height. | planned | pending | none | `planned:quality::a_tree_support_holds_an_overhang_and_leaves_the_part` | Not written: only plain supports and the usual quality settings exist. |
+| P3DP-103 | A colour painted on a surface, the offsets of the heads of a toolchanger and the grouping of filaments by nozzle. | planned | pending | none | `planned:multi_material::a_painted_colour_changes_the_tool_inside_a_layer` | Not written: a tool changes between layers only. |

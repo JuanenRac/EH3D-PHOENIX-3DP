@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.7-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-659-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-684-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Contrôle d'honnêteté - ce qui fonctionne vraiment aujourd'hui :** un espace de travail Rust de huit bibliothèques et un programme en ligne de commande (`phoenix-3dp`) avec 659 tests qui s'exécutent sur un ordinateur. Il lit et vérifie des modèles STL, OBJ et 3MF, contient un catalogue de 120 profils d'imprimante construits à partir de données publiques (aucun essayé sur une machine), écrit du G-code pour les dialectes Marlin, Klipper, RepRapFirmware et Bambu avec des limites de température qui refusent une valeur au lieu de la rogner, et pilote des imprimantes Moonraker et OctoPrint et le serveur EH3D, mais seulement contre des simulateurs (en mémoire et sur un socket de cet ordinateur). Il découpe un modèle fermé en couches planes avec des périmètres, un remplissage rectiligne et des peaux pleines (un petit trancheur avec remplissage en grille et en gyroïde, ponts, supports simples, coutures, largeur variable, levée en déplacement, jupe, bordure ou radeau, mode vase, couches courtes ralenties, rétraction qui suit le déplacement et une estimation du temps avec accélération ; encore rien pour plusieurs matériaux) ; la fenêtre, le cadre ancrable de la suite avec cinq espaces de travail (compilée avec `--features gui`), n'a pas été vue sur un écran par une personne ; rien n'a tourné sur une vraie imprimante.
+**Contrôle d'honnêteté - ce qui fonctionne vraiment aujourd'hui :** un espace de travail Rust de huit bibliothèques et un programme en ligne de commande (`phoenix-3dp`) avec 684 tests qui s'exécutent sur un ordinateur. Il lit et vérifie des modèles STL, OBJ et 3MF, contient un catalogue de 120 profils d'imprimante construits à partir de données publiques (aucun essayé sur une machine), écrit du G-code pour les dialectes Marlin, Klipper, RepRapFirmware et Bambu avec des limites de température qui refusent une valeur au lieu de la rogner, et pilote des imprimantes Moonraker et OctoPrint et le serveur EH3D, mais seulement contre des simulateurs (en mémoire et sur un socket de cet ordinateur). Il découpe un modèle fermé en couches planes avec des périmètres, un remplissage rectiligne et des peaux pleines (un petit trancheur avec remplissage en grille et en gyroïde, ponts, supports simples, coutures, largeur variable, levée en déplacement, jupe, bordure ou radeau, mode vase, couches courtes ralenties, rétraction qui suit le déplacement et une estimation du temps avec accélération ; plusieurs matériaux par hauteur avec une tour de purge, le lissage du dessus et l'avance de pression, mais pas encore de peinture des couleurs) ; la fenêtre, le cadre ancrable de la suite avec cinq espaces de travail (compilée avec `--features gui`), n'a pas été vue sur un écran par une personne ; rien n'a tourné sur une vraie imprimante.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Version | `0.0.7` |
 | Maturité | Fonctionnel |
-| Tests | 659 |
+| Tests | 684 |
 | Pile technique | Rust |
 | Sur du matériel réel | Pas essayé : rien de tout cela n'a tourné sur une imprimante, pas même sur une Bambu Lab A1 ou une P1S. |
 
@@ -55,7 +55,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 | Liaison avec le serveur | 🟠 | les réglages de la liaison et un client du greffon d'imprimantes du serveur au-dessus du client commun de la suite (connexion, renouvellement, nouvelles tentatives, erreurs en huit langues), essayé contre un serveur en mémoire ; jamais contre le vrai serveur. |
 | Trancheur | 🟡 | couches planes d'un maillage fermé, périmètres, remplissage rectiligne, en grille ou en gyroïde, peaux pleines, ponts, supports simples, coutures, largeur variable, G-code par dialecte, un aperçu par couches sous forme de données et une estimation du temps avec accélération ; vérifié par des propriétés sur des formes à graine fixe (le plastique déposé est le volume de la pièce, rien ne sort du plateau, aucune température ne dépasse une limite) ; aucune impression n'en est sortie sur une imprimante. |
 | Ligne de commande | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) exécute les fonctions des bibliothèques et affiche le résultat ; chaque erreur revient sous forme de message et d'un code de sortie non nul. |
-| Tests | 🟡 | 659 tests réussissent (`cargo test --workspace`), avec des cas normaux, des cas limites, des entrées abîmées et une graine fixe là où il y a du hasard. |
+| Tests | 🟡 | 684 tests réussissent (`cargo test --workspace`), avec des cas normaux, des cas limites, des entrées abîmées et une graine fixe là où il y a du hasard. |
 | Sécurité | 🟡 | Rust sûr et simple (`forbid(unsafe_code)`) : une limite est un refus et jamais une coupe ; le jeton ne s'affiche jamais ; rien ne panique sur les fichiers reçus ; pas de revue indépendante. |
 | Fenêtre | 🟠 | Écrite avec `--features gui` comme le cadre ancrable de la suite, avec cinq espaces de travail (Préparer, Réviser, Exécuter, Configurer et Compact) dont les panneaux peuvent être retirés, remis, déplacés, groupés en onglets, flottants et repliés, et une barre de menus : listes d'imprimantes et de filaments avec filtres, le plan par couches avec un curseur, la file du serveur avec un démarrage qui demande une confirmation, un arrêt d'urgence, des raccourcis modifiables, un mode image (`--shot`), une vue 3D du plateau avec les pièces en volumes ombrés, un panneau de pièces avec orienter auto et disposer, la découpe en arrière-plan avec estimations, des limites de température modifiables et un aspect sombre et un aspect clair ; la disposition est gardée dans le fichier de réglages ; la logique est testée sans écran et le README montre des dessins des espaces de travail faits à partir du modèle, mais les panneaux n'ont jamais été dessinés sur un écran et personne ne les a vus. |
 | Matériel réel | 🔴 | Pas essayé : rien de tout cela n'a tourné sur une imprimante, pas même sur une Bambu Lab A1 ou une P1S. |
@@ -69,10 +69,10 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 * **Le G-code** (`p3dp-gcode`) : des écrivains pour Marlin, Klipper, RepRapFirmware et Bambu, chacun avec un en-tête, un début et une fin sûrs ; une température ou un mouvement non permis est refusé, jamais rogné. Un vérificateur lit n'importe quel programme et trouve les lignes qui dépassent les limites d'un modèle.
 * **La liaison** (`p3dp-link`) : un trait de pilote, un état normalisé (quinze états, températures, travail, alertes) et une liste de commandes ; Moonraker et OctoPrint sont implémentés sur un transport (un HTTP simple écrit avec la bibliothèque standard, avec des limites de temps et de taille, essayé sur un socket de cet ordinateur) et testés contre un simulateur en mémoire de chaque protocole ; Bambu LAN est la conception de ses sujets et messages, marquée expérimentale.
 * **Le serveur** (`p3dp-server-bridge`) : les réglages `server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries` et `server_mdns`, et un client du greffon `printer3d` du serveur au-dessus du client commun de la suite (`eh3d-serverclient`) : les travaux entrent dans la file et attendent qu'une personne les lance, les limites de température sont vérifiées avant tout envoi, et il y a l'arrêt ; testé contre un serveur en mémoire.
-* **Le trancheur** (`p3dp-slicer`) : couches planes d'un maillage fermé, périmètres, remplissage rectiligne, en grille ou en gyroïde avec peaux pleines, ponts, supports simples, coutures, largeur variable, levée en déplacement, G-code pour les dialectes du programme via son écrivain et l'aperçu par couches sous forme de données, avec une estimation du temps qui utilise l'accélération ; il refuse, sans jamais rogner, ce qui ne tient pas sur le plateau, dépasse une limite de température ou n'est pas un maillage fermé.
+* **Le trancheur** (`p3dp-slicer`) : couches planes d'un maillage fermé, périmètres, remplissage rectiligne, en grille ou en gyroïde avec peaux pleines, ponts, supports simples, coutures, largeur variable, levée en déplacement, lissage du dessus, avance de pression, plusieurs matériaux par hauteur avec une tour de purge, G-code pour les dialectes du programme via son écrivain et l'aperçu par couches sous forme de données, avec une estimation du temps qui utilise l'accélération ; il refuse, sans jamais rogner, ce qui ne tient pas sur le plateau, dépasse une limite de température ou n'est pas un maillage fermé.
 * **Le visualiseur** (`p3dp-viewer`) : le modèle du visualiseur 3D sans code graphique : une caméra orbitale en perspective, la sélection au clic et par cadre sur le plateau, la plage de couches et les lignes d'un plan pour une carte graphique. Le dessin avec wgpu est derrière une fonctionnalité, désactivée par défaut, et n'a jamais été compilé.
 * **Autres fichiers :** le G-code binaire (`bgcode`) et les paquets ouverts de couches de résine (`.sl1`) sont lus par leurs seuls en-têtes, avec une estimation du temps d'exposition ; les formats fermés des imprimantes à résine sont refusés avec la raison. Les vignettes d'un G-code binaire sont listées et la plus grande peut être extraite (`project FICHIER --thumbnail SORTIE`), et les chiffres et vignettes des commentaires d'un G-code simple (le filament utilisé, la durée, la hauteur de couche) sont lus de la même façon, seulement depuis son début et sa fin.
-* **Pas encore fait :** le dessin du visualiseur 3D (son modèle existe), un trancheur pour plusieurs matériaux, la liaison Bambu LAN et les autres transports. La feuille de route est dans `docs/ROADMAP.md` et ce qui manque dans `docs/NOT_YET.md`.
+* **Pas encore fait :** le dessin du visualiseur 3D (son modèle existe), la peinture des couleurs, la liaison Bambu LAN et les autres transports. La feuille de route est dans `docs/ROADMAP.md` et ce qui manque dans `docs/NOT_YET.md`.
 
 ## 🧩 Rôle dans EH3D
 
@@ -177,7 +177,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Tests
 
-La suite compte 659 tests (`cargo test --workspace`, exécutés sous Windows et Linux dans la CI), avec une graine fixe là où il y a du hasard. Ils vérifient les cas normaux, les cas limites et les entrées abîmées : des fichiers coupés, du bruit et des en-têtes hostiles ne font jamais paniquer, et aucune température d'aucune imprimante du catalogue ne dépasse sa limite. La CI exécute aussi `cargo fmt --all --check`, `cargo clippy` avec les avertissements en erreurs et `python -I tools/ci_validate.py`.
+La suite compte 684 tests (`cargo test --workspace`, exécutés sous Windows et Linux dans la CI), avec une graine fixe là où il y a du hasard. Ils vérifient les cas normaux, les cas limites et les entrées abîmées : des fichiers coupés, du bruit et des en-têtes hostiles ne font jamais paniquer, et aucune température d'aucune imprimante du catalogue ne dépasse sa limite. La CI exécute aussi `cargo fmt --all --check`, `cargo clippy` avec les avertissements en erreurs et `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilation et publication
 
@@ -271,10 +271,10 @@ EH3D-PHOENIX-3DP/
 
 **Limites connues aujourd'hui**
 
-* Le trancheur est petit : les supports sont simples (ni arbre, ni couches d'interface), les ponts ne sont pas affinés, il n'y a rien pour plusieurs matériaux, et aucune impression n'en est sortie sur une imprimante.
+* Le trancheur est petit : les supports sont simples (ni arbre, ni couches d'interface), les ponts ne sont pas affinés, plusieurs matériaux seulement par hauteur (ni peinture des couleurs ni décalages des têtes d'un changeur d'outils), et aucune impression n'en est sortie sur une imprimante.
 * Aucune imprimante n'a été connectée, pas même la Bambu Lab A1 ou la P1S ; chaque profil dit `verified = false`.
 * Le lecteur 3MF ne prend que le maillage (les composants et l'extension de production sont refusés) ; les projets d'autres programmes sont lus pour leurs objets, plateaux et réglages et jamais modifiés.
-* Les pilotes ont un transport HTTP simple, essayé seulement sur un socket de cet ordinateur et contre les simulateurs ; ni TLS ni push WebSocket ; Bambu LAN est une conception qui ne se connecte pas, et le cloud de Bambu n'en fait pas partie.
+* Les pilotes ont un transport HTTP simple, essayé seulement sur un socket de cet ordinateur et contre les simulateurs ; ni TLS ni push WebSocket ; Bambu LAN passe par le serveur, qui tient le TLS avec le certificat épinglé (essayé seulement contre le serveur en mémoire), et le programme n'en ouvre aucun, et le cloud de Bambu n'en fait pas partie.
 * La fenêtre (cinq espaces de travail dans le cadre ancrable de la suite) n'a pas été vue sur un écran par une personne ; les images du README sont des dessins faits à partir de son modèle.
 
 **Ensuite**
@@ -282,8 +282,8 @@ EH3D-PHOENIX-3DP/
 * H1 : le dessin du visualiseur 3D avec wgpu (son modèle existe) et la réparation des maillages.
 * H2 : un cube d'étalonnage imprimé sur une vraie machine (le remplissage en grille et en gyroïde, les coutures, la largeur variable, les ponts et les supports simples sont écrits et testés sur des formes à graine fixe).
 * H3 : l'éditeur de profils avec héritage et la synchronisation des profils avec le serveur.
-* H4 à H6 : le lissage, le reste des réglages de qualité, les supports en arbre et le remplissage avancé, et plusieurs matériaux.
-* H7 : les autres transports (push WebSocket, PrusaLink, Duet), la liaison Bambu LAN et le choix de son TLS.
+* H4 à H6 : la hauteur de couche adaptative, le reste des réglages de qualité, les supports en arbre et le remplissage avancé, et la peinture des couleurs et les têtes d'un changeur d'outils.
+* H7 : les autres transports (push WebSocket, PrusaLink, Duet), la liaison Bambu LAN directe (son TLS est celui du serveur).
 * H8 : des profils avec preuve de vraies machines (une Bambu Lab A1 et une P1S sont les premières prévues), des étalonnages guidés et une simulation des collisions. Tout le plan est dans `docs/ROADMAP.md`.
 
 ## 🌍 Langues

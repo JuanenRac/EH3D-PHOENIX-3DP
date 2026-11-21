@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.7-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-659-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-684-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Verificação de honestidade - o que funciona mesmo hoje:** um espaço de trabalho Rust com oito bibliotecas e um programa de linha de comandos (`phoenix-3dp`) com 659 testes que correm num computador. Lê e verifica modelos STL, OBJ e 3MF, tem um catálogo de 120 perfis de impressora feitos com dados públicos (nenhum testado numa máquina), escreve G-code para os dialetos Marlin, Klipper, RepRapFirmware e Bambu com limites de temperatura que recusam um valor em vez de o cortar, e comanda impressoras Moonraker e OctoPrint e o servidor EH3D, mas apenas contra simuladores (em memória e num socket deste computador). Corta um modelo fechado em camadas planas com perímetros, preenchimento retilíneo e peles sólidas (um fatiador pequeno com preenchimento em grelha e giroide, pontes, suportes simples, costuras, largura variável, elevação nas deslocações, skirt, brim ou raft, modo vaso, camadas curtas mais lentas, retração que acompanha a deslocação e uma estimativa do tempo com aceleração; ainda nada para vários materiais); a janela, a moldura acoplável da suite com cinco áreas de trabalho (compilada com `--features gui`), não foi vista por uma pessoa num ecrã; nada correu numa impressora real.
+**Verificação de honestidade - o que funciona mesmo hoje:** um espaço de trabalho Rust com oito bibliotecas e um programa de linha de comandos (`phoenix-3dp`) com 684 testes que correm num computador. Lê e verifica modelos STL, OBJ e 3MF, tem um catálogo de 120 perfis de impressora feitos com dados públicos (nenhum testado numa máquina), escreve G-code para os dialetos Marlin, Klipper, RepRapFirmware e Bambu com limites de temperatura que recusam um valor em vez de o cortar, e comanda impressoras Moonraker e OctoPrint e o servidor EH3D, mas apenas contra simuladores (em memória e num socket deste computador). Corta um modelo fechado em camadas planas com perímetros, preenchimento retilíneo e peles sólidas (um fatiador pequeno com preenchimento em grelha e giroide, pontes, suportes simples, costuras, largura variável, elevação nas deslocações, skirt, brim ou raft, modo vaso, camadas curtas mais lentas, retração que acompanha a deslocação e uma estimativa do tempo com aceleração; vários materiais por altura com torre de purga, passagem a ferro do topo e avanço de pressão, mas ainda sem pintura de cores); a janela, a moldura acoplável da suite com cinco áreas de trabalho (compilada com `--features gui`), não foi vista por uma pessoa num ecrã; nada correu numa impressora real.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Versão | `0.0.7` |
 | Maturidade | Funcional |
-| Testes | 659 |
+| Testes | 684 |
 | Tecnologias | Rust |
 | Em hardware real | Por testar: nada disto correu numa impressora, nem sequer numa Bambu Lab A1 ou numa P1S. |
 
@@ -55,7 +55,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 | Ligação ao servidor | 🟠 | as definições da ligação e um cliente do plugin de impressoras do servidor sobre o cliente comum da suite (início de sessão, renovação, novas tentativas, erros em oito línguas), testado contra um servidor em memória; nunca contra o servidor real. |
 | Fatiador | 🟡 | camadas planas de uma malha fechada, perímetros, preenchimento retilíneo, em grelha ou giroide, peles sólidas, pontes, suportes simples, costuras, largura variável, G-code por dialeto, uma pré-visualização por camadas como dados e uma estimativa do tempo com aceleração; verificado com propriedades sobre formas de semente fixa (o plástico depositado é o volume da peça, nada sai da mesa, nenhuma temperatura ultrapassa um limite); nenhuma impressão saiu dele numa impressora. |
 | Linha de comandos | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) executa as funções das bibliotecas e imprime o resultado; cada erro volta como mensagem e código de saída diferente de zero. |
-| Testes | 🟡 | 659 testes passam (`cargo test --workspace`), com casos normais, casos-limite, entradas danificadas e uma semente fixa onde há aleatoriedade. |
+| Testes | 🟡 | 684 testes passam (`cargo test --workspace`), com casos normais, casos-limite, entradas danificadas e uma semente fixa onde há aleatoriedade. |
 | Segurança | 🟡 | Rust seguro e simples (`forbid(unsafe_code)`): um limite é uma recusa e nunca um corte; o token nunca se imprime; nada entra em pânico com os ficheiros recebidos; sem revisão independente. |
 | Janela | 🟠 | Escrita com `--features gui` como a moldura acoplável da suite, com cinco áreas de trabalho (Preparar, Rever, Executar, Configurar e Compacto) cujos painéis podem ser retirados, repostos, movidos, agrupados em separadores, flutuar e recolher-se, e uma barra de menus: listas de impressoras e filamentos com filtros, o plano por camadas com um cursor, a fila do servidor com um arranque que pede confirmação, uma paragem de emergência, atalhos alteráveis, um modo de imagem (`--shot`), uma vista 3D da mesa com as peças como sólidos sombreados, um painel de peças com orientar automaticamente e organizar, fatiagem em segundo plano com estimativas, limites de temperatura editáveis e um aspeto escuro e um claro; a disposição guarda-se no ficheiro de configuração; a lógica é testada sem ecrã e o README mostra desenhos das áreas de trabalho feitos a partir do modelo, mas os painéis nunca foram desenhados num ecrã e nenhuma pessoa os viu. |
 | Hardware real | 🔴 | Por testar: nada disto correu numa impressora, nem sequer numa Bambu Lab A1 ou numa P1S. |
@@ -69,10 +69,10 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 * **O G-code** (`p3dp-gcode`): escritores para Marlin, Klipper, RepRapFirmware e Bambu, cada um com cabeçalho, início e fim seguros; uma temperatura ou um movimento não permitidos são recusados, nunca cortados. Um verificador lê qualquer programa e encontra as linhas que ultrapassam os limites de um modelo.
 * **A ligação** (`p3dp-link`): um trait de controlador, um estado normalizado (quinze estados, temperaturas, trabalho, alertas) e uma lista de comandos; Moonraker e OctoPrint estão implementados sobre um transporte (um HTTP simples escrito com a biblioteca padrão, com limites de tempo e de tamanho, experimentado num socket deste computador) e testados contra um simulador em memória de cada protocolo; o Bambu LAN é o desenho dos seus tópicos e mensagens, marcado como experimental.
 * **O servidor** (`p3dp-server-bridge`): as definições `server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries` e `server_mdns`, e um cliente do plugin `printer3d` do servidor sobre o cliente comum da suite (`eh3d-serverclient`): os trabalhos entram na fila e esperam que uma pessoa os inicie, os limites de temperatura são verificados antes de enviar o que quer que seja, e existe a paragem; testado contra um servidor em memória.
-* **O fatiador** (`p3dp-slicer`): camadas planas de uma malha fechada, perímetros, preenchimento retilíneo, em grelha ou giroide com peles sólidas, pontes, suportes simples, costuras, largura variável, elevação nas deslocações, G-code para os dialetos do programa através do seu escritor e a pré-visualização por camadas como dados, com uma estimativa do tempo que usa a aceleração; recusa, sem nunca cortar, o que não cabe na mesa, ultrapassa um limite de temperatura ou não é uma malha fechada.
+* **O fatiador** (`p3dp-slicer`): camadas planas de uma malha fechada, perímetros, preenchimento retilíneo, em grelha ou giroide com peles sólidas, pontes, suportes simples, costuras, largura variável, elevação nas deslocações, passagem a ferro do topo, avanço de pressão, vários materiais por altura com torre de purga, G-code para os dialetos do programa através do seu escritor e a pré-visualização por camadas como dados, com uma estimativa do tempo que usa a aceleração; recusa, sem nunca cortar, o que não cabe na mesa, ultrapassa um limite de temperatura ou não é uma malha fechada.
 * **O visualizador** (`p3dp-viewer`): o modelo do visualizador 3D sem código gráfico: uma câmara orbital com perspetiva, a seleção com um clique e com uma caixa sobre a mesa, o intervalo de camadas e as linhas de um plano para uma placa gráfica. O desenho com wgpu está atrás de uma funcionalidade, desligada por omissão, e nunca foi compilado.
 * **Outros ficheiros:** o G-code binário (`bgcode`) e os pacotes abertos de camadas de resina (`.sl1`) leem-se só pelos cabeçalhos, com uma estimativa do tempo de exposição; os formatos fechados das impressoras de resina são recusados com a razão. As miniaturas de um G-code binário são listadas e a maior pode ser extraída (`project FICHEIRO --thumbnail SAÍDA`), e os valores e miniaturas nos comentários de um G-code simples (o filamento usado, o tempo, a altura de camada) leem-se da mesma forma, só do princípio e do fim.
-* **Ainda por fazer:** o desenho do visualizador 3D (o seu modelo já existe), um fatiador para vários materiais, a ligação Bambu LAN e os outros transportes. O roteiro está em `docs/ROADMAP.md` e o que falta em `docs/NOT_YET.md`.
+* **Ainda por fazer:** o desenho do visualizador 3D (o seu modelo já existe), a pintura de cores, a ligação Bambu LAN e os outros transportes. O roteiro está em `docs/ROADMAP.md` e o que falta em `docs/NOT_YET.md`.
 
 ## 🧩 Papel no EH3D
 
@@ -177,7 +177,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Testes
 
-O conjunto tem 659 testes (`cargo test --workspace`, executados em Windows e Linux na CI), com semente fixa onde há aleatoriedade. Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros cortados, lixo e cabeçalhos hostis nunca entram em pânico, e nenhuma temperatura de nenhuma impressora do catálogo ultrapassa o seu limite. A CI também executa `cargo fmt --all --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
+O conjunto tem 684 testes (`cargo test --workspace`, executados em Windows e Linux na CI), com semente fixa onde há aleatoriedade. Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros cortados, lixo e cabeçalhos hostis nunca entram em pânico, e nenhuma temperatura de nenhuma impressora do catálogo ultrapassa o seu limite. A CI também executa `cargo fmt --all --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilação e publicação
 
@@ -271,10 +271,10 @@ EH3D-PHOENIX-3DP/
 
 **Limites conhecidos hoje**
 
-* O fatiador é pequeno: os suportes são simples (sem árvore nem camadas de interface), as pontes não estão afinadas, não há nada para vários materiais, e nenhuma impressão saiu dele numa impressora.
+* O fatiador é pequeno: os suportes são simples (sem árvore nem camadas de interface), as pontes não estão afinadas, vários materiais só por altura (sem pintura de cores nem desvios das cabeças de um trocador de ferramentas), e nenhuma impressão saiu dele numa impressora.
 * Nenhuma impressora foi ligada, nem sequer a Bambu Lab A1 ou a P1S; todos os perfis dizem `verified = false`.
 * O leitor de 3MF só aproveita a malha (componentes e a extensão de produção são recusados); os projetos de outros programas são lidos pelos seus objetos, placas e definições e nunca são alterados.
-* Os controladores têm um transporte HTTP simples, experimentado só num socket deste computador e com os simuladores; sem TLS nem envio por WebSocket; o Bambu LAN é um desenho que não liga, e a nuvem da Bambu não faz parte dele.
+* Os controladores têm um transporte HTTP simples, experimentado só num socket deste computador e com os simuladores; sem TLS nem envio por WebSocket; o Bambu LAN passa pelo servidor, que guarda o TLS com o certificado fixado (experimentado só com o servidor em memória), e o programa não abre nenhum próprio, e a nuvem da Bambu não faz parte dele.
 * A janela (cinco áreas de trabalho na moldura acoplável da suite) não foi vista por uma pessoa num ecrã; as imagens do README são desenhos feitos a partir do seu modelo.
 
 **A seguir**
@@ -282,8 +282,8 @@ EH3D-PHOENIX-3DP/
 * H1: o desenho do visualizador 3D com wgpu (o seu modelo existe) e a reparação de malhas.
 * H2: um cubo de calibração impresso numa máquina real (o preenchimento em grelha e giroide, as costuras, a largura variável, as pontes e os suportes simples estão escritos e testados com formas de semente fixa).
 * H3: o editor de perfis com herança e a sincronização dos perfis com o servidor.
-* H4 a H6: a passagem a ferro, o resto das definições de qualidade, os suportes em árvore e o preenchimento avançado, e vários materiais.
-* H7: os outros transportes (envio por WebSocket, PrusaLink, Duet), a ligação Bambu LAN e a escolha do seu TLS.
+* H4 a H6: a altura de camada adaptativa, o resto das definições de qualidade, os suportes em árvore e o preenchimento avançado, e a pintura de cores e as cabeças de um trocador de ferramentas.
+* H7: os outros transportes (envio por WebSocket, PrusaLink, Duet), a ligação Bambu LAN direta (o seu TLS é o do servidor).
 * H8: perfis com provas de máquinas reais (uma Bambu Lab A1 e uma P1S são as primeiras previstas), calibrações guiadas e uma simulação de colisões. O plano todo está em `docs/ROADMAP.md`.
 
 ## 🌍 Idiomas

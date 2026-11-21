@@ -50,3 +50,23 @@ The program only ever *queues* a job. Starting it is a separate call that needs 
 ## What the server will own
 
 The connection to each printer (one owner per printer, so the clients never open their own), the credentials of the printers (encrypted at rest; the clients only see identifiers), the queue, the history, the camera relay and the permissions per user and per printer. Slicing may also run in the server, as an option. The queue, the plugin and the limits are in the server; the credentials of the printers and the camera relay are still to come.
+
+## The Bambu local link and its TLS
+
+The program opens no TLS connection of its own. A Bambu Lab printer in LAN mode is reached by the server (MQTT on TLS, with the user and the access code of the printer), which compares the SHA-256 fingerprint of the certificate that the printer shows with the one pinned on the machine, in constant time, before anything is written to it. The client of this program makes the machine (`MachineConnection::BambuLan`: the address, the serial number, the fingerprint and the access code); it sends nothing without a fingerprint of 64 hexadecimal digits, takes out the colons and the capitals, writes the access code once and never prints it, and tells the three troubles of the link by their codes, which the common client of the suite has in eight languages:
+
+| Code | Status | What it means |
+|---|---|---|
+| `bambu_lan_off` | 409 | the switch `bambu_lan_enabled` of the server is off, so only the simulated printer (the address `sim`) is reached |
+| `printer_untrusted` | 502 | no fingerprint is pinned, or the certificate of the printer is not the pinned one |
+| `printer_disconnected` | 502 | the printer does not answer |
+
+The switch is read from the light list of values that any login may read (`GET /api/v1/settings/values?keys=bambu_lan_enabled`), which has an `ETag`; asked again with `If-None-Match`, the server answers `304` while nothing has changed. It is off in a server as it is made, so a real address is refused until its owner turns it on.
+
+### Why the program has no TLS, and what a TLS of its own would need
+
+* **A. Through the server (chosen).** Nothing to add: the server already holds the TLS, the pinned fingerprint and the check in constant time.
+* **B. A TLS crate behind a feature of `p3dp-link`, off by default.** It needs crates that are not in the offline cache of the CI and breaks the rule of no outside crates for that feature. It is the way to take if the stand-alone mode with Bambu is ever wanted.
+* **C. The TLS of each system** (SChannel, Secure Transport, the library of Linux): the most code and the least testable. Not recommended.
+
+The tests that a TLS of its own would need, in this order, before it could be called done: `tls::a_tls_connection_is_opened_only_to_the_pinned_certificate` (a server made in the test with a certificate it signed itself: the pinned one passes, another is refused before a byte is written); a handshake that fails halfway leaves no channel half open; a certificate that changes between two connections is refused; with the feature off the build has no TLS crate and an `https://` address is refused with the reason; the access code lives in a store that is encrypted at rest; and, on a real Bambu Lab A1 or P1S in the local network, one print started and stopped with the emergency stop in reach. The first four run on a computer; the last two need the owner and the printer.
