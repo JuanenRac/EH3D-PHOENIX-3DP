@@ -84,6 +84,21 @@ impl Plan {
         }
     }
 
+    /// The speed of one line: `speed_mm_s`, kept so that the plastic the line asks for in a second (its speed times the section of the line) is no more than
+    /// `max_volumetric_flow_mm3_s` when that is set. A line is slowed down and never thinned, and never to less than 1 mm/s.
+    pub fn line_speed_mm_s(&self, layer: usize, kind: Kind, width_mm: f64, height_mm: f64) -> f64 {
+        let speed = self.speed_mm_s(layer, kind);
+        let q = self.config.max_volumetric_flow_mm3_s;
+        if q <= 0.0 {
+            return speed;
+        }
+        let area = self.line_area_mm2(height_mm, kind, width_mm);
+        if area <= 0.0 {
+            return speed;
+        }
+        speed.min((q / area).max(1.0))
+    }
+
     /// The speed of a line of this kind on this layer before a short layer is slowed down.
     pub fn base_speed_mm_s(&self, layer: usize, kind: Kind) -> f64 {
         let c = &self.config;
@@ -270,7 +285,11 @@ impl Plan {
                         }
                         s.extrusion_mm3 +=
                             length_mm * self.line_area_mm2(l.height_mm, kind, width_mm);
-                        blocks.push(Block::planar(here, to, self.speed_mm_s(l.index, kind)));
+                        blocks.push(Block::planar(
+                            here,
+                            to,
+                            self.line_speed_mm_s(l.index, kind, width_mm, l.height_mm),
+                        ));
                         here = to;
                     }
                 }
@@ -445,7 +464,7 @@ impl Plan {
                             Some(coord(to[1])),
                             None,
                             Some(written),
-                            Some(self.speed_mm_s(l.index, kind) * 60.0),
+                            Some(self.line_speed_mm_s(l.index, kind, width_mm, l.height_mm) * 60.0),
                         )?;
                     }
                 }

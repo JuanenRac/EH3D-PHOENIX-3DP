@@ -4,6 +4,7 @@
 
 pub mod backoff;
 pub mod bambu;
+pub mod bambu_lan;
 pub mod driver;
 pub mod error;
 pub mod ftps;
@@ -15,6 +16,7 @@ pub mod retry;
 pub mod sim;
 pub mod state_map;
 pub mod tcp;
+pub mod tls;
 pub mod transport;
 pub mod types;
 

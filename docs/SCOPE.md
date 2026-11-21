@@ -21,7 +21,7 @@ The 3D-printing program of the PHOENIX family: it reads and converts STL, OBJ an
 * It does not control a printer by itself and is not a safety system: what it produces must be checked by a person before anything is run.
 * It never lowers a temperature or a limit in silence: a value over a limit is refused with the key and the limit.
 * It does not open a TLS connection: an `https://` address is refused, and the Bambu local link waits for a decision on TLS.
-* It does not slice with several materials, tree supports, ironing or pressure advance yet, and it has no driver for resin printers.
+* It does not paint colours on a surface, make tree supports or interface layers, or open a TLS connection of its own to a real printer yet, and it has no driver for resin printers.
 * It does not claim that anything was proven on a real printer: the evidence of every capability is `simulator` or `host-test`.
 
 ## Where it sits

@@ -8,6 +8,7 @@
 //! a travel that retracts; the time is estimated with the acceleration of the machine. A print may use several materials, divided by height, with a purge tower (the module `multi`); painting a colour on a surface is not done.
 #![forbid(unsafe_code)]
 
+pub mod adaptive;
 pub mod adhesion;
 pub mod config;
 pub mod cut;

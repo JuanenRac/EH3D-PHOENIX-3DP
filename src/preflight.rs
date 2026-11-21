@@ -95,7 +95,26 @@ pub fn peak_flow_mm3_s(config: &SliceConfig) -> f64 {
     .into_iter()
     .fold(0.0_f64, f64::max)
     .min(config.max_speed_mm_s);
-    config.line_area_mm2(config.layer_height_mm) * fastest
+    let asked = config.line_area_mm2(config.layer_height_mm) * fastest;
+    // a limit of the flow in the settings holds every line to it
+    if config.max_volumetric_flow_mm3_s > 0.0 {
+        asked.min(config.max_volumetric_flow_mm3_s)
+    } else {
+        asked
+    }
+}
+
+/// Holds the slice to the flow the maker gives for the filament: the settings take its limit as `max_volumetric_flow_mm3_s` unless they already hold a lower one, so a line is
+/// slowed down and never asked for more than the filament takes. Returns the limit that was set, `None` when the record gives none (or one under 1 mm3/s, which is not a flow of a hot
+/// end) or when the settings were already under it.
+pub fn hold_flow(record: &Filament, config: &mut SliceConfig) -> Option<f64> {
+    let limit = record.mm3s_limit().filter(|l| l.is_finite() && *l >= 1.0)?;
+    let cap = config.max_volumetric_flow_mm3_s;
+    if cap > 0.0 && cap <= limit {
+        return None;
+    }
+    config.max_volumetric_flow_mm3_s = limit.min(100.0);
+    Some(config.max_volumetric_flow_mm3_s)
 }
 
 /// What to look at for a filament and a slice. `temps_set` says that the temperatures of the slice are the ones that will be used (there is a plan); a nozzle and a bed that are not yet set
@@ -222,6 +241,36 @@ mod tests {
                 && text.contains(&format!("{nhi:.0}")),
             "{text}"
         );
+    }
+
+    #[test]
+    fn the_slice_can_be_held_to_the_flow_of_the_filament_and_then_it_asks_no_more_than_it_takes() {
+        let mut c = config();
+        c.infill_speed_mm_s = 200.0;
+        c.max_speed_mm_s = 500.0;
+        let mut r = pla();
+        r.max_flow_mm3_s = Some(8.0);
+        assert!(peak_flow_mm3_s(&c) > 8.0);
+        assert_eq!(check(&r, &c, false, false, false).len(), 1);
+        assert_eq!(hold_flow(&r, &mut c), Some(8.0));
+        assert_eq!(c.max_volumetric_flow_mm3_s, 8.0);
+        assert_eq!(peak_flow_mm3_s(&c), 8.0);
+        assert!(check(&r, &c, false, false, false).is_empty());
+        // a second time changes nothing, and a lower limit of the person is kept
+        assert_eq!(hold_flow(&r, &mut c), None);
+        c.max_volumetric_flow_mm3_s = 5.0;
+        assert_eq!(hold_flow(&r, &mut c), None);
+        assert_eq!(c.max_volumetric_flow_mm3_s, 5.0);
+        // a higher one is brought down to the limit of the maker
+        c.max_volumetric_flow_mm3_s = 30.0;
+        assert_eq!(hold_flow(&r, &mut c), Some(8.0));
+        // no limit in the record, or one that is no flow of a hot end: nothing is set
+        let mut free = config();
+        r.max_flow_mm3_s = None;
+        assert_eq!(hold_flow(&r, &mut free), None);
+        r.max_flow_mm3_s = Some(0.2);
+        assert_eq!(hold_flow(&r, &mut free), None);
+        assert_eq!(free.max_volumetric_flow_mm3_s, 0.0);
     }
 
     #[test]

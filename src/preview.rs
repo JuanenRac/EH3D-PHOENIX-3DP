@@ -188,7 +188,13 @@ impl PreviewState {
         if let Some((f, nozzle)) = filament {
             density = f.density_g_cm3;
             match config.apply_filament(f, printer, nozzle) {
-                Ok(c) => self.advice = c.advice.iter().map(|a| a.text().to_string()).collect(),
+                Ok(c) => {
+                    self.advice = c.advice.iter().map(|a| a.text().to_string()).collect();
+                    // the flow the maker gives for the filament holds every line of the slice
+                    if let Some(r) = crate::preflight::record(&f.id) {
+                        crate::preflight::hold_flow(r, &mut config);
+                    }
+                }
                 Err(e) => {
                     self.error = Some(e.to_string());
                     return false;
@@ -526,7 +532,7 @@ mod tests {
         let (mut s, _) = sliced();
         let cfg = AppConfig::default();
         let lines = s.report_lines(&cfg, Lang::En);
-        assert_eq!(lines.len(), 6, "{lines:?}");
+        assert_eq!(lines.len(), 7, "{lines:?}");
         assert!(lines[0].starts_with("Material: "));
         // at the top of the slider the print is all done, at the bottom it has just begun
         assert!(

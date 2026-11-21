@@ -303,10 +303,12 @@ pub enum Msg {
     PfEnclosure,
     PfDirectDrive,
     NozzleHardened,
+    ReportTimeByKind,
+    KindOther,
 }
 
 impl Msg {
-    pub const ALL: [Msg; 229] = [
+    pub const ALL: [Msg; 231] = [
         Msg::TabPrepare,
         Msg::TabPreview,
         Msg::TabDevice,
@@ -536,6 +538,8 @@ impl Msg {
         Msg::PfEnclosure,
         Msg::PfDirectDrive,
         Msg::NozzleHardened,
+        Msg::ReportTimeByKind,
+        Msg::KindOther,
     ];
 
     /// The texts in the order English, Spanish, German, French, Italian, Japanese, Chinese, Portuguese (Portugal).
@@ -779,6 +783,8 @@ impl Msg {
             Msg::PfEnclosure => ["A closed printer is advised for this filament", "Se aconseja una impresora cerrada para este filamento", "Für dieses Filament wird ein geschlossener Drucker empfohlen", "Une imprimante fermée est conseillée pour ce filament", "Per questo filamento è consigliata una stampante chiusa", "このフィラメントには密閉型プリンターをお勧めします", "此耗材建议使用封闭式打印机", "Aconselha-se uma impressora fechada para este filamento"],
             Msg::PfDirectDrive => ["A direct drive extruder is advised for this filament", "Se aconseja un extrusor de accionamiento directo para este filamento", "Für dieses Filament wird ein Direktantrieb empfohlen", "Une extrusion directe est conseillée pour ce filament", "Per questo filamento è consigliato un estrusore diretto", "このフィラメントにはダイレクトドライブのエクストルーダーをお勧めします", "此耗材建议使用直驱挤出机", "Aconselha-se um extrusor de acionamento direto para este filamento"],
             Msg::NozzleHardened => ["Hardened nozzle", "Boquilla endurecida", "Gehärtete Düse", "Buse durcie", "Ugello temprato", "硬化ノズル", "硬化喷嘴", "Bico endurecido"],
+            Msg::ReportTimeByKind => ["Where the time goes: {}", "Adónde va el tiempo: {}", "Wohin die Zeit geht: {}", "Où va le temps : {}", "Dove va il tempo: {}", "時間の内訳: {}", "时间花在哪里：{}", "Para onde vai o tempo: {}"],
+            Msg::KindOther => ["Travel and the rest", "Desplazamientos y el resto", "Leerfahrten und der Rest", "Déplacements et le reste", "Spostamenti e il resto", "移動とその他", "空走及其他", "Deslocações e o resto"],
         }
     }
 
@@ -999,7 +1005,7 @@ mod tests {
         seen.sort_by_key(|m| format!("{m:?}"));
         seen.dedup();
         assert_eq!(seen.len(), Msg::ALL.len());
-        assert_eq!(Msg::ALL.len(), 229);
+        assert_eq!(Msg::ALL.len(), 231);
     }
 
     #[test]
@@ -1285,7 +1291,7 @@ mod tests {
     #[test]
     fn the_texts_of_the_panels_the_menus_and_the_check_before_printing_have_their_places_and_the_words_of_portugal(
     ) {
-        let new = &Msg::ALL[205..];
+        let new = &Msg::ALL[205..229];
         assert_eq!(new.len(), 24);
         let places = |m: Msg| match m {
             Msg::Exported => 1,

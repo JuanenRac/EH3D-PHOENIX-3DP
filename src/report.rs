@@ -7,7 +7,7 @@ use crate::i18n::{fill, Lang, Msg};
 use crate::preview::format_duration;
 use p3dp_formats::picture::PictureFormat;
 use p3dp_profiles::{Notice, ResinProfile};
-use p3dp_slicer::report::{material, time_report};
+use p3dp_slicer::report::{material, time_by_group, time_report, Group};
 use p3dp_slicer::{LayerSummary, Plan};
 
 /// How many layers a list in a report names before it says there are more.
@@ -94,6 +94,26 @@ pub fn lines_from(
         Msg::ReportTravel.tr(lang),
         &[&format!("{:.2}", r.travel_mm / 1000.0)],
     ));
+    let shares = time_by_group(plan, summaries);
+    let total: f64 = shares.iter().map(|t| t.seconds).sum();
+    if total > 0.0 {
+        let parts: Vec<String> = shares
+            .iter()
+            .map(|t| {
+                let name = match t.group {
+                    Group::Perimeters => Msg::KindPerimeters,
+                    Group::Infill => Msg::KindInfill,
+                    Group::Solid => Msg::KindSolid,
+                    Group::Bridges => Msg::PanelBridges,
+                    Group::Supports => Msg::PanelSupports,
+                    Group::Adhesion => Msg::KindAdhesion,
+                    Group::Other => Msg::KindOther,
+                };
+                format!("{} {:.0} %", name.tr(lang), t.seconds / total * 100.0)
+            })
+            .collect();
+        out.push(fill(Msg::ReportTimeByKind.tr(lang), &[&parts.join(", ")]));
+    }
     Ok(out)
 }
 
@@ -203,8 +223,8 @@ mod tests {
         let cfg = AppConfig::default();
         for lang in Lang::ALL {
             let l = slice_lines(&p, DEFAULT_DENSITY_G_CM3, &cfg, lang).unwrap();
-            // material, cost, time, short layers, slowest layers, travel
-            assert_eq!(l.len(), 6, "{}: {l:?}", lang.code());
+            // material, cost, time, short layers, slowest layers, travel, where the time goes
+            assert_eq!(l.len(), 7, "{}: {l:?}", lang.code());
             assert!(
                 l.iter().all(|x| !x.contains("{}")),
                 "{}: {l:?}",
@@ -235,7 +255,7 @@ mod tests {
             ..AppConfig::default()
         };
         let l = slice_lines(&p, DEFAULT_DENSITY_G_CM3, &cfg, Lang::En).unwrap();
-        assert_eq!(l.len(), 3, "{l:?}");
+        assert_eq!(l.len(), 4, "{l:?}");
         assert!(l
             .iter()
             .all(|x| !x.contains("Cost") && !x.contains("Layers under") && !x.contains("Slowest")));
@@ -243,6 +263,44 @@ mod tests {
         assert!(slice_lines(&p, 0.0, &cfg, Lang::En)
             .unwrap_err()
             .contains("density"));
+    }
+
+    #[test]
+    fn the_last_line_says_where_the_time_goes_in_every_language_and_the_shares_make_a_hundred() {
+        let p = sliced();
+        let cfg = AppConfig::default();
+        for lang in Lang::ALL {
+            let l = slice_lines(&p, DEFAULT_DENSITY_G_CM3, &cfg, lang).unwrap();
+            let last = l.last().unwrap();
+            let head = Msg::ReportTimeByKind
+                .tr(lang)
+                .split("{}")
+                .next()
+                .unwrap()
+                .to_string();
+            assert!(last.starts_with(&head), "{}: {last}", lang.code());
+            assert!(
+                last.contains(Msg::KindPerimeters.tr(lang)),
+                "{}",
+                lang.code()
+            );
+            assert!(last.contains(Msg::KindOther.tr(lang)), "{}", lang.code());
+            // every share is a whole number of per cent and they add up to a hundred, give or take the rounding of each
+            let shares: Vec<f64> = last
+                .split(" %")
+                .filter_map(|part| part.rsplit(|c: char| !c.is_ascii_digit()).next())
+                .filter(|d| !d.is_empty())
+                .map(|d| d.parse().unwrap())
+                .collect();
+            assert!(shares.len() >= 3, "{}: {last}", lang.code());
+            let sum: f64 = shares.iter().sum();
+            assert!(
+                (sum - 100.0).abs() <= shares.len() as f64 / 2.0,
+                "{}: {last}",
+                lang.code()
+            );
+        }
+        assert!(Msg::ReportTimeByKind.tr(Lang::Pt).contains("Para onde"));
     }
 
     #[test]

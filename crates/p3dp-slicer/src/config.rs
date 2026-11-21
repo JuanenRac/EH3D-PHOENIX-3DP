@@ -221,6 +221,18 @@ pub struct SliceConfig {
     pub ironing_flow_percent: f64,
     /// The speed of an ironing pass.
     pub ironing_speed_mm_s: f64,
+    /// Layers whose height follows the shape (thin where a wall leans, thick where it is straight up): see `adaptive`.
+    pub adaptive_layers: bool,
+    /// The thinnest layer of an adaptive stack.
+    pub adaptive_min_layer_mm: f64,
+    /// The thickest layer of an adaptive stack.
+    pub adaptive_max_layer_mm: f64,
+    /// The step that a leaning wall may show between two layers (the cusp), in millimetres.
+    pub adaptive_cusp_mm: f64,
+    /// How much the first layer is drawn in from the outline, against the flared foot of a print, in millimetres.
+    pub elephant_foot_mm: f64,
+    /// The most plastic the nozzle melts, in cubic millimetres a second (0 is no limit): a line that would ask for more is slowed down.
+    pub max_volumetric_flow_mm3_s: f64,
 }
 
 impl Default for SliceConfig {
@@ -294,12 +306,18 @@ impl Default for SliceConfig {
             ironing: false,
             ironing_flow_percent: 10.0,
             ironing_speed_mm_s: 20.0,
+            adaptive_layers: false,
+            adaptive_min_layer_mm: 0.08,
+            adaptive_max_layer_mm: 0.28,
+            adaptive_cusp_mm: 0.05,
+            elephant_foot_mm: 0.0,
+            max_volumetric_flow_mm3_s: 0.0,
         }
     }
 }
 
 /// The keys, in the order of the file.
-pub const KEYS: [&str; 68] = [
+pub const KEYS: [&str; 74] = [
     "layer_height_mm",
     "first_layer_height_mm",
     "nozzle_diameter_mm",
@@ -368,6 +386,12 @@ pub const KEYS: [&str; 68] = [
     "ironing",
     "ironing_flow_percent",
     "ironing_speed_mm_s",
+    "adaptive_layers",
+    "adaptive_min_layer_mm",
+    "adaptive_max_layer_mm",
+    "adaptive_cusp_mm",
+    "elephant_foot_mm",
+    "max_volumetric_flow_mm3_s",
 ];
 
 fn invalid(msg: String) -> CoreError {
@@ -505,6 +529,12 @@ impl SliceConfig {
             "ironing" => self.ironing = kv::on_off(key, value)?,
             "ironing_flow_percent" => self.ironing_flow_percent = f(1.0, 30.0)?,
             "ironing_speed_mm_s" => self.ironing_speed_mm_s = f(1.0, 1000.0)?,
+            "adaptive_layers" => self.adaptive_layers = kv::on_off(key, value)?,
+            "adaptive_min_layer_mm" => self.adaptive_min_layer_mm = f(0.04, 1.0)?,
+            "adaptive_max_layer_mm" => self.adaptive_max_layer_mm = f(0.04, 1.0)?,
+            "adaptive_cusp_mm" => self.adaptive_cusp_mm = f(0.005, 0.5)?,
+            "elephant_foot_mm" => self.elephant_foot_mm = f(0.0, 2.0)?,
+            "max_volumetric_flow_mm3_s" => self.max_volumetric_flow_mm3_s = f(0.0, 100.0)?,
             other => return Err(invalid(format!("{other}: not a setting of the slicer"))),
         }
         Ok(())
@@ -586,6 +616,12 @@ impl SliceConfig {
             "ironing" => on_off(self.ironing),
             "ironing_flow_percent" => self.ironing_flow_percent.to_string(),
             "ironing_speed_mm_s" => self.ironing_speed_mm_s.to_string(),
+            "adaptive_layers" => on_off(self.adaptive_layers),
+            "adaptive_min_layer_mm" => self.adaptive_min_layer_mm.to_string(),
+            "adaptive_max_layer_mm" => self.adaptive_max_layer_mm.to_string(),
+            "adaptive_cusp_mm" => self.adaptive_cusp_mm.to_string(),
+            "elephant_foot_mm" => self.elephant_foot_mm.to_string(),
+            "max_volumetric_flow_mm3_s" => self.max_volumetric_flow_mm3_s.to_string(),
             "adhesion" => self.adhesion.name().to_string(),
             "placement" => match self.placement {
                 Placement::Center => "center",
@@ -724,6 +760,40 @@ impl SliceConfig {
                     self.ironing_speed_mm_s, self.max_speed_mm_s
                 ));
             }
+        }
+        if self.adaptive_layers {
+            if self.adaptive_min_layer_mm > self.adaptive_max_layer_mm + 1e-9 {
+                return bad(format!(
+                    "adaptive_min_layer_mm {} is above adaptive_max_layer_mm {}",
+                    self.adaptive_min_layer_mm, self.adaptive_max_layer_mm
+                ));
+            }
+            if self.adaptive_max_layer_mm > max_h + 1e-9 {
+                return bad(format!(
+                    "adaptive_max_layer_mm {} is above 80% of the nozzle ({max_h:.3}): the plastic would not be pressed into the layer below",
+                    self.adaptive_max_layer_mm
+                ));
+            }
+            if self.vase_mode {
+                return bad(
+                    "a vase is one wall of layers of the same height: adaptive_layers = off"
+                        .to_string(),
+                );
+            }
+        }
+        if self.max_volumetric_flow_mm3_s > 0.0 && self.max_volumetric_flow_mm3_s < 1.0 {
+            return bad(format!(
+                "max_volumetric_flow_mm3_s {} is under 1: 0 is no limit, and a hot end melts more than that",
+                self.max_volumetric_flow_mm3_s
+            ));
+        }
+        if self.elephant_foot_mm > 0.0
+            && self.elephant_foot_mm >= self.line_width_mm * self.perimeters as f64
+        {
+            return bad(format!(
+                "elephant_foot_mm {} would eat the whole wall ({} lines of {} mm)",
+                self.elephant_foot_mm, self.perimeters, self.line_width_mm
+            ));
         }
         Ok(())
     }
@@ -973,7 +1043,7 @@ vase_mode = off
         );
         assert!(c.retract_adaptive && !c.vase_mode);
         assert_eq!(SliceConfig::from_text(&c.to_text()).unwrap(), c);
-        assert_eq!(KEYS.len(), 68);
+        assert_eq!(KEYS.len(), 74);
         for k in KEYS {
             assert!(c.value_of(k).is_some(), "{k}");
         }

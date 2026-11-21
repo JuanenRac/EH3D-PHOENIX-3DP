@@ -138,6 +138,90 @@ pub struct Progress {
     pub filament_mm: f64,
 }
 
+/// The groups of lines that the time is told by.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Group {
+    Perimeters,
+    Infill,
+    Solid,
+    Bridges,
+    Supports,
+    /// The skirt, the brim, the raft and the purge tower.
+    Adhesion,
+    /// What is not a line of plastic: the travel, the retractions, the changes of height and of tool, and the time the head loses speeding up and slowing down.
+    Other,
+}
+
+impl Group {
+    fn of(kind: Kind) -> Group {
+        match kind {
+            Kind::ExternalPerimeter | Kind::Perimeter => Group::Perimeters,
+            Kind::Infill => Group::Infill,
+            Kind::SolidInfill | Kind::Ironing => Group::Solid,
+            Kind::Bridge => Group::Bridges,
+            Kind::Support => Group::Supports,
+            Kind::Adhesion | Kind::Raft | Kind::Tower => Group::Adhesion,
+        }
+    }
+}
+
+/// How much of the time of a print goes to one group of lines.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct TimeShare {
+    pub group: Group,
+    pub seconds: f64,
+}
+
+/// Where the time of the print goes. The lines of plastic of each group are counted at their own speed (the one that is written, with the limit of the flow and the slower short
+/// layers), and what is left of the estimate of the whole print (the travel, the retractions, the changes and the acceleration) is `Group::Other`, so the shares add up to the estimate
+/// of the plan. A group the plan has no line for is not listed; `Other` comes last.
+pub fn time_by_group(plan: &Plan, summaries: &[LayerSummary]) -> Vec<TimeShare> {
+    let total: f64 = summaries.iter().map(|s| s.time_s).sum();
+    let order = [
+        Group::Perimeters,
+        Group::Infill,
+        Group::Solid,
+        Group::Bridges,
+        Group::Supports,
+        Group::Adhesion,
+    ];
+    let mut seconds = [0.0f64; 6];
+    for l in &plan.layers {
+        for p in &l.paths {
+            let g = Group::of(p.kind);
+            let i = order.iter().position(|x| *x == g).unwrap_or(0);
+            let v = plan.line_speed_mm_s(l.index, p.kind, p.width_mm, l.height_mm);
+            if v > 0.0 {
+                seconds[i] += p.length_mm() / v;
+            }
+        }
+    }
+    let lines: f64 = seconds.iter().sum();
+    // the lines at their own speed cannot take longer than the print: the estimate has the acceleration in it
+    let scale = if lines > total && lines > 0.0 {
+        total / lines
+    } else {
+        1.0
+    };
+    let mut out: Vec<TimeShare> = order
+        .iter()
+        .zip(seconds)
+        .filter(|(_, s)| *s > 0.0)
+        .map(|(g, s)| TimeShare {
+            group: *g,
+            seconds: s * scale,
+        })
+        .collect();
+    let rest = total - out.iter().map(|t| t.seconds).sum::<f64>();
+    if rest > 1e-9 {
+        out.push(TimeShare {
+            group: Group::Other,
+            seconds: rest,
+        });
+    }
+    out
+}
+
 /// The progress after each layer, from the summaries of a plan and the section of its filament (mm2).
 pub fn progress(summaries: &[LayerSummary], filament_area_mm2: f64) -> Vec<Progress> {
     let total: f64 = summaries.iter().map(|s| s.time_s).sum();

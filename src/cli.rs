@@ -709,6 +709,13 @@ fn slice(args: &[String], env_lang: Option<&str>) -> Outcome {
                 for a in compat.advice {
                     notes.push_str(&format!("note: {}\n", a.text()));
                 }
+                if let Some(r) = crate::preflight::record(&f.id) {
+                    if let Some(limit) = crate::preflight::hold_flow(r, &mut config) {
+                        notes.push_str(&format!(
+                            "flow: held to {limit} mm3/s, what the maker gives for the filament\n"
+                        ));
+                    }
+                }
             }
             Err(e) => return Outcome::fail(e.to_string()),
         }
@@ -1593,6 +1600,32 @@ mod tests {
         );
         assert_eq!(run(&args("filaments extra"), None).code, 2);
         assert_eq!(run(&args("filaments --printer nope"), None).code, 1);
+    }
+
+    #[test]
+    fn slice_holds_the_flow_to_what_the_maker_gives_for_the_filament_and_says_so() {
+        let model = tmp("flow_cube.stl");
+        std::fs::write(&model, write_mesh(&cube(10.0), Format::Stl, "").unwrap()).unwrap();
+        for id in ["generic-tpu", "generic-pla", "generic-petg"] {
+            let r = run(
+                &args(&format!(
+                    "slice {model} --printer bambu-lab-a1 --filament {id}"
+                )),
+                None,
+            );
+            assert_eq!(r.code, 0, "{id}: {}", r.err);
+            let limit = crate::preflight::record(&format!("generic/{id}"))
+                .and_then(|f| f.mm3s_limit())
+                .filter(|l| *l >= 1.0);
+            match limit {
+                Some(l) => assert!(
+                    r.out.contains(&format!("flow: held to {l} mm3/s")),
+                    "{id}: {}",
+                    r.out
+                ),
+                None => assert!(!r.out.contains("flow: held"), "{id}: {}", r.out),
+            }
+        }
     }
 
     #[test]

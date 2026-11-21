@@ -243,11 +243,21 @@ pub fn plan(mesh: &Mesh, machine: &Machine, config: &SliceConfig) -> Result<Plan
             height_mm: bz,
         });
     }
-    let heights = layer_heights(
-        size[2],
-        config.first_layer_height_mm,
-        config.layer_height_mm,
-    );
+    let heights = if config.adaptive_layers {
+        crate::adaptive::heights(
+            mesh,
+            shift[2],
+            size[2],
+            config.first_layer_height_mm,
+            config,
+        )
+    } else {
+        layer_heights(
+            size[2],
+            config.first_layer_height_mm,
+            config.layer_height_mm,
+        )
+    };
     if heights.len() + raft > config.max_layers as usize {
         return Err(SliceError::TooManyLayers {
             layers: heights.len() + raft,
@@ -310,6 +320,11 @@ pub fn plan(mesh: &Mesh, machine: &Machine, config: &SliceConfig) -> Result<Plan
                 height: *h,
                 top,
                 supports: &supports[i],
+                foot_mm: if i == 0 && raft == 0 {
+                    config.elephant_foot_mm
+                } else {
+                    0.0
+                },
             },
             config,
             &outlines,
@@ -440,6 +455,8 @@ struct LayerInput<'a> {
     /// The height of the top of the layer.
     top: f64,
     supports: &'a [Path],
+    /// How far the outline of the first layer is drawn in against the flared foot (0 for any other layer, and for a layer that stands on a raft).
+    foot_mm: f64,
 }
 
 /// The perimeters of a layer at one width, from the outside in, and whether the part was too thin for them.
@@ -470,7 +487,16 @@ fn layer_paths(
     st: &mut State,
 ) -> Result<Vec<Path>, SliceError> {
     let (index, h) = (input.index, input.height);
-    let outline = &outlines[index];
+    let drawn_in: Vec<Loop>;
+    let outline: &Vec<Loop> = if input.foot_mm > 0.0 {
+        drawn_in = outlines[index]
+            .iter()
+            .flat_map(|l| inset(l, input.foot_mm))
+            .collect();
+        &drawn_in
+    } else {
+        &outlines[index]
+    };
     // a vase: one wall, a solid base, nothing inside and no top
     let vase_cfg;
     let open_vase = cfg.vase_mode && index >= cfg.bottom_layers as usize;
