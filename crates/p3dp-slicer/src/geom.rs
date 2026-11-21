@@ -259,15 +259,20 @@ pub fn inset(pts: &[P], d: f64) -> Vec<Loop> {
             raw.push([p1[0] + (n1[0] + n2[0]) * k, p1[1] + (n1[1] + n2[1]) * k]);
         }
     }
-    // an offset past the middle of a shape turns it inside out: the corners cross over and the loop comes out the same way round, a shape that is not there. A true offset is at
-    // least `d` from the edges it came from, so a loop with not one point that far from them is that shape and is dropped.
+    // an offset past the middle of a shape turns it inside out: the corners cross over and the loop comes out the same way round, a shape that is not there (the corners of a
+    // square inset by more than half its side go to the other side of it). A true offset has a point that is at least `d` from the edges it came from and on the side it
+    // was offset to (inside the loop for an outer loop inset, outside it for a hole); a loop with no such point is dropped.
     let least = d.abs() * (1.0 - 1e-6) - 1e-9;
+    let want_inside = (a0 > 0.0) == (d > 0.0);
+    let own = std::slice::from_ref(&cleaned);
     simple_loops(&raw, a0 > 0.0)
         .into_iter()
         .filter(|l| {
-            l.iter().any(|p| {
-                crate::support::distance_to_loops(*p, std::slice::from_ref(&cleaned)) >= least
-            })
+            d.abs() < 1e-12
+                || l.iter().any(|p| {
+                    crate::support::distance_to_loops(*p, own) >= least
+                        && inside(*p, own) == want_inside
+                })
         })
         .collect()
 }
