@@ -166,6 +166,25 @@ fn an_inset_by_half_the_width_or_more_leaves_nothing() {
 }
 
 #[test]
+fn a_round_pin_thinner_than_the_inset_leaves_nothing_and_a_fatter_one_leaves_a_loop() {
+    let pin = |r: f64| -> Loop {
+        (0..12)
+            .map(|i| {
+                let a = std::f64::consts::TAU * f64::from(i) / 12.0;
+                [r * a.cos(), r * a.sin()]
+            })
+            .collect()
+    };
+    assert!(geom::area(&pin(1.0)) > 0.0);
+    assert_eq!(geom::inset(&pin(1.0), 0.5).len(), 1);
+    assert!(geom::inset(&pin(1.0), 1.0).is_empty());
+    assert!(geom::inset(&pin(1.0), 1.5).is_empty());
+    let triangle: Loop = vec![[0.0, 0.0], [4.0, 0.0], [2.0, 3.0]];
+    assert_eq!(geom::inset(&triangle, 0.5).len(), 1);
+    assert!(geom::inset(&triangle, 3.0).is_empty());
+}
+
+#[test]
 fn a_negative_inset_grows_the_loop_and_the_inset_of_a_hole_grows_the_hole() {
     let s = square(0.0, 0.0, 10.0, 10.0);
     let out = geom::inset(&s, -1.0);

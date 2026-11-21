@@ -3,6 +3,7 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+- Fix the offset of a loop inwards: past the middle of a shape (a pin thinner than the perimeters, a square inset by more than half its side) the corners crossed over and a loop came out the same way round, a shape that is not there, so a perimeter was laid where there is no room; such a loop is now dropped.
 - Fix the profiles of printers, filaments and resins (security): a vendor, model or name with a line break or another control character could begin another line of the profile file it is written to (a key of its own, even `verified`), and one with ` #` was cut short when read back; both are now refused when the profile is checked.
 - Fix the figures of a print: a value written with a blank before it (` 0.2`) was dropped instead of read.
 - Fix the reading of a text STL whose name, or of an OBJ whose comment, is not UTF-8 (Latin-1 from some programs of Windows): the whole file was refused for a name that does not count; only the numbers are read.

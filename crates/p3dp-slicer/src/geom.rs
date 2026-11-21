@@ -259,7 +259,17 @@ pub fn inset(pts: &[P], d: f64) -> Vec<Loop> {
             raw.push([p1[0] + (n1[0] + n2[0]) * k, p1[1] + (n1[1] + n2[1]) * k]);
         }
     }
+    // an offset past the middle of a shape turns it inside out: the corners cross over and the loop comes out the same way round, a shape that is not there. A true offset is at
+    // least `d` from the edges it came from, so a loop with not one point that far from them is that shape and is dropped.
+    let least = d.abs() * (1.0 - 1e-6) - 1e-9;
     simple_loops(&raw, a0 > 0.0)
+        .into_iter()
+        .filter(|l| {
+            l.iter().any(|p| {
+                crate::support::distance_to_loops(*p, std::slice::from_ref(&cleaned)) >= least
+            })
+        })
+        .collect()
 }
 
 /// The segments in which the lines `y = k * spacing` (or `x = ...` when not `horizontal`) cross the material of a set of loops, longer than `min_len`. The lines lie on a grid
