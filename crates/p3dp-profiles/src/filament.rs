@@ -5,7 +5,7 @@
 //! The ranges are the middle of the road of each family, from the figures printed on generic spools and public data sheets; the label of the spool wins, and a profile file can
 //! replace any row. None of them has been tried on a machine.
 
-use crate::profile::{PrinterProfile, ProfileError, Technology};
+use crate::profile::{check_plain, PrinterProfile, ProfileError, Technology};
 use eh3d_printmaterials::model::Filament as Record;
 use eh3d_printmaterials::query::Database;
 use p3dp_core::kv;
@@ -166,6 +166,8 @@ impl FilamentProfile {
                 "filament {id}: the id must be lower case letters, digits, hyphens, dots, plus signs, underscores and slashes"
             )));
         }
+        check_plain(id, "name", &self.name)?;
+        check_plain(id, "manufacturer", &self.manufacturer)?;
         self.nozzle_c.check("the nozzle", id, 500.0)?;
         self.bed_c.check("the bed", id, 200.0)?;
         self.fan_percent.check("the fan", id, 100.0)?;

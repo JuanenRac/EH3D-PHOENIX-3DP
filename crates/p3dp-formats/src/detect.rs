@@ -39,18 +39,19 @@ impl Format {
         if head.starts_with("solid") {
             return Some(Format::Stl);
         }
+        // a binary STL is told by its size before the text of its 80-byte header is looked at: the header may start with anything
+        if bytes.len() >= 84 {
+            let n = u32::from_le_bytes([bytes[80], bytes[81], bytes[82], bytes[83]]) as usize;
+            if 84usize.checked_add(n.saturating_mul(50)) == Some(bytes.len()) {
+                return Some(Format::Stl);
+            }
+        }
         if head.starts_with("v ")
             || head.starts_with('#')
             || head.starts_with("o ")
             || head.starts_with("mtllib")
         {
             return Some(Format::Obj);
-        }
-        if bytes.len() >= 84 {
-            let n = u32::from_le_bytes([bytes[80], bytes[81], bytes[82], bytes[83]]) as usize;
-            if 84usize.checked_add(n.saturating_mul(50)) == Some(bytes.len()) {
-                return Some(Format::Stl);
-            }
         }
         None
     }
@@ -86,9 +87,9 @@ pub fn read_mesh(
     match format {
         Format::Stl => stl::read(bytes, limits),
         Format::Obj => {
-            let text = std::str::from_utf8(bytes)
-                .map_err(|_| FormatError::malformed("obj", "the text is not valid UTF-8"))?;
-            obj::read(text, limits)
+            // a comment or a name in another encoding (Latin-1) must not refuse the model
+            let text = String::from_utf8_lossy(bytes);
+            obj::read(&text, limits)
         }
         Format::ThreeMf => threemf::read(bytes, limits),
     }

@@ -146,6 +146,17 @@ fn bad(id: &str, reason: &str) -> ProfileError {
     ProfileError(format!("profile {id}: {reason}"))
 }
 
+/// A text of a profile that is written to a file of `key = value` lines: a line break or another control character would begin another line (a key of its own), and ` #` would
+/// begin a comment that cuts the value short.
+pub(crate) fn check_plain(id: &str, what: &str, text: &str) -> Result<(), ProfileError> {
+    if text.chars().any(char::is_control) || text.contains(" #") {
+        return Err(ProfileError(format!(
+            "profile {id}: the {what} has a control character or ' #', which a profile file cannot hold"
+        )));
+    }
+    Ok(())
+}
+
 impl PrinterProfile {
     /// Checks that the profile makes sense: a positive volume, the right fields for its technology, limits that are finite and not absurd.
     pub fn validate(&self) -> Result<(), ProfileError> {
@@ -163,6 +174,8 @@ impl PrinterProfile {
         if self.vendor.is_empty() || self.model.is_empty() {
             return Err(bad(id, "the vendor and the model are needed"));
         }
+        check_plain(id, "vendor", &self.vendor)?;
+        check_plain(id, "model", &self.model)?;
         if self
             .volume_mm
             .iter()

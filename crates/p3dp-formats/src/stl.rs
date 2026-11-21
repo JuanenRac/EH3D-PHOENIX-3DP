@@ -21,8 +21,9 @@ pub fn read(bytes: &[u8], limits: &Limits) -> Result<Mesh, FormatError> {
         .to_ascii_lowercase()
         .starts_with("solid");
     if looks_ascii {
-        let text = std::str::from_utf8(bytes).map_err(|_| bad("the text is not valid UTF-8"))?;
-        return read_ascii(text, limits);
+        // only the words `vertex` and the numbers count: a name in another encoding (Latin-1) must not refuse the file
+        let text = String::from_utf8_lossy(bytes);
+        return read_ascii(&text, limits);
     }
     if bytes.len() < 84 {
         return Err(bad("the file is too short to be an STL"));

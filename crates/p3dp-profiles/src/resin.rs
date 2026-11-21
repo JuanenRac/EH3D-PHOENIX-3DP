@@ -7,7 +7,7 @@
 //! names the line.
 
 use crate::filament::Range;
-use crate::profile::{PrinterProfile, ProfileError, Technology};
+use crate::profile::{check_plain, PrinterProfile, ProfileError, Technology};
 use eh3d_printmaterials::model::{Resin as Record, ResinKind as DbKind, Solvent};
 use eh3d_printmaterials::query::Database;
 use p3dp_core::kv;
@@ -154,6 +154,7 @@ impl ResinProfile {
         if self.name.trim().is_empty() {
             return Err(bad(id, "the name is needed"));
         }
+        check_plain(id, "name", &self.name)?;
         check_range(id, "the layer height (um)", &self.layer_um, 200.0)?;
         check_range(
             id,
