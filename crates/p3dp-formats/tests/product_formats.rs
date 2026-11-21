@@ -1554,7 +1554,7 @@ fn a_file_that_is_not_binary_g_code_or_has_no_block_is_refused() {
 fn a_version_or_a_kind_of_checksum_or_block_or_compression_that_is_not_known_is_unsupported() {
     let m = meta_block(0, "a=b\n", false);
     assert!(matches!(
-        bgcode::read_header(&file(2, 0, &[m.clone()]), &limits()),
+        bgcode::read_header(&file(2, 0, std::slice::from_ref(&m)), &limits()),
         Err(FormatError::Unsupported {
             format: "bgcode",
             ..
