@@ -24,6 +24,18 @@ pub struct Machine {
     pub latched: bool,
     pub limits: TempLimits,
     pub auto_start_queue: bool,
+    /// The link to a Bambu printer in LAN mode, when the machine has one.
+    pub bambu: Option<BambuLink>,
+}
+
+/// The Bambu link of a machine of the simulated server: what the machine was made with, and the fingerprint of the certificate that the simulated printer shows.
+#[derive(Debug, Clone)]
+pub struct BambuLink {
+    pub host: String,
+    /// The fingerprint that was pinned (64 lower-case digits); `None` when none was.
+    pub pinned: Option<String>,
+    /// The fingerprint of the certificate the printer shows.
+    pub shown: String,
 }
 
 /// A job of the simulated server.
@@ -51,6 +63,10 @@ pub struct State {
     pub targets: Vec<(String, String, f64)>,
     /// Whether the answers shaped like another program's are on (the setting `compat` of the machines).
     pub compat_on: bool,
+    /// The switch `bambu_lan_enabled` of the server: off, the way the real server is made.
+    pub bambu_lan_enabled: bool,
+    /// Counts the changes of the values the server shows, so that their tag changes with them.
+    pub values_version: u32,
 }
 
 /// A handle to the simulated server; clones share the state.
@@ -162,6 +178,7 @@ impl SimPrinterServer {
                 limits(260.0, 100.0, Some(60.0))
             },
             auto_start_queue: false,
+            bambu: None,
         };
         let state = State {
             machines: vec![
@@ -414,6 +431,27 @@ fn create_machine(s: &mut State, req: &sc::Request) -> sc::Reply {
         "generic" => limits(260.0, 100.0, Some(60.0)),
         _ => return error(422, "bad_settings"),
     };
+    let connection = settings.and_then(|x| x.get("connection"));
+    let bambu = if kind == "bambu_lan" {
+        let text = |k: &str| {
+            connection
+                .and_then(|c| c.get(k))
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string()
+        };
+        if text("api_key").is_empty() || text("host").is_empty() {
+            return error(422, "bad_settings");
+        }
+        let pinned = Some(text("fingerprint").to_ascii_lowercase()).filter(|f| !f.is_empty());
+        Some(BambuLink {
+            host: text("host"),
+            pinned,
+            shown: "ab".repeat(32),
+        })
+    } else {
+        None
+    };
     s.machines.push(Machine {
         id: id.clone(),
         name,
@@ -424,6 +462,7 @@ fn create_machine(s: &mut State, req: &sc::Request) -> sc::Reply {
         latched: false,
         limits: lim,
         auto_start_queue: false,
+        bambu,
     });
     let last = &s.machines[s.machines.len() - 1];
     reply(201, &machine_view(last, &s.jobs))
@@ -441,6 +480,9 @@ fn create_job(s: &mut State, req: &sc::Request) -> sc::Reply {
     };
     if m.latched {
         return error(409, "printer_latched");
+    }
+    if let Some(refusal) = bambu_gate(s, &m) {
+        return refusal;
     }
     let request = v.get("request");
     let program = request
@@ -477,6 +519,22 @@ fn create_job(s: &mut State, req: &sc::Request) -> sc::Reply {
     reply(201, &out)
 }
 
+/// What the real server does before it writes anything to a Bambu printer: the switch must be on for a real address, a fingerprint must be pinned and it must be the one the
+/// printer shows, and the printer must answer. `None` is a way through.
+fn bambu_gate(s: &State, m: &Machine) -> Option<sc::Reply> {
+    let b = m.bambu.as_ref()?;
+    if b.host != "sim" && !s.bambu_lan_enabled {
+        return Some(error(409, "bambu_lan_off"));
+    }
+    if b.pinned.as_deref() != Some(b.shown.as_str()) {
+        return Some(error(502, "printer_untrusted"));
+    }
+    if !m.online {
+        return Some(error(502, "printer_disconnected"));
+    }
+    None
+}
+
 fn job_action(s: &mut State, id: &str, action: &str) -> sc::Reply {
     let Some(i) = s.jobs.iter().position(|j| j.id == id) else {
         return error(404, "unknown_job");
@@ -497,6 +555,12 @@ fn job_action(s: &mut State, id: &str, action: &str) -> sc::Reply {
         if printer(s, &machine).is_some_and(|m| m.latched) {
             return error(409, "printer_latched");
         }
+        if let Some(refusal) = printer(s, &machine)
+            .cloned()
+            .and_then(|m| bambu_gate(s, &m))
+        {
+            return refusal;
+        }
         let busy = s
             .jobs
             .iter()
@@ -515,7 +579,59 @@ fn job_action(s: &mut State, id: &str, action: &str) -> sc::Reply {
     reply(200, &job_view(&job, position_of(&s.jobs, &job)))
 }
 
+impl SimPrinterServer {
+    /// The light list of values of the server, with its tag and the answer `304` for a tag that is still the one (the route `GET /api/v1/settings/values`).
+    fn values(&self, request: &sc::Request) -> Result<sc::FullReply, sc::TransportError> {
+        let mut probe = request.clone();
+        probe.path = "/api/v1/echo".to_string();
+        let checked = sc::Transport::send_full(&self.auth, &probe)?;
+        if checked.status != 200 {
+            return Ok(checked);
+        }
+        let (enabled, version) = self.with_state(|s| (s.bambu_lan_enabled, s.values_version));
+        let tag = format!("values-{version}-{enabled}");
+        let quoted = format!("\"{tag}\"");
+        let same = request
+            .headers
+            .iter()
+            .any(|(k, v)| k.eq_ignore_ascii_case("If-None-Match") && v.trim() == quoted);
+        if same {
+            return Ok(sc::FullReply {
+                status: 304,
+                headers: vec![("ETag".to_string(), quoted)],
+                body: Vec::new(),
+            });
+        }
+        let body = Value::object(vec![
+            ("schema", Value::Str("eh3d.settings.values/1".to_string())),
+            (
+                "settings",
+                Value::object(vec![(
+                    "bambu_lan_enabled",
+                    Value::object(vec![
+                        ("v", Value::Bool(enabled)),
+                        ("origin", Value::Str("file".to_string())),
+                        ("editable", Value::Bool(true)),
+                    ]),
+                )]),
+            ),
+        ]);
+        Ok(sc::FullReply {
+            status: 200,
+            headers: vec![("ETag".to_string(), quoted)],
+            body: body.to_json().into_bytes(),
+        })
+    }
+}
+
 impl sc::Transport for SimPrinterServer {
+    fn send_full(&self, request: &sc::Request) -> Result<sc::FullReply, sc::TransportError> {
+        if request.method == "GET" && request.path.starts_with("/api/v1/settings/values") {
+            return self.values(request);
+        }
+        self.send(request).map(sc::FullReply::from)
+    }
+
     fn send(&self, request: &sc::Request) -> Result<sc::Reply, sc::TransportError> {
         if request.path.starts_with("/api/v1/work/") {
             // the login and the failures on demand are the suite's: a request of the same kind goes to its server first

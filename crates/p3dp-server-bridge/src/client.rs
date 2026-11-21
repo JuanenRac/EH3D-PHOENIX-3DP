@@ -66,6 +66,17 @@ impl BridgeError {
         }
     }
 
+    /// The trouble with a Bambu printer in LAN mode that the code of the server names, when it names one.
+    pub fn bambu_problem(&self) -> Option<BambuProblem> {
+        [
+            BambuProblem::LinkOff,
+            BambuProblem::Untrusted,
+            BambuProblem::Disconnected,
+        ]
+        .into_iter()
+        .find(|p| self.code() == Some(p.code()))
+    }
+
     /// Whether a new login would cure it.
     pub fn needs_login(&self) -> bool {
         matches!(self, BridgeError::Server(e) if e.needs_login())
@@ -161,7 +172,7 @@ impl JobInfo {
 }
 
 /// How the server reaches the printer it is told about when a machine is made.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum MachineConnection {
     /// The simulator of the server: no printer.
     Demo,
@@ -169,6 +180,80 @@ pub enum MachineConnection {
     Moonraker { url: String, api_key: String },
     /// OctoPrint: the address and the key.
     OctoPrint { url: String, api_key: String },
+    /// A Bambu Lab printer in LAN mode, reached by the server (an experiment): the address (`sim` is the simulated printer), the serial number, the SHA-256 fingerprint of the
+    /// certificate of the printer (64 hexadecimal digits, with or without colons) and the access code of the printer. The program opens no TLS connection of its own: the server
+    /// does, and it compares the certificate with the fingerprint before anything is written to it. A fingerprint is required here, so a machine without one is never made.
+    BambuLan {
+        host: String,
+        serial: String,
+        fingerprint: String,
+        access_code: String,
+    },
+}
+
+// the keys and the access codes are never written out, not even by a debug print
+impl fmt::Debug for MachineConnection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MachineConnection::Demo => f.write_str("Demo"),
+            MachineConnection::Moonraker { url, .. } => {
+                write!(f, "Moonraker {{ url: {url:?}, api_key: <hidden> }}")
+            }
+            MachineConnection::OctoPrint { url, .. } => {
+                write!(f, "OctoPrint {{ url: {url:?}, api_key: <hidden> }}")
+            }
+            MachineConnection::BambuLan {
+                host,
+                serial,
+                fingerprint,
+                ..
+            } => write!(
+                f,
+                "BambuLan {{ host: {host:?}, serial: {serial:?}, fingerprint: {fingerprint:?}, access_code: <hidden> }}"
+            ),
+        }
+    }
+}
+
+/// What goes wrong with a Bambu printer in LAN mode, as the codes the server answers with (they are stable: the common client of the suite has their text in eight languages).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BambuProblem {
+    /// `bambu_lan_off` (409): the switch `bambu_lan_enabled` of the server is off, so only the simulated printer is reached.
+    LinkOff,
+    /// `printer_untrusted` (502): no fingerprint is pinned, or the certificate of the printer is not the pinned one.
+    Untrusted,
+    /// `printer_disconnected` (502): the printer does not answer.
+    Disconnected,
+}
+
+impl BambuProblem {
+    /// The code of the server.
+    pub fn code(self) -> &'static str {
+        match self {
+            BambuProblem::LinkOff => "bambu_lan_off",
+            BambuProblem::Untrusted => "printer_untrusted",
+            BambuProblem::Disconnected => "printer_disconnected",
+        }
+    }
+}
+
+/// What the server says about the switch of the Bambu link, with the tag of the answer.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SwitchRead {
+    /// The tag that was given is still the tag: nothing changed (`304`).
+    Unchanged,
+    /// The switch `bambu_lan_enabled` of the server and the tag to give next time.
+    Value { enabled: bool, etag: Option<String> },
+}
+
+/// The digits of a fingerprint in the form the server keeps them: 64 lower-case hexadecimal digits, the colons, blanks and dashes taken out. Anything else is `None`.
+pub fn normalize_fingerprint(text: &str) -> Option<String> {
+    let clean: String = text
+        .chars()
+        .filter(|c| !matches!(c, ':' | ' ' | '-'))
+        .collect::<String>()
+        .to_ascii_lowercase();
+    (clean.len() == 64 && clean.bytes().all(|b| b.is_ascii_hexdigit())).then_some(clean)
 }
 
 /// The shapes the server can answer in, besides its own.
@@ -607,6 +692,35 @@ impl ServerClient {
             .unwrap_or(false))
     }
 
+    /// Whether the server reaches real Bambu printers (its switch `bambu_lan_enabled`), read from the light list of values that any login may read. The answer has a tag; give the
+    /// tag back and the server answers `304` when nothing changed, so a client can ask every few seconds and read the body only when it did.
+    pub fn bambu_lan_switch(&mut self, known_tag: Option<&str>) -> Result<SwitchRead, BridgeError> {
+        let mut parts = sc::RequestParts::new().accept("application/json");
+        if let Some(tag) = known_tag {
+            parts = parts.if_none_match(tag);
+        }
+        let r = self.inner.request_full(
+            "GET",
+            "/api/v1/settings/values?keys=bambu_lan_enabled",
+            &parts,
+        )?;
+        if r.status == 304 {
+            return Ok(SwitchRead::Unchanged);
+        }
+        let text = String::from_utf8_lossy(&r.body).into_owned();
+        let v = json::parse(&text).map_err(|e| BridgeError::BadReply(e.to_string()))?;
+        let enabled = v
+            .get("settings")
+            .and_then(|s| s.get("bambu_lan_enabled"))
+            .and_then(|k| k.get("v"))
+            .and_then(Value::as_bool)
+            .ok_or_else(|| BridgeError::BadReply("the answer has no bambu_lan_enabled".into()))?;
+        Ok(SwitchRead::Value {
+            enabled,
+            etag: r.etag(),
+        })
+    }
+
     /// Releases the latch of a printer (an administrator's call).
     pub fn release(&mut self, machine: &str) -> Result<(), BridgeError> {
         self.post(
@@ -643,6 +757,52 @@ impl ServerClient {
                 ("url", Value::Str(url.clone())),
                 ("api_key", Value::Str(api_key.clone())),
             ]),
+            MachineConnection::BambuLan {
+                host,
+                serial,
+                fingerprint,
+                access_code,
+            } => {
+                let fingerprint = normalize_fingerprint(fingerprint).ok_or_else(|| {
+                    BridgeError::Invalid(
+                        "a Bambu printer needs the SHA-256 fingerprint of its certificate (64 hexadecimal digits): a certificate is never accepted unchecked, so nothing was sent"
+                            .to_string(),
+                    )
+                })?;
+                if host.is_empty()
+                    || host.len() > 253
+                    || !host.bytes().all(|b| {
+                        b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-' | b'_' | b':')
+                    })
+                {
+                    return Err(BridgeError::Invalid(format!(
+                        "{host:?} is not an address of a printer"
+                    )));
+                }
+                if !(8..=32).contains(&serial.len())
+                    || !serial.bytes().all(|b| b.is_ascii_alphanumeric())
+                {
+                    return Err(BridgeError::Invalid(
+                        "the serial number of a Bambu printer is 8 to 32 letters and digits"
+                            .to_string(),
+                    ));
+                }
+                if access_code.is_empty()
+                    || access_code.len() > 64
+                    || access_code.chars().any(char::is_control)
+                {
+                    return Err(BridgeError::Invalid(
+                        "the access code of the printer is 1 to 64 characters".to_string(),
+                    ));
+                }
+                Value::object(vec![
+                    ("kind", Value::Str("bambu_lan".into())),
+                    ("host", Value::Str(host.clone())),
+                    ("serial", Value::Str(serial.clone())),
+                    ("fingerprint", Value::Str(fingerprint)),
+                    ("api_key", Value::Str(access_code.clone())),
+                ])
+            }
         };
         let settings = Value::object(vec![
             ("model", Value::Str(model.to_string())),
