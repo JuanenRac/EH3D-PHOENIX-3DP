@@ -137,7 +137,7 @@ fn json_lone_surrogates_are_errors() {
 fn json_every_prefix_of_a_document_is_an_error_and_never_a_panic() {
     let doc = r#"{"a":[1,2,{"b":"xé"}],"c":null}"#;
     assert!(json::parse(doc).is_ok());
-    for n in 0..doc.len() {
+    for (n, _) in doc.char_indices() {
         assert!(json::parse(&doc[..n]).is_err(), "prefix of {n} bytes");
     }
 }
