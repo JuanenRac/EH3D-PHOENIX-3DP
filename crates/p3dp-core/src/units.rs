@@ -44,7 +44,7 @@ impl Nm {
 
     /// The absolute value.
     pub fn abs(self) -> Nm {
-        Nm(self.0.abs())
+        Nm(self.0.saturating_abs())
     }
 
     /// The decimal text in millimetres with no rounding (`1500000` is `1.5`, `-2` is `-0.000002`): the way 3MF files and G-code are written.

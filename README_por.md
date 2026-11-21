@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-714-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-867-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Verificação de honestidade - o que funciona mesmo hoje:** um espaço de trabalho Rust com oito bibliotecas e um programa de linha de comandos (`phoenix-3dp`) com 714 testes que correm num computador. Lê e verifica modelos STL, OBJ e 3MF, tem um catálogo de 120 perfis de impressora feitos com dados públicos (nenhum testado numa máquina), escreve G-code para os dialetos Marlin, Klipper, RepRapFirmware e Bambu com limites de temperatura que recusam um valor em vez de o cortar, e comanda impressoras Moonraker e OctoPrint e o servidor EH3D, mas apenas contra simuladores (em memória e num socket deste computador). Corta um modelo fechado em camadas planas com perímetros, preenchimento retilíneo e peles sólidas (um fatiador pequeno com preenchimento em grelha e giroide, pontes, suportes simples, costuras, largura variável, elevação nas deslocações, skirt, brim ou raft, modo vaso, camadas curtas mais lentas, retração que acompanha a deslocação e uma estimativa do tempo com aceleração; vários materiais por altura com torre de purga, passagem a ferro do topo, avanço de pressão, camadas cuja altura segue a forma, uma primeira camada recolhida contra o pé de elefante e um limite do caudal, mas ainda sem pintura de cores); a janela, a moldura acoplável da suite com cinco áreas de trabalho (compilada com `--features gui`), não foi vista por uma pessoa num ecrã; nada correu numa impressora real.
+**Verificação de honestidade - o que funciona mesmo hoje:** um espaço de trabalho Rust com oito bibliotecas e um programa de linha de comandos (`phoenix-3dp`) com 867 testes que correm num computador. Lê e verifica modelos STL, OBJ e 3MF, tem um catálogo de 120 perfis de impressora feitos com dados públicos (nenhum testado numa máquina), escreve G-code para os dialetos Marlin, Klipper, RepRapFirmware e Bambu com limites de temperatura que recusam um valor em vez de o cortar, e comanda impressoras Moonraker e OctoPrint e o servidor EH3D, mas apenas contra simuladores (em memória e num socket deste computador). Corta um modelo fechado em camadas planas com perímetros, preenchimento retilíneo e peles sólidas (um fatiador pequeno com preenchimento em grelha e giroide, pontes, suportes simples, costuras, largura variável, elevação nas deslocações, skirt, brim ou raft, modo vaso, camadas curtas mais lentas, retração que acompanha a deslocação e uma estimativa do tempo com aceleração; vários materiais por altura com torre de purga, passagem a ferro do topo, avanço de pressão, camadas cuja altura segue a forma, uma primeira camada recolhida contra o pé de elefante e um limite do caudal, mas ainda sem pintura de cores); a janela, a moldura acoplável da suite com cinco áreas de trabalho (compilada com `--features gui`), não foi vista por uma pessoa num ecrã; nada correu numa impressora real.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Versão | `0.0.8` |
 | Maturidade | Funcional |
-| Testes | 714 |
+| Testes | 867 |
 | Tecnologias | Rust |
 | Em hardware real | Por testar: nada disto correu numa impressora, nem sequer numa Bambu Lab A1 ou numa P1S. |
 
@@ -55,7 +55,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 | Ligação ao servidor | 🟠 | as definições da ligação e um cliente do plugin de impressoras do servidor sobre o cliente comum da suite (início de sessão, renovação, novas tentativas, erros em oito línguas), testado contra um servidor em memória; nunca contra o servidor real. |
 | Fatiador | 🟡 | camadas planas de uma malha fechada, perímetros, preenchimento retilíneo, em grelha ou giroide, peles sólidas, pontes, suportes simples, costuras, largura variável, G-code por dialeto, uma pré-visualização por camadas como dados e uma estimativa do tempo com aceleração; verificado com propriedades sobre formas de semente fixa (o plástico depositado é o volume da peça, nada sai da mesa, nenhuma temperatura ultrapassa um limite); nenhuma impressão saiu dele numa impressora. |
 | Linha de comandos | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) executa as funções das bibliotecas e imprime o resultado; cada erro volta como mensagem e código de saída diferente de zero. |
-| Testes | 🟡 | 714 testes passam (`cargo test --workspace`), com casos normais, casos-limite, entradas danificadas e uma semente fixa onde há aleatoriedade. |
+| Testes | 🟡 | 867 testes passam (`cargo test --workspace`), com casos normais, casos-limite, entradas danificadas e uma semente fixa onde há aleatoriedade. |
 | Segurança | 🟡 | Rust seguro e simples (`forbid(unsafe_code)`): um limite é uma recusa e nunca um corte; o token nunca se imprime; nada entra em pânico com os ficheiros recebidos; sem revisão independente. |
 | Janela | 🟠 | Escrita com `--features gui` como a moldura acoplável da suite, com cinco áreas de trabalho (Preparar, Rever, Executar, Configurar e Compacto) cujos painéis podem ser retirados, repostos, movidos, agrupados em separadores, flutuar e recolher-se, e uma barra de menus: listas de impressoras e filamentos com filtros, o plano por camadas com um cursor, a fila do servidor com um arranque que pede confirmação, uma paragem de emergência, atalhos alteráveis, um modo de imagem (`--shot`), uma vista 3D da mesa com as peças como sólidos sombreados, um painel de peças com orientar automaticamente e organizar, fatiagem em segundo plano com estimativas, limites de temperatura editáveis e um aspeto escuro e um claro; a disposição guarda-se no ficheiro de configuração; a lógica é testada sem ecrã e o README mostra desenhos das áreas de trabalho feitos a partir do modelo, mas os painéis nunca foram desenhados num ecrã e nenhuma pessoa os viu. |
 | Hardware real | 🔴 | Por testar: nada disto correu numa impressora, nem sequer numa Bambu Lab A1 ou numa P1S. |
@@ -177,7 +177,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Testes
 
-O conjunto tem 714 testes (`cargo test --workspace`, executados em Windows e Linux na CI), com semente fixa onde há aleatoriedade. Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros cortados, lixo e cabeçalhos hostis nunca entram em pânico, e nenhuma temperatura de nenhuma impressora do catálogo ultrapassa o seu limite. A CI também executa `cargo fmt --all --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
+O conjunto tem 867 testes (`cargo test --workspace`, executados em Windows e Linux na CI), com semente fixa onde há aleatoriedade. Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros cortados, lixo e cabeçalhos hostis nunca entram em pânico, e nenhuma temperatura de nenhuma impressora do catálogo ultrapassa o seu limite. A CI também executa `cargo fmt --all --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilação e publicação
 
