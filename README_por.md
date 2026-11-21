@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.7-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-650-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-659-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Verificação de honestidade - o que funciona mesmo hoje:** um espaço de trabalho Rust com oito bibliotecas e um programa de linha de comandos (`phoenix-3dp`) com 650 testes que correm num computador. Lê e verifica modelos STL, OBJ e 3MF, tem um catálogo de 120 perfis de impressora feitos com dados públicos (nenhum testado numa máquina), escreve G-code para os dialetos Marlin, Klipper, RepRapFirmware e Bambu com limites de temperatura que recusam um valor em vez de o cortar, e comanda impressoras Moonraker e OctoPrint e o servidor EH3D, mas apenas contra simuladores (em memória e num socket deste computador). Corta um modelo fechado em camadas planas com perímetros, preenchimento retilíneo e peles sólidas (um fatiador pequeno com preenchimento em grelha e giroide, pontes, suportes simples, costuras, largura variável, elevação nas deslocações, skirt, brim ou raft, modo vaso, camadas curtas mais lentas, retração que acompanha a deslocação e uma estimativa do tempo com aceleração; ainda nada para vários materiais); a janela não foi compilada nem vista num ecrã; nada correu numa impressora real.
+**Verificação de honestidade - o que funciona mesmo hoje:** um espaço de trabalho Rust com oito bibliotecas e um programa de linha de comandos (`phoenix-3dp`) com 659 testes que correm num computador. Lê e verifica modelos STL, OBJ e 3MF, tem um catálogo de 120 perfis de impressora feitos com dados públicos (nenhum testado numa máquina), escreve G-code para os dialetos Marlin, Klipper, RepRapFirmware e Bambu com limites de temperatura que recusam um valor em vez de o cortar, e comanda impressoras Moonraker e OctoPrint e o servidor EH3D, mas apenas contra simuladores (em memória e num socket deste computador). Corta um modelo fechado em camadas planas com perímetros, preenchimento retilíneo e peles sólidas (um fatiador pequeno com preenchimento em grelha e giroide, pontes, suportes simples, costuras, largura variável, elevação nas deslocações, skirt, brim ou raft, modo vaso, camadas curtas mais lentas, retração que acompanha a deslocação e uma estimativa do tempo com aceleração; ainda nada para vários materiais); a janela não foi compilada nem vista num ecrã; nada correu numa impressora real.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Versão | `0.0.7` |
 | Maturidade | Funcional |
-| Testes | 650 |
+| Testes | 659 |
 | Tecnologias | Rust |
 | Em hardware real | Por testar: nada disto correu numa impressora, nem sequer numa Bambu Lab A1 ou numa P1S. |
 
@@ -55,7 +55,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 | Ligação ao servidor | 🟠 | as definições da ligação e um cliente do plugin de impressoras do servidor sobre o cliente comum da suite (início de sessão, renovação, novas tentativas, erros em oito línguas), testado contra um servidor em memória; nunca contra o servidor real. |
 | Fatiador | 🟡 | camadas planas de uma malha fechada, perímetros, preenchimento retilíneo, em grelha ou giroide, peles sólidas, pontes, suportes simples, costuras, largura variável, G-code por dialeto, uma pré-visualização por camadas como dados e uma estimativa do tempo com aceleração; verificado com propriedades sobre formas de semente fixa (o plástico depositado é o volume da peça, nada sai da mesa, nenhuma temperatura ultrapassa um limite); nenhuma impressão saiu dele numa impressora. |
 | Linha de comandos | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) executa as funções das bibliotecas e imprime o resultado; cada erro volta como mensagem e código de saída diferente de zero. |
-| Testes | 🟡 | 650 testes passam (`cargo test --workspace`), com casos normais, casos-limite, entradas danificadas e uma semente fixa onde há aleatoriedade. |
+| Testes | 🟡 | 659 testes passam (`cargo test --workspace`), com casos normais, casos-limite, entradas danificadas e uma semente fixa onde há aleatoriedade. |
 | Segurança | 🟡 | Rust seguro e simples (`forbid(unsafe_code)`): um limite é uma recusa e nunca um corte; o token nunca se imprime; nada entra em pânico com os ficheiros recebidos; sem revisão independente. |
 | Janela | 🔴 | Os quatro separadores (Preparar, Pré-visualização, Dispositivo, Projeto) estão escritos com `--features gui`: listas de impressoras e filamentos com filtros, o plano por camadas com um cursor, a fila do servidor com um arranque que pede confirmação, uma paragem de emergência, atalhos alteráveis, um modo de imagem (`--shot`), uma vista 3D da mesa com as peças como sólidos sombreados, um painel de peças com orientar automaticamente e organizar, fatiagem em segundo plano com estimativas, limites de temperatura editáveis e um aspeto escuro e um claro; os painéis estão na moldura acoplável da suite (podem ser retirados, repostos, movidos, flutuar e recolher-se, com áreas de trabalho com nome guardadas no ficheiro de configuração e uma barra de menus); a lógica é testada sem ecrã, mas a janela ainda não foi compilada nem vista num ecrã. |
 | Hardware real | 🔴 | Por testar: nada disto correu numa impressora, nem sequer numa Bambu Lab A1 ou numa P1S. |
@@ -177,7 +177,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Testes
 
-O conjunto tem 650 testes (`cargo test --workspace`, executados em Windows e Linux na CI), com semente fixa onde há aleatoriedade. Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros cortados, lixo e cabeçalhos hostis nunca entram em pânico, e nenhuma temperatura de nenhuma impressora do catálogo ultrapassa o seu limite. A CI também executa `cargo fmt --all --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
+O conjunto tem 659 testes (`cargo test --workspace`, executados em Windows e Linux na CI), com semente fixa onde há aleatoriedade. Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros cortados, lixo e cabeçalhos hostis nunca entram em pânico, e nenhuma temperatura de nenhuma impressora do catálogo ultrapassa o seu limite. A CI também executa `cargo fmt --all --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilação e publicação
 
@@ -234,7 +234,8 @@ EH3D-PHOENIX-3DP/
 │   ├── examples.rs                              testes de que os ficheiros de examples/ funcionam com os comandos
 │   ├── fuzz.rs                                  testes de fuzzing com semente fixa: ficheiros cortados, danificados e hostis
 │   ├── readme.rs                                testes de que os README dizem a verdade: o número de testes e os comandos
-│   └── safety.rs                                testes de que nenhuma temperatura de nenhuma impressora do catálogo ultrapassa o seu limite
+│   ├── safety.rs                                testes de que nenhuma temperatura de nenhuma impressora do catálogo ultrapassa o seu limite
+│   └── reqs.rs                                  testes do registo de requisitos
 ├── examples/
 │   ├── cube-20mm.stl                            um cubo de 20 mm como STL de texto
 │   ├── cube-20mm.obj                            o mesmo cubo como OBJ
@@ -243,6 +244,9 @@ EH3D-PHOENIX-3DP/
 │   ├── job-safe.gcode                           um programa que respeita os limites desse perfil
 │   └── job-too-hot.gcode                        um programa que os ultrapassa em duas linhas
 ├── docs/
+│   ├── REQUIREMENTS.md                          o registo de requisitos: estado, evidência e teste de cada um
+│   ├── SCOPE.md                                 para que serve, o que não fará e o que nunca decide
+│   ├── STATUS.md                                o que existe, o que falta e o que continua em aberto
 │   ├── ARCHITECTURE.md                          o programa crate a crate
 │   ├── ROADMAP.md                               os nove passos da base a um programa completo
 │   ├── NOT_YET.md                               o que ainda não está feito e do que cada parte precisa
@@ -256,6 +260,7 @@ EH3D-PHOENIX-3DP/
 ├── Cargo.toml                                   o espaço de trabalho e os seus crates
 ├── rust-toolchain.toml                          a cadeia de ferramentas Rust fixada
 ├── CHANGELOG.md                                 o que mudou em cada versão
+├── AGENTS.md                                    as regras para quem altera o repositório
 ├── SECURITY.md SUPPORT.md                       como comunicar uma vulnerabilidade e onde perguntar
 └── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   como contribuir, o código de conduta e a licença
 ```
@@ -296,6 +301,11 @@ O README e os textos existem em inglês, espanhol, francês, italiano, alemão, 
 ## 📚 Documentação
 
 * [Registo de alterações](CHANGELOG.md)
+* [Âmbito](docs/SCOPE.md): para que serve o programa, o que não fará e o que nunca decide.
+* [Requisitos](docs/REQUIREMENTS.md): o registo das capacidades, o estado de cada uma e o teste que a mostra.
+* [Estado](docs/STATUS.md): o que existe, o que falta e o que continua em aberto.
+* [Ainda não](docs/NOT_YET.md): boas ideias que ficam fora desta versão.
+* [Regras para alterar o repositório](AGENTS.md): as regras para quem altera o repositório.
 * [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Arquitetura do programa, crate a crate
 * [docs/ROADMAP.md](docs/ROADMAP.md): Roteiro: os nove passos da base a um programa completo
 * [docs/NOT_YET.md](docs/NOT_YET.md): O que ainda não está feito e do que cada parte em falta precisa

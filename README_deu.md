@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.7-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-650-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-659-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** ein Rust-Workspace mit acht Bibliotheken und einem Kommandozeilenprogramm (`phoenix-3dp`) mit 650 Tests, die auf einem Computer laufen. Es liest und prüft STL-, OBJ- und 3MF-Modelle, enthält einen Katalog von 120 Druckerprofilen aus öffentlichen Daten (keines an einer Maschine getestet), schreibt G-Code für die Dialekte Marlin, Klipper, RepRapFirmware und Bambu mit Temperaturgrenzen, die einen Wert ablehnen, statt ihn zu kappen, und steuert Moonraker- und OctoPrint-Drucker sowie den EH3D-Server, aber nur gegen Simulatoren (im Speicher und an einem Socket dieses Computers). Es zerlegt ein geschlossenes Modell in ebene Schichten mit Perimetern, geradliniger Füllung und massiven Außenhäuten (ein kleiner Slicer mit Gitter- und Gyroid-Füllung, Brücken, einfachen Stützen, Nähten, variabler Breite, Anheben beim Verfahren, Skirt, Brim oder Raft, einem Vasenmodus, langsameren kurzen Schichten, einem Rückzug nach der Länge der Fahrt und einer Zeitschätzung mit Beschleunigung; für mehrere Materialien noch nichts); das Fenster wurde weder gebaut noch auf einem Bildschirm angesehen; nichts lief an einem echten Drucker.
+**Ehrlichkeitscheck - was heute wirklich läuft:** ein Rust-Workspace mit acht Bibliotheken und einem Kommandozeilenprogramm (`phoenix-3dp`) mit 659 Tests, die auf einem Computer laufen. Es liest und prüft STL-, OBJ- und 3MF-Modelle, enthält einen Katalog von 120 Druckerprofilen aus öffentlichen Daten (keines an einer Maschine getestet), schreibt G-Code für die Dialekte Marlin, Klipper, RepRapFirmware und Bambu mit Temperaturgrenzen, die einen Wert ablehnen, statt ihn zu kappen, und steuert Moonraker- und OctoPrint-Drucker sowie den EH3D-Server, aber nur gegen Simulatoren (im Speicher und an einem Socket dieses Computers). Es zerlegt ein geschlossenes Modell in ebene Schichten mit Perimetern, geradliniger Füllung und massiven Außenhäuten (ein kleiner Slicer mit Gitter- und Gyroid-Füllung, Brücken, einfachen Stützen, Nähten, variabler Breite, Anheben beim Verfahren, Skirt, Brim oder Raft, einem Vasenmodus, langsameren kurzen Schichten, einem Rückzug nach der Länge der Fahrt und einer Zeitschätzung mit Beschleunigung; für mehrere Materialien noch nichts); das Fenster wurde weder gebaut noch auf einem Bildschirm angesehen; nichts lief an einem echten Drucker.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Version | `0.0.7` |
 | Reifegrad | Funktionsfähig |
-| Tests | 650 |
+| Tests | 659 |
 | Technologie-Stack | Rust |
 | Auf echter Hardware | Nicht getestet: nichts davon lief an einem Drucker, nicht einmal an einem Bambu Lab A1 oder P1S. |
 
@@ -55,7 +55,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 | Serververbindung | 🟠 | die Einstellungen der Verbindung und ein Client des Druckerplugins des Servers über den gemeinsamen Client der Suite (Anmeldung, Erneuerung, Wiederholungen, Fehler in acht Sprachen), gegen einen Server im Speicher getestet; nie gegen den echten Server. |
 | Slicer | 🟡 | ebene Schichten eines geschlossenen Netzes, Perimeter, geradlinige, Gitter- oder Gyroid-Füllung, massive Außenhäute, Brücken, einfache Stützen, Nähte, variable Breite, G-Code je Dialekt, eine Vorschau nach Schichten als Daten und eine Zeitschätzung mit Beschleunigung; mit Eigenschaftstests an Formen aus festem Seed geprüft (das abgelegte Material entspricht dem Volumen des Teils, nichts verlässt das Bett, keine Temperatur überschreitet eine Grenze); noch kein Druck daraus auf einem Drucker. |
 | Kommandozeile | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) führt die Funktionen der Bibliotheken aus und gibt das Ergebnis aus; jeder Fehler kommt als Meldung und mit einem Exit-Code ungleich null zurück. |
-| Tests | 🟡 | 650 Tests bestehen (`cargo test --workspace`), mit Normalfällen, Grenzfällen, beschädigten Eingaben und festem Seed, wo Zufall im Spiel ist. |
+| Tests | 🟡 | 659 Tests bestehen (`cargo test --workspace`), mit Normalfällen, Grenzfällen, beschädigten Eingaben und festem Seed, wo Zufall im Spiel ist. |
 | Sicherheit | 🟡 | Schlichtes sicheres Rust (`forbid(unsafe_code)`): eine Grenze ist eine Ablehnung und nie eine Kappung; das Token wird nie ausgegeben; nichts gerät bei den Dateien in Panik; keine unabhängige Prüfung. |
 | Fenster | 🔴 | Die vier Reiter (Vorbereiten, Vorschau, Gerät, Projekt) sind mit `--features gui` geschrieben: Listen von Druckern und Filamenten mit Filtern, der Plan nach Schichten mit Schieberegler, die Warteschlange des Servers mit einem Start, der eine Bestätigung braucht, ein Not-Halt, änderbare Tastenkürzel, ein Bildmodus (`--shot`), eine 3D-Ansicht des Druckbetts mit schattierten Teilen, ein Teilebereich mit automatischem Ausrichten und Anordnen, Slicen im Hintergrund mit Schätzungen, bearbeitbare Temperaturgrenzen und ein dunkles und ein helles Aussehen; die Bereiche sitzen im andockbaren Rahmen der Suite (sie lassen sich entfernen, zurückholen, verschieben, schweben lassen und einklappen, mit benannten Arbeitsbereichen, die in der Einstellungsdatei bleiben, und einer Menüleiste); die Logik wird ohne Bildschirm getestet, aber das Fenster wurde noch nicht gebaut oder auf einem Bildschirm angesehen. |
 | Echte Hardware | 🔴 | Nicht getestet: nichts davon lief an einem Drucker, nicht einmal an einem Bambu Lab A1 oder P1S. |
@@ -177,7 +177,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Tests
 
-Die Suite hat 650 Tests (`cargo test --workspace`, in der CI unter Windows und Linux ausgeführt), mit festem Seed, wo Zufall im Spiel ist. Sie prüfen die Normalfälle, die Grenzfälle und beschädigte Eingaben: abgeschnittene Dateien, Müll und feindliche Header lösen nie eine Panik aus, und keine Temperatur eines Druckers des Katalogs überschreitet ihre Grenze. Die CI führt außerdem `cargo fmt --all --check`, `cargo clippy` mit Warnungen als Fehler und `python -I tools/ci_validate.py` aus.
+Die Suite hat 659 Tests (`cargo test --workspace`, in der CI unter Windows und Linux ausgeführt), mit festem Seed, wo Zufall im Spiel ist. Sie prüfen die Normalfälle, die Grenzfälle und beschädigte Eingaben: abgeschnittene Dateien, Müll und feindliche Header lösen nie eine Panik aus, und keine Temperatur eines Druckers des Katalogs überschreitet ihre Grenze. Die CI führt außerdem `cargo fmt --all --check`, `cargo clippy` mit Warnungen als Fehler und `python -I tools/ci_validate.py` aus.
 
 ## 🏗️ Build und Veröffentlichung
 
@@ -234,7 +234,8 @@ EH3D-PHOENIX-3DP/
 │   ├── examples.rs                              Tests, dass die Dateien in examples/ mit den Befehlen funktionieren
 │   ├── fuzz.rs                                  Fuzz-Tests mit festem Seed: abgeschnittene, beschädigte und feindliche Dateien
 │   ├── readme.rs                                Tests, dass die READMEs die Wahrheit sagen: Zahl der Tests und Befehle
-│   └── safety.rs                                Tests, dass keine Temperatur eines Druckers des Katalogs ihre Grenze überschreitet
+│   ├── safety.rs                                Tests, dass keine Temperatur eines Druckers des Katalogs ihre Grenze überschreitet
+│   └── reqs.rs                                  Tests des Anforderungsregisters
 ├── examples/
 │   ├── cube-20mm.stl                            ein 20-mm-Würfel als Text-STL
 │   ├── cube-20mm.obj                            derselbe Würfel als OBJ
@@ -243,6 +244,9 @@ EH3D-PHOENIX-3DP/
 │   ├── job-safe.gcode                           ein Programm, das die Grenzen dieses Profils einhält
 │   └── job-too-hot.gcode                        ein Programm, das sie in zwei Zeilen überschreitet
 ├── docs/
+│   ├── REQUIREMENTS.md                          das Register der Anforderungen: Stand, Nachweis und Test jeder einzelnen
+│   ├── SCOPE.md                                 wofür es da ist, was es nicht tut und was es nie entscheidet
+│   ├── STATUS.md                                was es gibt, was fehlt und was offen ist
 │   ├── ARCHITECTURE.md                          das Programm Crate für Crate
 │   ├── ROADMAP.md                               die neun Schritte von der Basis zum vollständigen Programm
 │   ├── NOT_YET.md                               was noch nicht gemacht ist und was jeder Teil braucht
@@ -256,6 +260,7 @@ EH3D-PHOENIX-3DP/
 ├── Cargo.toml                                   der Workspace und seine Crates
 ├── rust-toolchain.toml                          die festgelegte Rust-Toolchain
 ├── CHANGELOG.md                                 was sich in jeder Version geändert hat
+├── AGENTS.md                                    die Regeln für alle, die das Repository ändern
 ├── SECURITY.md SUPPORT.md                       wie man eine Schwachstelle meldet und wo man fragt
 └── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   wie man beiträgt, der Verhaltenskodex und die Lizenz
 ```
@@ -296,6 +301,11 @@ README und Texte gibt es auf Englisch, Spanisch, Französisch, Italienisch, Deut
 ## 📚 Dokumentation
 
 * [Änderungsprotokoll](CHANGELOG.md)
+* [Umfang](docs/SCOPE.md): wofür das Programm da ist, was es nicht tut und was es nie entscheidet.
+* [Anforderungen](docs/REQUIREMENTS.md): das Register der Fähigkeiten, der Stand jeder einzelnen und der Test, der sie zeigt.
+* [Stand](docs/STATUS.md): was es gibt, was fehlt und was noch offen ist.
+* [Noch nicht](docs/NOT_YET.md): gute Ideen, die in dieser Version fehlen.
+* [Regeln für Änderungen am Repository](AGENTS.md): die Regeln für alle, die das Repository ändern.
 * [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Architektur des Programms, Crate für Crate
 * [docs/ROADMAP.md](docs/ROADMAP.md): Roadmap: die neun Schritte von der Basis zum vollständigen Programm
 * [docs/NOT_YET.md](docs/NOT_YET.md): Was noch nicht gemacht ist und was jeder fehlende Teil braucht

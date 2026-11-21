@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.7-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-650-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-659-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Honesty check - what actually runs today:** a Rust workspace of eight libraries and a command line program (`phoenix-3dp`) with 650 tests that run on a computer. It reads STL, OBJ and 3MF models and checks them, holds a catalog of 120 printer profiles built from public data (none of them tried on a machine), writes G-code for the Marlin, Klipper, RepRapFirmware and Bambu dialects with temperature limits that refuse a value instead of cutting it down, and drives Moonraker and OctoPrint printers and the EH3D server, but only against simulators (in memory, and on a socket of this computer). It slices a closed model into flat layers with perimeters, a rectilinear infill and solid skins (a small slicer with grid and gyroid infill, bridges, plain supports, seams, variable width, a lift on travel, a skirt, a brim or a raft, a vase mode, slower short layers, retraction that follows the travel and an estimate of the time with acceleration; nothing for several materials yet); the window has not been built or looked at on a screen; nothing has run on a real printer.
+**Honesty check - what actually runs today:** a Rust workspace of eight libraries and a command line program (`phoenix-3dp`) with 659 tests that run on a computer. It reads STL, OBJ and 3MF models and checks them, holds a catalog of 120 printer profiles built from public data (none of them tried on a machine), writes G-code for the Marlin, Klipper, RepRapFirmware and Bambu dialects with temperature limits that refuse a value instead of cutting it down, and drives Moonraker and OctoPrint printers and the EH3D server, but only against simulators (in memory, and on a socket of this computer). It slices a closed model into flat layers with perimeters, a rectilinear infill and solid skins (a small slicer with grid and gyroid infill, bridges, plain supports, seams, variable width, a lift on travel, a skirt, a brim or a raft, a vase mode, slower short layers, retraction that follows the travel and an estimate of the time with acceleration; nothing for several materials yet); the window has not been built or looked at on a screen; nothing has run on a real printer.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Version | `0.0.7` |
 | Maturity | Functional |
-| Tests | 650 |
+| Tests | 659 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a printer, not even on a Bambu Lab A1 or a P1S. |
 
@@ -55,7 +55,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Server link | 🟠 | the settings of the link and a client of the printer plugin of the server over the common client of the suite (login, renewal, retries, errors in eight languages), tried against a server in memory; never against the real server. |
 | Slicer | 🟡 | flat layers of a closed mesh, perimeters, rectilinear, grid or gyroid infill, solid skins, bridges, plain supports, seams, variable width, G-code per dialect, a preview by layers as data and an estimate of the time with acceleration; checked with properties on shapes from a fixed seed (the plastic laid down is the volume of the part, nothing leaves the bed, no temperature goes past a limit); no print has come out of it on a printer. |
 | Command line | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) runs the functions of the libraries and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 650 tests pass (`cargo test --workspace`), with normal cases, edge cases, damaged input and a fixed seed wherever they are random. |
+| Tests | 🟡 | 659 tests pass (`cargo test --workspace`), with normal cases, edge cases, damaged input and a fixed seed wherever they are random. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): a limit is a refusal and never a trim; the token never prints; nothing panics on the files it is given; no independent review. |
 | Window | 🔴 | The four tabs (Prepare, Preview, Device, Project) are written with `--features gui`: lists of printers and filaments with filters, the plan by layers with a slider, the queue of the server with a start that needs a confirmation, an emergency stop, shortcuts that can be changed, a picture mode (`--shot`), a 3D view of the bed with the parts as shaded solids, a panel of the parts with auto-orient and arrange, slicing in the background with the estimates, temperature limits that can be edited and a dark and a light look; the panels sit in the docking frame of the suite (they can be taken away, put back, moved, floated and folded, with workspaces that have names, kept in the settings file, and a menu bar); the logic is tested without a screen, but the window has not been built or looked at on a screen yet. |
 | Real hardware | 🔴 | Not tried: nothing here has run on a printer, not even on a Bambu Lab A1 or a P1S. |
@@ -177,7 +177,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Testing
 
-The suite has 650 tests (`cargo test --workspace`, run on Windows and Linux in the CI), with a fixed seed wherever they are random. They check the normal cases, the edge cases and damaged input: cut files, garbage and hostile headers never panic, and no temperature of any printer of the catalog goes past its limit. The CI also runs `cargo fmt --all --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 659 tests (`cargo test --workspace`, run on Windows and Linux in the CI), with a fixed seed wherever they are random. They check the normal cases, the edge cases and damaged input: cut files, garbage and hostile headers never panic, and no temperature of any printer of the catalog goes past its limit. The CI also runs `cargo fmt --all --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 
@@ -234,7 +234,8 @@ EH3D-PHOENIX-3DP/
 │   ├── examples.rs                              tests that the files of examples/ work with the commands
 │   ├── fuzz.rs                                  fuzz tests with a fixed seed: cut, damaged and hostile files
 │   ├── readme.rs                                tests that the READMEs tell the truth: the number of tests and the commands
-│   └── safety.rs                                tests that no temperature of any printer of the catalog goes past its limit
+│   ├── safety.rs                                tests that no temperature of any printer of the catalog goes past its limit
+│   └── reqs.rs                                  tests of the register of requirements
 ├── examples/
 │   ├── cube-20mm.stl                            a 20 mm cube as a text STL
 │   ├── cube-20mm.obj                            the same cube as an OBJ
@@ -243,6 +244,9 @@ EH3D-PHOENIX-3DP/
 │   ├── job-safe.gcode                           a program that keeps to the limits of that profile
 │   └── job-too-hot.gcode                        a program that goes past them on two lines
 ├── docs/
+│   ├── REQUIREMENTS.md                          the register of requirements: state, evidence and the test of each
+│   ├── SCOPE.md                                 what the program is for, what it will not do and what it never decides
+│   ├── STATUS.md                                what exists, what is missing and what is still open
 │   ├── ARCHITECTURE.md                          the program crate by crate
 │   ├── ROADMAP.md                               the nine steps from the base to a complete program
 │   ├── NOT_YET.md                               what is not done yet and what each part needs
@@ -256,6 +260,7 @@ EH3D-PHOENIX-3DP/
 ├── Cargo.toml                                   the workspace and its crates
 ├── rust-toolchain.toml                          the pinned Rust toolchain
 ├── CHANGELOG.md                                 what changed in each version
+├── AGENTS.md                                    the rules for anyone who changes the repository
 ├── SECURITY.md SUPPORT.md                       how to report a vulnerability and where to ask
 └── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   how to contribute, the code of conduct and the licence
 ```
@@ -296,6 +301,11 @@ README and texts exist in English, Spanish, French, Italian, German, Chinese, Ja
 ## 📚 Documentation
 
 * [Changelog](CHANGELOG.md)
+* [Scope](docs/SCOPE.md): what the program is for, what it will not do and what it never decides.
+* [Requirements](docs/REQUIREMENTS.md): the register of capabilities, the state of each and the test that shows it.
+* [Status](docs/STATUS.md): what exists, what is missing and what is still open.
+* [Not yet](docs/NOT_YET.md): good ideas that are left out of this version.
+* [Rules for changing the repository](AGENTS.md): the rules for anyone who changes the repository.
 * [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Architecture of the program, crate by crate
 * [docs/ROADMAP.md](docs/ROADMAP.md): Roadmap: the nine steps from the base to a complete program
 * [docs/NOT_YET.md](docs/NOT_YET.md): What is not done yet, and what each missing part needs

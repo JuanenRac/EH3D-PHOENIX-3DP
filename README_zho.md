@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.7-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-650-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-659-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**诚实检查 - 今天真正能运行的内容：** 一个由八个库和一个命令行程序（`phoenix-3dp`）组成的 Rust 工作区，带有 650 个可在电脑上运行的测试。它读取并检查 STL、OBJ 和 3MF 模型，包含一个由公开数据建立的 120 个打印机配置的目录（没有一个在机器上试过），为 Marlin、Klipper、RepRapFirmware 和 Bambu 方言写出 G 代码，温度上限会拒绝超限的值而不是截断它，并能操作 Moonraker 和 OctoPrint 打印机以及 EH3D 服务器，但仅限模拟器（内存中的，以及本机的套接字）。它能把封闭模型切成平整的层，生成外壁、直线填充和实心表层（一个小型切片器，有网格和螺旋体填充、桥接、简易支撑、接缝、可变线宽、移动时抬升、裙边/帽檐/筏板、花瓶模式、短层降速、随移动距离变化的回抽，以及带加速度的时间估算；尚无多材料功能）；窗口尚未构建，也没有在屏幕上看过；没有任何内容在真实打印机上运行过。
+**诚实检查 - 今天真正能运行的内容：** 一个由八个库和一个命令行程序（`phoenix-3dp`）组成的 Rust 工作区，带有 659 个可在电脑上运行的测试。它读取并检查 STL、OBJ 和 3MF 模型，包含一个由公开数据建立的 120 个打印机配置的目录（没有一个在机器上试过），为 Marlin、Klipper、RepRapFirmware 和 Bambu 方言写出 G 代码，温度上限会拒绝超限的值而不是截断它，并能操作 Moonraker 和 OctoPrint 打印机以及 EH3D 服务器，但仅限模拟器（内存中的，以及本机的套接字）。它能把封闭模型切成平整的层，生成外壁、直线填充和实心表层（一个小型切片器，有网格和螺旋体填充、桥接、简易支撑、接缝、可变线宽、移动时抬升、裙边/帽檐/筏板、花瓶模式、短层降速、随移动距离变化的回抽，以及带加速度的时间估算；尚无多材料功能）；窗口尚未构建，也没有在屏幕上看过；没有任何内容在真实打印机上运行过。
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | 版本 | `0.0.7` |
 | 成熟度 | 可用 |
-| 测试 | 650 |
+| 测试 | 659 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试验：这里的任何内容都没有在打印机上运行过，包括 Bambu Lab A1 和 P1S。 |
 
@@ -55,7 +55,7 @@
 | 服务器连接 | 🟠 | 连接的设置，以及建立在套件通用客户端（登录、续期、重试、八种语言的错误信息）之上的服务器打印机插件客户端，已针对内存中的服务器试过；从未对真实服务器试过。 |
 | 切片器 | 🟡 | 封闭网格的平整层、外壁、直线、网格或螺旋体填充、实心表层、桥接、简易支撑、接缝、可变线宽、按方言生成的 G 代码、以数据形式提供的逐层预览，以及带加速度的时间估算；已用固定种子形状上的性质测试检查（挤出的塑料量等于零件体积，没有任何内容超出热床，没有温度超过上限）；还没有用它在打印机上打印过。 |
 | 命令行 | 🟡 | `phoenix-3dp`（`printers`、`info`、`check-profile`、`convert`、`filaments`、`resins`、`slice`、`project`、`version`）运行库中的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 650 个测试通过（`cargo test --workspace`），包含正常情况、边界情况、损坏的输入，涉及随机的地方使用固定种子。 |
+| 测试 | 🟡 | 659 个测试通过（`cargo test --workspace`），包含正常情况、边界情况、损坏的输入，涉及随机的地方使用固定种子。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：上限是拒绝而不是截断；令牌绝不打印；收到的文件不会引发 panic；没有独立审查。 |
 | 窗口 | 🔴 | 四个标签页（准备、预览、设备、项目）已用 `--features gui` 写好：带筛选的打印机和耗材列表、带滑块的分层方案、需要确认才能开始的服务器队列、紧急停止、可修改的快捷键、图片模式（`--shot`）、以着色实体显示零件的热床 3D 视图、带自动摆放方向和排列的零件面板、带预估的后台切片、可编辑的温度上限以及深色和浅色外观；面板位于套件的可停靠框架中（可取下、放回、移动、浮动和折叠，带名称的工作区保存在设置文件中，另有菜单栏）；逻辑已在无屏幕下测试，但窗口尚未构建，也没有在屏幕上看过。 |
 | 真实硬件 | 🔴 | 未试验：这里的任何内容都没有在打印机上运行过，包括 Bambu Lab A1 和 P1S。 |
@@ -177,7 +177,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 测试
 
-测试套件有 650 个测试（`cargo test --workspace`，CI 中在 Windows 和 Linux 上运行），涉及随机的地方使用固定种子。它们检查正常情况、边界情况和损坏的输入：被截断的文件、乱码和恶意文件头绝不会 panic，目录中任何打印机的温度都不会超过其上限。CI 还会运行 `cargo fmt --all --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
+测试套件有 659 个测试（`cargo test --workspace`，CI 中在 Windows 和 Linux 上运行），涉及随机的地方使用固定种子。它们检查正常情况、边界情况和损坏的输入：被截断的文件、乱码和恶意文件头绝不会 panic，目录中任何打印机的温度都不会超过其上限。CI 还会运行 `cargo fmt --all --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 
@@ -234,7 +234,8 @@ EH3D-PHOENIX-3DP/
 │   ├── examples.rs                              测试 examples/ 中的文件能配合命令使用
 │   ├── fuzz.rs                                  固定种子的模糊测试：截断、损坏和恶意文件
 │   ├── readme.rs                                测试 README 所述属实：测试数量和命令
-│   └── safety.rs                                测试目录中任何打印机的温度都不会超过其上限
+│   ├── safety.rs                                测试目录中任何打印机的温度都不会超过其上限
+│   └── reqs.rs                                  需求登记表的测试
 ├── examples/
 │   ├── cube-20mm.stl                            20 毫米立方体（文本 STL）
 │   ├── cube-20mm.obj                            同一个立方体（OBJ）
@@ -243,6 +244,9 @@ EH3D-PHOENIX-3DP/
 │   ├── job-safe.gcode                           遵守该配置上限的程序
 │   └── job-too-hot.gcode                        有两行超过上限的程序
 ├── docs/
+│   ├── REQUIREMENTS.md                          需求登记表：每项的状态、证据和测试
+│   ├── SCOPE.md                                 用途、不做什么以及永远不由它决定的事
+│   ├── STATUS.md                                已有的、缺少的和仍未决定的
 │   ├── ARCHITECTURE.md                          按 crate 说明程序
 │   ├── ROADMAP.md                               从基础到完整程序的九个步骤
 │   ├── NOT_YET.md                               尚未完成的内容及各部分的需求
@@ -256,6 +260,7 @@ EH3D-PHOENIX-3DP/
 ├── Cargo.toml                                   工作区及其 crate
 ├── rust-toolchain.toml                          固定的 Rust 工具链
 ├── CHANGELOG.md                                 每个版本的变更
+├── AGENTS.md                                    修改本仓库的人需要遵守的规则
 ├── SECURITY.md SUPPORT.md                       如何报告漏洞以及在哪里提问
 └── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   如何贡献、行为准则和许可证
 ```
@@ -296,6 +301,11 @@ README 和文本提供英语、西班牙语、法语、意大利语、德语、�
 ## 📚 文档
 
 * [变更日志](CHANGELOG.md)
+* [范围](docs/SCOPE.md)： 程序的用途、不做什么，以及永远不由它决定的事。
+* [需求](docs/REQUIREMENTS.md)： 功能登记表、每项的状态以及证明它的测试。
+* [状态](docs/STATUS.md)： 已有的、缺少的和仍未决定的。
+* [暂不包含](docs/NOT_YET.md)： 本版本暂不包含的好想法。
+* [修改仓库的规则](AGENTS.md)： 修改本仓库的人需要遵守的规则。
 * [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): 程序架构，按 crate 说明
 * [docs/ROADMAP.md](docs/ROADMAP.md): 路线图：从基础到完整程序的九个步骤
 * [docs/NOT_YET.md](docs/NOT_YET.md): 尚未完成的内容，以及每个缺失部分的需求

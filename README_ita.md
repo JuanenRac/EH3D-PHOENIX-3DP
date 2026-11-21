@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.7-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-650-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-659-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Controllo di onestà - ciò che funziona davvero oggi:** un workspace Rust con otto librerie e un programma a riga di comando (`phoenix-3dp`) con 650 test che girano su un computer. Legge e controlla modelli STL, OBJ e 3MF, contiene un catalogo di 120 profili di stampante costruiti da dati pubblici (nessuno provato su una macchina), scrive G-code per i dialetti Marlin, Klipper, RepRapFirmware e Bambu con limiti di temperatura che rifiutano un valore invece di tagliarlo, e pilota stampanti Moonraker e OctoPrint e il server EH3D, ma solo contro simulatori (in memoria e su un socket di questo computer). Taglia un modello chiuso in strati piani con perimetri, riempimento rettilineo e pelli piene (un piccolo slicer con riempimento a griglia e giroide, ponti, supporti semplici, giunzioni, larghezza variabile, sollevamento negli spostamenti, skirt, brim o raft, modalità vaso, strati corti rallentati, retrazione che segue lo spostamento e una stima del tempo con accelerazione; ancora niente per più materiali); la finestra non è stata compilata né vista su uno schermo; nulla è stato eseguito su una stampante reale.
+**Controllo di onestà - ciò che funziona davvero oggi:** un workspace Rust con otto librerie e un programma a riga di comando (`phoenix-3dp`) con 659 test che girano su un computer. Legge e controlla modelli STL, OBJ e 3MF, contiene un catalogo di 120 profili di stampante costruiti da dati pubblici (nessuno provato su una macchina), scrive G-code per i dialetti Marlin, Klipper, RepRapFirmware e Bambu con limiti di temperatura che rifiutano un valore invece di tagliarlo, e pilota stampanti Moonraker e OctoPrint e il server EH3D, ma solo contro simulatori (in memoria e su un socket di questo computer). Taglia un modello chiuso in strati piani con perimetri, riempimento rettilineo e pelli piene (un piccolo slicer con riempimento a griglia e giroide, ponti, supporti semplici, giunzioni, larghezza variabile, sollevamento negli spostamenti, skirt, brim o raft, modalità vaso, strati corti rallentati, retrazione che segue lo spostamento e una stima del tempo con accelerazione; ancora niente per più materiali); la finestra non è stata compilata né vista su uno schermo; nulla è stato eseguito su una stampante reale.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Versione | `0.0.7` |
 | Maturità | Funzionale |
-| Test | 650 |
+| Test | 659 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di tutto ciò è stato eseguito su una stampante, nemmeno su una Bambu Lab A1 o una P1S. |
 
@@ -55,7 +55,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | Collegamento al server | 🟠 | le impostazioni del collegamento e un client del plugin delle stampanti del server sopra il client comune della suite (accesso, rinnovo, nuovi tentativi, errori in otto lingue), provato contro un server in memoria; mai contro il server reale. |
 | Slicer | 🟡 | strati piani di una mesh chiusa, perimetri, riempimento rettilineo, a griglia o giroide, pelli piene, ponti, supporti semplici, giunzioni, larghezza variabile, G-code per dialetto, un'anteprima per strati come dati e una stima del tempo con accelerazione; verificato con proprietà su forme a seme fisso (la plastica depositata è il volume del pezzo, nulla esce dal piatto, nessuna temperatura supera un limite); nessuna stampa ne è uscita su una stampante. |
 | Riga di comando | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) esegue le funzioni delle librerie e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 650 test passano (`cargo test --workspace`), con casi normali, casi limite, input danneggiati e un seme fisso dove c'è casualità. |
+| Test | 🟡 | 659 test passano (`cargo test --workspace`), con casi normali, casi limite, input danneggiati e un seme fisso dove c'è casualità. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): un limite è un rifiuto e mai un taglio; il token non si stampa mai; nulla va in panico con i file ricevuti; nessuna revisione indipendente. |
 | Finestra | 🔴 | Le quattro schede (Prepara, Anteprima, Dispositivo, Progetto) sono scritte con `--features gui`: elenchi di stampanti e filamenti con filtri, il piano per strati con un cursore, la coda del server con un avvio che chiede conferma, un arresto di emergenza, scorciatoie modificabili, una modalità immagine (`--shot`), una vista 3D del piano con i pezzi come solidi ombreggiati, un pannello dei pezzi con orienta in automatico e disponi, elaborazione in background con stime, limiti di temperatura modificabili e un aspetto scuro e uno chiaro; i pannelli stanno nel telaio ancorabile della suite (si possono togliere, rimettere, spostare, far fluttuare e ripiegare, con aree di lavoro con nome conservate nel file delle impostazioni e una barra dei menu); la logica è testata senza schermo, ma la finestra non è ancora stata compilata né vista su uno schermo. |
 | Hardware reale | 🔴 | Non provato: nulla di tutto ciò è stato eseguito su una stampante, nemmeno su una Bambu Lab A1 o una P1S. |
@@ -177,7 +177,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Test
 
-La suite ha 650 test (`cargo test --workspace`, eseguiti su Windows e Linux nella CI), con seme fisso dove c'è casualità. Verificano i casi normali, i casi limite e gli input danneggiati: file tagliati, rumore e intestazioni ostili non vanno mai in panico, e nessuna temperatura di nessuna stampante del catalogo supera il suo limite. La CI esegue anche `cargo fmt --all --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 659 test (`cargo test --workspace`, eseguiti su Windows e Linux nella CI), con seme fisso dove c'è casualità. Verificano i casi normali, i casi limite e gli input danneggiati: file tagliati, rumore e intestazioni ostili non vanno mai in panico, e nessuna temperatura di nessuna stampante del catalogo supera il suo limite. La CI esegue anche `cargo fmt --all --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 
@@ -234,7 +234,8 @@ EH3D-PHOENIX-3DP/
 │   ├── examples.rs                              test che i file di examples/ funzionino con i comandi
 │   ├── fuzz.rs                                  test di fuzzing con seme fisso: file tagliati, danneggiati e ostili
 │   ├── readme.rs                                test che i README dicano la verità: il numero di test e i comandi
-│   └── safety.rs                                test che nessuna temperatura di nessuna stampante del catalogo superi il suo limite
+│   ├── safety.rs                                test che nessuna temperatura di nessuna stampante del catalogo superi il suo limite
+│   └── reqs.rs                                  test del registro dei requisiti
 ├── examples/
 │   ├── cube-20mm.stl                            un cubo da 20 mm come STL di testo
 │   ├── cube-20mm.obj                            lo stesso cubo come OBJ
@@ -243,6 +244,9 @@ EH3D-PHOENIX-3DP/
 │   ├── job-safe.gcode                           un programma che rispetta i limiti di quel profilo
 │   └── job-too-hot.gcode                        un programma che li supera su due righe
 ├── docs/
+│   ├── REQUIREMENTS.md                          il registro dei requisiti: stato, evidenza e test di ciascuno
+│   ├── SCOPE.md                                 a cosa serve, cosa non farà e cosa non decide mai
+│   ├── STATUS.md                                cosa esiste, cosa manca e cosa è ancora aperto
 │   ├── ARCHITECTURE.md                          il programma crate per crate
 │   ├── ROADMAP.md                               i nove passi dalla base a un programma completo
 │   ├── NOT_YET.md                               cosa non è ancora fatto e di cosa ha bisogno ogni parte
@@ -256,6 +260,7 @@ EH3D-PHOENIX-3DP/
 ├── Cargo.toml                                   il workspace e i suoi crate
 ├── rust-toolchain.toml                          la toolchain Rust fissata
 ├── CHANGELOG.md                                 cosa è cambiato in ogni versione
+├── AGENTS.md                                    le regole per chi modifica il repository
 ├── SECURITY.md SUPPORT.md                       come segnalare una vulnerabilità e dove chiedere
 └── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   come contribuire, il codice di condotta e la licenza
 ```
@@ -296,6 +301,11 @@ Il README e i testi esistono in inglese, spagnolo, francese, italiano, tedesco, 
 ## 📚 Documentazione
 
 * [Registro delle modifiche](CHANGELOG.md)
+* [Ambito](docs/SCOPE.md): a cosa serve il programma, cosa non farà e cosa non decide mai.
+* [Requisiti](docs/REQUIREMENTS.md): il registro delle capacità, lo stato di ciascuna e il test che la mostra.
+* [Stato](docs/STATUS.md): cosa esiste, cosa manca e cosa è ancora aperto.
+* [Non ancora](docs/NOT_YET.md): buone idee lasciate fuori da questa versione.
+* [Regole per modificare il repository](AGENTS.md): le regole per chi modifica il repository.
 * [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Architettura del programma, crate per crate
 * [docs/ROADMAP.md](docs/ROADMAP.md): Roadmap: i nove passi dalla base a un programma completo
 * [docs/NOT_YET.md](docs/NOT_YET.md): Cosa non è ancora fatto e di cosa ha bisogno ogni parte mancante

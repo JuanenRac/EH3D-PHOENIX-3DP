@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.7-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-650-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-659-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Contrôle d'honnêteté - ce qui fonctionne vraiment aujourd'hui :** un espace de travail Rust de huit bibliothèques et un programme en ligne de commande (`phoenix-3dp`) avec 650 tests qui s'exécutent sur un ordinateur. Il lit et vérifie des modèles STL, OBJ et 3MF, contient un catalogue de 120 profils d'imprimante construits à partir de données publiques (aucun essayé sur une machine), écrit du G-code pour les dialectes Marlin, Klipper, RepRapFirmware et Bambu avec des limites de température qui refusent une valeur au lieu de la rogner, et pilote des imprimantes Moonraker et OctoPrint et le serveur EH3D, mais seulement contre des simulateurs (en mémoire et sur un socket de cet ordinateur). Il découpe un modèle fermé en couches planes avec des périmètres, un remplissage rectiligne et des peaux pleines (un petit trancheur avec remplissage en grille et en gyroïde, ponts, supports simples, coutures, largeur variable, levée en déplacement, jupe, bordure ou radeau, mode vase, couches courtes ralenties, rétraction qui suit le déplacement et une estimation du temps avec accélération ; encore rien pour plusieurs matériaux) ; la fenêtre n'a pas été compilée ni vue sur un écran ; rien n'a tourné sur une vraie imprimante.
+**Contrôle d'honnêteté - ce qui fonctionne vraiment aujourd'hui :** un espace de travail Rust de huit bibliothèques et un programme en ligne de commande (`phoenix-3dp`) avec 659 tests qui s'exécutent sur un ordinateur. Il lit et vérifie des modèles STL, OBJ et 3MF, contient un catalogue de 120 profils d'imprimante construits à partir de données publiques (aucun essayé sur une machine), écrit du G-code pour les dialectes Marlin, Klipper, RepRapFirmware et Bambu avec des limites de température qui refusent une valeur au lieu de la rogner, et pilote des imprimantes Moonraker et OctoPrint et le serveur EH3D, mais seulement contre des simulateurs (en mémoire et sur un socket de cet ordinateur). Il découpe un modèle fermé en couches planes avec des périmètres, un remplissage rectiligne et des peaux pleines (un petit trancheur avec remplissage en grille et en gyroïde, ponts, supports simples, coutures, largeur variable, levée en déplacement, jupe, bordure ou radeau, mode vase, couches courtes ralenties, rétraction qui suit le déplacement et une estimation du temps avec accélération ; encore rien pour plusieurs matériaux) ; la fenêtre n'a pas été compilée ni vue sur un écran ; rien n'a tourné sur une vraie imprimante.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Version | `0.0.7` |
 | Maturité | Fonctionnel |
-| Tests | 650 |
+| Tests | 659 |
 | Pile technique | Rust |
 | Sur du matériel réel | Pas essayé : rien de tout cela n'a tourné sur une imprimante, pas même sur une Bambu Lab A1 ou une P1S. |
 
@@ -55,7 +55,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 | Liaison avec le serveur | 🟠 | les réglages de la liaison et un client du greffon d'imprimantes du serveur au-dessus du client commun de la suite (connexion, renouvellement, nouvelles tentatives, erreurs en huit langues), essayé contre un serveur en mémoire ; jamais contre le vrai serveur. |
 | Trancheur | 🟡 | couches planes d'un maillage fermé, périmètres, remplissage rectiligne, en grille ou en gyroïde, peaux pleines, ponts, supports simples, coutures, largeur variable, G-code par dialecte, un aperçu par couches sous forme de données et une estimation du temps avec accélération ; vérifié par des propriétés sur des formes à graine fixe (le plastique déposé est le volume de la pièce, rien ne sort du plateau, aucune température ne dépasse une limite) ; aucune impression n'en est sortie sur une imprimante. |
 | Ligne de commande | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) exécute les fonctions des bibliothèques et affiche le résultat ; chaque erreur revient sous forme de message et d'un code de sortie non nul. |
-| Tests | 🟡 | 650 tests réussissent (`cargo test --workspace`), avec des cas normaux, des cas limites, des entrées abîmées et une graine fixe là où il y a du hasard. |
+| Tests | 🟡 | 659 tests réussissent (`cargo test --workspace`), avec des cas normaux, des cas limites, des entrées abîmées et une graine fixe là où il y a du hasard. |
 | Sécurité | 🟡 | Rust sûr et simple (`forbid(unsafe_code)`) : une limite est un refus et jamais une coupe ; le jeton ne s'affiche jamais ; rien ne panique sur les fichiers reçus ; pas de revue indépendante. |
 | Fenêtre | 🔴 | Les quatre onglets (Préparer, Aperçu, Appareil, Projet) sont écrits avec `--features gui` : listes d'imprimantes et de filaments avec filtres, le plan par couches avec un curseur, la file du serveur avec un démarrage qui demande une confirmation, un arrêt d'urgence, des raccourcis modifiables, un mode image (`--shot`), une vue 3D du plateau avec les pièces en volumes ombrés, un panneau de pièces avec orienter auto et disposer, la découpe en arrière-plan avec estimations, des limites de température modifiables et un aspect sombre et un aspect clair ; les panneaux sont dans le cadre ancrable de la suite (on peut les retirer, les remettre, les déplacer, les faire flotter et les replier, avec des espaces de travail nommés gardés dans le fichier de réglages et une barre de menus) ; la logique est testée sans écran, mais la fenêtre n'a pas encore été compilée ni vue sur un écran. |
 | Matériel réel | 🔴 | Pas essayé : rien de tout cela n'a tourné sur une imprimante, pas même sur une Bambu Lab A1 ou une P1S. |
@@ -177,7 +177,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Tests
 
-La suite compte 650 tests (`cargo test --workspace`, exécutés sous Windows et Linux dans la CI), avec une graine fixe là où il y a du hasard. Ils vérifient les cas normaux, les cas limites et les entrées abîmées : des fichiers coupés, du bruit et des en-têtes hostiles ne font jamais paniquer, et aucune température d'aucune imprimante du catalogue ne dépasse sa limite. La CI exécute aussi `cargo fmt --all --check`, `cargo clippy` avec les avertissements en erreurs et `python -I tools/ci_validate.py`.
+La suite compte 659 tests (`cargo test --workspace`, exécutés sous Windows et Linux dans la CI), avec une graine fixe là où il y a du hasard. Ils vérifient les cas normaux, les cas limites et les entrées abîmées : des fichiers coupés, du bruit et des en-têtes hostiles ne font jamais paniquer, et aucune température d'aucune imprimante du catalogue ne dépasse sa limite. La CI exécute aussi `cargo fmt --all --check`, `cargo clippy` avec les avertissements en erreurs et `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilation et publication
 
@@ -234,7 +234,8 @@ EH3D-PHOENIX-3DP/
 │   ├── examples.rs                              tests que les fichiers de examples/ fonctionnent avec les commandes
 │   ├── fuzz.rs                                  tests de fuzzing à graine fixe : fichiers coupés, abîmés et hostiles
 │   ├── readme.rs                                tests que les README disent la vérité : le nombre de tests et les commandes
-│   └── safety.rs                                tests qu'aucune température d'aucune imprimante du catalogue ne dépasse sa limite
+│   ├── safety.rs                                tests qu'aucune température d'aucune imprimante du catalogue ne dépasse sa limite
+│   └── reqs.rs                                  tests du registre des exigences
 ├── examples/
 │   ├── cube-20mm.stl                            un cube de 20 mm en STL texte
 │   ├── cube-20mm.obj                            le même cube en OBJ
@@ -243,6 +244,9 @@ EH3D-PHOENIX-3DP/
 │   ├── job-safe.gcode                           un programme qui respecte les limites de ce profil
 │   └── job-too-hot.gcode                        un programme qui les dépasse sur deux lignes
 ├── docs/
+│   ├── REQUIREMENTS.md                          le registre des exigences : état, preuve et test de chacune
+│   ├── SCOPE.md                                 à quoi il sert, ce qu'il ne fera pas et ce qu'il ne décide jamais
+│   ├── STATUS.md                                ce qui existe, ce qui manque et ce qui reste ouvert
 │   ├── ARCHITECTURE.md                          le programme crate par crate
 │   ├── ROADMAP.md                               les neuf étapes de la base à un programme complet
 │   ├── NOT_YET.md                               ce qui n'est pas encore fait et ce dont chaque partie a besoin
@@ -256,6 +260,7 @@ EH3D-PHOENIX-3DP/
 ├── Cargo.toml                                   l'espace de travail et ses crates
 ├── rust-toolchain.toml                          la chaîne d'outils Rust épinglée
 ├── CHANGELOG.md                                 ce qui a changé dans chaque version
+├── AGENTS.md                                    les règles pour qui modifie le dépôt
 ├── SECURITY.md SUPPORT.md                       comment signaler une vulnérabilité et où demander
 └── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   comment contribuer, le code de conduite et la licence
 ```
@@ -296,6 +301,11 @@ Le README et les textes existent en anglais, espagnol, français, italien, allem
 ## 📚 Documentation
 
 * [Journal des modifications](CHANGELOG.md)
+* [Périmètre](docs/SCOPE.md): à quoi sert le programme, ce qu'il ne fera pas et ce qu'il ne décide jamais.
+* [Exigences](docs/REQUIREMENTS.md): le registre des capacités, l'état de chacune et le test qui la montre.
+* [État](docs/STATUS.md): ce qui existe, ce qui manque et ce qui reste ouvert.
+* [Pas encore](docs/NOT_YET.md): de bonnes idées laissées de côté dans cette version.
+* [Règles pour modifier le dépôt](AGENTS.md): les règles pour qui modifie le dépôt.
 * [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Architecture du programme, crate par crate
 * [docs/ROADMAP.md](docs/ROADMAP.md): Feuille de route : les neuf étapes de la base à un programme complet
 * [docs/NOT_YET.md](docs/NOT_YET.md): Ce qui n'est pas encore fait et ce dont chaque partie manquante a besoin
