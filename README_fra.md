@@ -18,7 +18,7 @@
 
 ---
 
-**Contrôle d'honnêteté - ce qui fonctionne vraiment aujourd'hui :** un espace de travail Rust de huit bibliothèques et un programme en ligne de commande (`phoenix-3dp`) avec 659 tests qui s'exécutent sur un ordinateur. Il lit et vérifie des modèles STL, OBJ et 3MF, contient un catalogue de 120 profils d'imprimante construits à partir de données publiques (aucun essayé sur une machine), écrit du G-code pour les dialectes Marlin, Klipper, RepRapFirmware et Bambu avec des limites de température qui refusent une valeur au lieu de la rogner, et pilote des imprimantes Moonraker et OctoPrint et le serveur EH3D, mais seulement contre des simulateurs (en mémoire et sur un socket de cet ordinateur). Il découpe un modèle fermé en couches planes avec des périmètres, un remplissage rectiligne et des peaux pleines (un petit trancheur avec remplissage en grille et en gyroïde, ponts, supports simples, coutures, largeur variable, levée en déplacement, jupe, bordure ou radeau, mode vase, couches courtes ralenties, rétraction qui suit le déplacement et une estimation du temps avec accélération ; encore rien pour plusieurs matériaux) ; la fenêtre n'a pas été compilée ni vue sur un écran ; rien n'a tourné sur une vraie imprimante.
+**Contrôle d'honnêteté - ce qui fonctionne vraiment aujourd'hui :** un espace de travail Rust de huit bibliothèques et un programme en ligne de commande (`phoenix-3dp`) avec 659 tests qui s'exécutent sur un ordinateur. Il lit et vérifie des modèles STL, OBJ et 3MF, contient un catalogue de 120 profils d'imprimante construits à partir de données publiques (aucun essayé sur une machine), écrit du G-code pour les dialectes Marlin, Klipper, RepRapFirmware et Bambu avec des limites de température qui refusent une valeur au lieu de la rogner, et pilote des imprimantes Moonraker et OctoPrint et le serveur EH3D, mais seulement contre des simulateurs (en mémoire et sur un socket de cet ordinateur). Il découpe un modèle fermé en couches planes avec des périmètres, un remplissage rectiligne et des peaux pleines (un petit trancheur avec remplissage en grille et en gyroïde, ponts, supports simples, coutures, largeur variable, levée en déplacement, jupe, bordure ou radeau, mode vase, couches courtes ralenties, rétraction qui suit le déplacement et une estimation du temps avec accélération ; encore rien pour plusieurs matériaux) ; la fenêtre, le cadre ancrable de la suite avec cinq espaces de travail (compilée avec `--features gui`), n'a pas été vue sur un écran par une personne ; rien n'a tourné sur une vraie imprimante.
 
 ---
 
@@ -57,7 +57,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 | Ligne de commande | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) exécute les fonctions des bibliothèques et affiche le résultat ; chaque erreur revient sous forme de message et d'un code de sortie non nul. |
 | Tests | 🟡 | 659 tests réussissent (`cargo test --workspace`), avec des cas normaux, des cas limites, des entrées abîmées et une graine fixe là où il y a du hasard. |
 | Sécurité | 🟡 | Rust sûr et simple (`forbid(unsafe_code)`) : une limite est un refus et jamais une coupe ; le jeton ne s'affiche jamais ; rien ne panique sur les fichiers reçus ; pas de revue indépendante. |
-| Fenêtre | 🔴 | Les quatre onglets (Préparer, Aperçu, Appareil, Projet) sont écrits avec `--features gui` : listes d'imprimantes et de filaments avec filtres, le plan par couches avec un curseur, la file du serveur avec un démarrage qui demande une confirmation, un arrêt d'urgence, des raccourcis modifiables, un mode image (`--shot`), une vue 3D du plateau avec les pièces en volumes ombrés, un panneau de pièces avec orienter auto et disposer, la découpe en arrière-plan avec estimations, des limites de température modifiables et un aspect sombre et un aspect clair ; les panneaux sont dans le cadre ancrable de la suite (on peut les retirer, les remettre, les déplacer, les faire flotter et les replier, avec des espaces de travail nommés gardés dans le fichier de réglages et une barre de menus) ; la logique est testée sans écran, mais la fenêtre n'a pas encore été compilée ni vue sur un écran. |
+| Fenêtre | 🟠 | Écrite avec `--features gui` comme le cadre ancrable de la suite, avec cinq espaces de travail (Préparer, Réviser, Exécuter, Configurer et Compact) dont les panneaux peuvent être retirés, remis, déplacés, groupés en onglets, flottants et repliés, et une barre de menus : listes d'imprimantes et de filaments avec filtres, le plan par couches avec un curseur, la file du serveur avec un démarrage qui demande une confirmation, un arrêt d'urgence, des raccourcis modifiables, un mode image (`--shot`), une vue 3D du plateau avec les pièces en volumes ombrés, un panneau de pièces avec orienter auto et disposer, la découpe en arrière-plan avec estimations, des limites de température modifiables et un aspect sombre et un aspect clair ; la disposition est gardée dans le fichier de réglages ; la logique est testée sans écran et le README montre des dessins des espaces de travail faits à partir du modèle, mais les panneaux n'ont jamais été dessinés sur un écran et personne ne les a vus. |
 | Matériel réel | 🔴 | Pas essayé : rien de tout cela n'a tourné sur une imprimante, pas même sur une Bambu Lab A1 ou une P1S. |
 | Documentation | 🟡 | README en huit langues, le journal des modifications, le dossier `docs/` (architecture, feuille de route, ce qui n'est pas encore fait, le serveur) et les deux images dessinées depuis `docs/`. |
 
@@ -117,7 +117,7 @@ Schémas de la disposition d'usine de chaque espace de travail, faits à partir 
 * **Rien ne démarre seul :** les demandes à la file du serveur disent `auto_start: false` et demandent une confirmation ; le G-code brut est désactivé par défaut et, activé, passe ligne par ligne sous les mêmes limites.
 * **Un état pour tous les protocoles :** quinze états normalisés, températures, travail et alertes, avec le texte d'origine de l'imprimante à part, de sorte que le reste du programme parle une seule langue.
 * **Des simulateurs pour les tests :** chaque protocole a un simulateur en mémoire avec des pannes à la demande (pas de connexion, délai dépassé, 503), si bien que reprises, refus et arrêts sont testés sans réseau.
-* **Une fenêtre à la manière d'un trancheur :** onglets Préparer, Aperçu, Appareil et Projet ; une vue 3D du plateau avec les pièces en volumes ombrés ; un panneau pour l'imprimante, le filament et le procédé ; les chiffres de chaque pièce (placer, tourner, taille), orienter auto et disposer ; la découpe en arrière-plan avec les estimations en bas ; un aspect sombre et un aspect clair. Les panneaux sont dans le cadre ancrable de la suite : on peut les retirer, les remettre, les déplacer, les grouper en onglets, les faire flotter et les replier, les quatre onglets sont des espaces de travail (Préparer, Réviser, Exécuter, Configurer et Compact), la disposition est gardée dans le fichier de réglages et une barre de menus offre Fichier, Édition, Affichage, Outils, Fenêtre et Aide. La logique est testée sans écran ; la fenêtre elle-même n'a pas encore été vue.
+* **Une fenêtre à la manière d'un trancheur :** cinq espaces de travail (Préparer, Réviser, Exécuter, Configurer et Compact) dans le cadre ancrable de la suite ; des panneaux pour l'imprimante, le filament et le procédé ; une vue 3D du plateau avec les pièces en volumes ombrés ; les chiffres de chaque pièce (placer, tourner, taille), orienter auto et disposer ; la découpe en arrière-plan avec les estimations en bas ; un aspect sombre et un aspect clair. Les panneaux peuvent être retirés, remis, déplacés, groupés en onglets, flottants et repliés, la disposition est gardée dans le fichier de réglages et une barre de menus offre Fichier, Édition, Affichage, Outils, Fenêtre et Aide. La logique est testée sans écran ; la fenêtre elle-même n'a pas été vue sur un écran par une personne.
 * **Salle blanche et graphisme propre :** écrit à partir de protocoles publics, de manuels et de faits ; aucun code, texte, icône ni fichier de profil d'un autre trancheur ; chaque profil dit `verified = false` tant qu'il n'a pas été essayé.
 * **Huit langues :** les textes du programme et la documentation existent en anglais, espagnol, allemand, français, italien, japonais, chinois et portugais du Portugal.
 * **Pas de code `unsafe` :** `#![forbid(unsafe_code)]` dans chaque crate.
@@ -181,7 +181,7 @@ La suite compte 659 tests (`cargo test --workspace`, exécutés sous Windows et 
 
 ## 🏗️ Compilation et publication
 
-La version vit dans `Cargo.toml` et dans `eh3d.project.json` ; chaque version a son entrée dans [CHANGELOG.md](CHANGELOG.md). `build.bat` / `build.sh` compilent le programme, `test.bat` / `test.sh` lancent les tests et `run.bat` / `run.sh` l'exécutent avec un exemple. Les versions sont publiées sur GitHub. Aucune n'a encore été publiée.
+La version vit dans `Cargo.toml` et dans `eh3d.project.json` ; chaque version a son entrée dans [CHANGELOG.md](CHANGELOG.md). `build.bat` / `build.sh` compilent le programme, `test.bat` / `test.sh` lancent les tests et `run.bat` / `run.sh` l'exécutent avec un exemple. Les versions sont publiées sur GitHub avec des programmes prêts à l'emploi pour Windows (64 et 32 bits), Linux (64 bits) et macOS (Apple silicon et Intel) : chaque paquet, `phoenix-3dp-<version>-<système>.zip` ou `.tar.gz`, est fourni avec ses fichiers `.sha256` et `.sig`.
 
 ## 📂 Structure du dépôt
 
@@ -275,15 +275,16 @@ EH3D-PHOENIX-3DP/
 * Aucune imprimante n'a été connectée, pas même la Bambu Lab A1 ou la P1S ; chaque profil dit `verified = false`.
 * Le lecteur 3MF ne prend que le maillage (les composants et l'extension de production sont refusés) ; les projets d'autres programmes sont lus pour leurs objets, plateaux et réglages et jamais modifiés.
 * Les pilotes ont un transport HTTP simple, essayé seulement sur un socket de cet ordinateur et contre les simulateurs ; ni TLS ni push WebSocket ; Bambu LAN est une conception qui ne se connecte pas, et le cloud de Bambu n'en fait pas partie.
-* La fenêtre n'a pas été compilée ni vue sur un écran.
+* La fenêtre (cinq espaces de travail dans le cadre ancrable de la suite) n'a pas été vue sur un écran par une personne ; les images du README sont des dessins faits à partir de son modèle.
 
 **Ensuite**
 
-* H1 : géométrie des maillages et un visualiseur 3D propre.
+* H1 : le dessin du visualiseur 3D avec wgpu (son modèle existe) et la réparation des maillages.
 * H2 : un cube d'étalonnage imprimé sur une vraie machine (le remplissage en grille et en gyroïde, les coutures, la largeur variable, les ponts et les supports simples sont écrits et testés sur des formes à graine fixe).
-* H3 : l'éditeur de profils et la fenêtre de base.
-* H7 : les autres transports (push WebSocket, PrusaLink, Duet) et la liaison Bambu LAN.
-* H8 : l'essayer sur une Bambu Lab A1 et une P1S et marquer comme vérifiés les profils qui fonctionnent. Tout le plan est dans `docs/ROADMAP.md`.
+* H3 : l'éditeur de profils avec héritage et la synchronisation des profils avec le serveur.
+* H4 à H6 : le lissage, le reste des réglages de qualité, les supports en arbre et le remplissage avancé, et plusieurs matériaux.
+* H7 : les autres transports (push WebSocket, PrusaLink, Duet), la liaison Bambu LAN et le choix de son TLS.
+* H8 : des profils avec preuve de vraies machines (une Bambu Lab A1 et une P1S sont les premières prévues), des étalonnages guidés et une simulation des collisions. Tout le plan est dans `docs/ROADMAP.md`.
 
 ## 🌍 Langues
 
@@ -308,7 +309,6 @@ Le README et les textes existent en anglais, espagnol, français, italien, allem
 * [Règles pour modifier le dépôt](AGENTS.md): les règles pour qui modifie le dépôt.
 * [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Architecture du programme, crate par crate
 * [docs/ROADMAP.md](docs/ROADMAP.md): Feuille de route : les neuf étapes de la base à un programme complet
-* [docs/NOT_YET.md](docs/NOT_YET.md): Ce qui n'est pas encore fait et ce dont chaque partie manquante a besoin
 * [docs/SERVER.md](docs/SERVER.md): Comment le programme s'accorde avec le serveur EH3D
 * [docs/architecture.json](docs/architecture.json): Données des deux images
 

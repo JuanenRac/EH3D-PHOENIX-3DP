@@ -18,7 +18,7 @@
 
 ---
 
-**Comprobación de honestidad - lo que funciona hoy de verdad:** un espacio de trabajo Rust con ocho bibliotecas y un programa de línea de comandos (`phoenix-3dp`) con 659 pruebas que se ejecutan en un ordenador. Lee y comprueba modelos STL, OBJ y 3MF, tiene un catálogo de 120 perfiles de impresora hechos con datos públicos (ninguno probado en una máquina), escribe G-code para los dialectos Marlin, Klipper, RepRapFirmware y Bambu con límites de temperatura que rechazan un valor en vez de recortarlo, y maneja impresoras Moonraker y OctoPrint y el servidor EH3D, pero solo contra simuladores (en memoria y en un socket de este ordenador). Lamina un modelo cerrado en capas planas con perímetros, relleno rectilíneo y pieles sólidas (un laminador pequeño con relleno en rejilla y giroide, puentes, soportes sencillos, costuras, ancho variable, elevación al desplazarse, falda, borde o balsa, modo jarrón, capas cortas más lentas, retracción que sigue al desplazamiento y una estimación del tiempo con aceleración; todavía nada para varios materiales); la ventana no se ha compilado ni visto en una pantalla; nada se ha ejecutado en una impresora real.
+**Comprobación de honestidad - lo que funciona hoy de verdad:** un espacio de trabajo Rust con ocho bibliotecas y un programa de línea de comandos (`phoenix-3dp`) con 659 pruebas que se ejecutan en un ordenador. Lee y comprueba modelos STL, OBJ y 3MF, tiene un catálogo de 120 perfiles de impresora hechos con datos públicos (ninguno probado en una máquina), escribe G-code para los dialectos Marlin, Klipper, RepRapFirmware y Bambu con límites de temperatura que rechazan un valor en vez de recortarlo, y maneja impresoras Moonraker y OctoPrint y el servidor EH3D, pero solo contra simuladores (en memoria y en un socket de este ordenador). Lamina un modelo cerrado en capas planas con perímetros, relleno rectilíneo y pieles sólidas (un laminador pequeño con relleno en rejilla y giroide, puentes, soportes sencillos, costuras, ancho variable, elevación al desplazarse, falda, borde o balsa, modo jarrón, capas cortas más lentas, retracción que sigue al desplazamiento y una estimación del tiempo con aceleración; todavía nada para varios materiales); la ventana, el marco acoplable de la suite con cinco espacios de trabajo (se compila con `--features gui`), no la ha visto una persona en una pantalla; nada se ha ejecutado en una impresora real.
 
 ---
 
@@ -57,7 +57,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 | Línea de comandos | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) ejecuta las funciones de las bibliotecas e imprime el resultado; cada error vuelve como mensaje y un código de salida distinto de cero. |
 | Pruebas | 🟡 | 659 pruebas pasan (`cargo test --workspace`), con casos normales, casos límite, entradas dañadas y una semilla fija donde hay azar. |
 | Seguridad | 🟡 | Rust seguro y simple (`forbid(unsafe_code)`): un límite es un rechazo y nunca un recorte; el token nunca se imprime; nada entra en pánico con los ficheros que recibe; sin revisión independiente. |
-| Ventana | 🔴 | Las cuatro pestañas (Preparar, Vista previa, Dispositivo, Proyecto) están escritas con `--features gui`: listas de impresoras y filamentos con filtros, el plan por capas con un deslizador, la cola del servidor con un inicio que pide confirmación, una parada de emergencia, atajos configurables, un modo de imagen (`--shot`), una vista 3D de la cama con las piezas como sólidos sombreados, un panel de piezas con orientar solo y organizar, laminado en segundo plano con estimaciones, límites de temperatura editables y un aspecto oscuro y uno claro; los paneles están en el marco acoplable de la suite (se pueden quitar, poner, mover, flotar y plegar, con espacios de trabajo con nombre guardados en el fichero de ajustes y una barra de menús); la lógica se prueba sin pantalla, pero la ventana todavía no se ha compilado ni visto en una pantalla. |
+| Ventana | 🟠 | Escrita con `--features gui` como el marco acoplable de la suite, con cinco espacios de trabajo (Preparar, Revisar, Ejecutar, Configurar y Compacto) cuyos paneles se pueden quitar, poner, mover, agrupar en pestañas, flotar y plegar, y una barra de menús: listas de impresoras y filamentos con filtros, el plan por capas con un deslizador, la cola del servidor con un inicio que pide confirmación, una parada de emergencia, atajos configurables, un modo de imagen (`--shot`), una vista 3D de la cama con las piezas como sólidos sombreados, un panel de piezas con orientar solo y organizar, laminado en segundo plano con estimaciones, límites de temperatura editables y un aspecto oscuro y uno claro; la disposición se guarda en el fichero de ajustes; la lógica se prueba sin pantalla y el README muestra dibujos de los espacios de trabajo hechos desde el modelo, pero los paneles nunca se han dibujado en una pantalla y ninguna persona los ha visto. |
 | Hardware real | 🔴 | Sin probar: nada de esto se ha ejecutado en una impresora, ni siquiera en una Bambu Lab A1 o una P1S. |
 | Documentación | 🟡 | README en ocho idiomas, el registro de cambios, la carpeta `docs/` (arquitectura, hoja de ruta, lo que aún no está hecho, el servidor) y las dos imágenes dibujadas desde `docs/`. |
 
@@ -117,7 +117,7 @@ Dibujos de la disposición de fábrica de cada espacio de trabajo, hechos desde 
 * **Nada arranca solo:** las peticiones a la cola del servidor dicen `auto_start: false` y piden confirmación; el G-code directo está apagado por defecto y, encendido, va línea a línea con los mismos límites.
 * **Un estado para todos los protocolos:** quince estados normalizados, temperaturas, trabajo y alertas, con el texto original de la impresora aparte, de modo que el resto del programa habla un solo idioma.
 * **Simuladores para las pruebas:** cada protocolo tiene un simulador en memoria con fallos a demanda (sin conexión, tiempo agotado, 503), así que reintentos, rechazos y paradas se prueban sin red.
-* **Una ventana al estilo de un laminador:** pestañas Preparar, Vista previa, Dispositivo y Proyecto; una vista 3D de la cama con las piezas como sólidos sombreados; un panel de impresora, filamento y proceso; los números de cada pieza (colocar, girar, tamaño), orientar solo y organizar; laminado en segundo plano con las estimaciones abajo; un aspecto oscuro y uno claro. Los paneles están en el marco acoplable de la suite: se pueden quitar, poner, mover, agrupar en pestañas, flotar y plegar, las cuatro pestañas son espacios de trabajo (Preparar, Revisar, Ejecutar, Configurar y Compacto), la disposición se guarda en el fichero de ajustes y una barra de menús trae Archivo, Editar, Ver, Herramientas, Ventana y Ayuda. La lógica se prueba sin pantalla; la ventana en sí todavía no se ha visto.
+* **Una ventana al estilo de un laminador:** cinco espacios de trabajo (Preparar, Revisar, Ejecutar, Configurar y Compacto) en el marco acoplable de la suite; paneles de impresora, filamento y proceso; una vista 3D de la cama con las piezas como sólidos sombreados; los números de cada pieza (colocar, girar, tamaño), orientar solo y organizar; laminado en segundo plano con las estimaciones abajo; un aspecto oscuro y uno claro. Los paneles se pueden quitar, poner, mover, agrupar en pestañas, flotar y plegar, la disposición se guarda en el fichero de ajustes y una barra de menús trae Archivo, Editar, Ver, Herramientas, Ventana y Ayuda. La lógica se prueba sin pantalla; la ventana en sí no la ha visto una persona en una pantalla.
 * **Sala limpia y arte propio:** escrito con protocolos públicos, manuales y hechos; sin código, textos, iconos ni ficheros de perfil de otro laminador; cada perfil dice `verified = false` hasta que se prueba.
 * **Ocho idiomas:** los textos del programa y la documentación existen en inglés, español, alemán, francés, italiano, japonés, chino y portugués de Portugal.
 * **Sin código `unsafe`:** `#![forbid(unsafe_code)]` en cada crate.
@@ -181,7 +181,7 @@ La suite tiene 659 pruebas (`cargo test --workspace`, ejecutadas en Windows y Li
 
 ## 🏗️ Compilación y publicación
 
-La versión vive en `Cargo.toml` y en `eh3d.project.json`; cada versión tiene su entrada en [CHANGELOG.md](CHANGELOG.md). `build.bat` / `build.sh` compilan el programa, `test.bat` / `test.sh` ejecutan las pruebas y `run.bat` / `run.sh` lo ejecutan con una muestra. Las versiones se publican en GitHub. Todavía no se ha publicado ninguna.
+La versión vive en `Cargo.toml` y en `eh3d.project.json`; cada versión tiene su entrada en [CHANGELOG.md](CHANGELOG.md). `build.bat` / `build.sh` compilan el programa, `test.bat` / `test.sh` ejecutan las pruebas y `run.bat` / `run.sh` lo ejecutan con una muestra. Las versiones se publican en GitHub con programas ya hechos para Windows (64 y 32 bits), Linux (64 bits) y macOS (Apple silicon e Intel): cada paquete, `phoenix-3dp-<versión>-<sistema>.zip` o `.tar.gz`, viene con sus ficheros `.sha256` y `.sig`.
 
 ## 📂 Estructura del repositorio
 
@@ -275,15 +275,16 @@ EH3D-PHOENIX-3DP/
 * No se ha conectado ninguna impresora, ni siquiera la Bambu Lab A1 o la P1S; todos los perfiles dicen `verified = false`.
 * El lector de 3MF toma solo la malla (los componentes y la extensión de producción se rechazan); los proyectos de otros programas se leen por sus objetos, placas y ajustes y nunca se modifican.
 * Los controladores tienen un transporte HTTP simple, probado solo contra un socket de este ordenador y los simuladores; sin TLS ni envío por WebSocket; Bambu LAN es un diseño que no se conecta, y la nube de Bambu no forma parte de él.
-* La ventana no se ha compilado ni visto en una pantalla.
+* La ventana (cinco espacios de trabajo en el marco acoplable de la suite) no la ha visto una persona en una pantalla; las imágenes del README son dibujos hechos desde su modelo.
 
 **Siguiente**
 
-* H1: geometría de mallas y un visor 3D propio.
+* H1: el dibujo del visor 3D con wgpu (su modelo existe) y la reparación de mallas.
 * H2: un cubo de calibración impreso en una máquina real (el relleno en rejilla y giroide, las costuras, el ancho variable, los puentes y los soportes sencillos están escritos y probados con formas de semilla fija).
-* H3: el editor de perfiles y la ventana base.
-* H7: los demás transportes (envío por WebSocket, PrusaLink, Duet) y el enlace Bambu LAN.
-* H8: probarlo en una Bambu Lab A1 y una P1S y marcar como verificados los perfiles que funcionen. Todo el plan está en `docs/ROADMAP.md`.
+* H3: el editor de perfiles con herencia y la sincronización de perfiles con el servidor.
+* H4 a H6: el alisado, el resto de los ajustes de calidad, los soportes en árbol y el relleno avanzado, y varios materiales.
+* H7: los demás transportes (envío por WebSocket, PrusaLink, Duet), el enlace Bambu LAN y la elección de su TLS.
+* H8: perfiles con evidencia de máquinas reales (una Bambu Lab A1 y una P1S son las primeras previstas), calibraciones guiadas y una simulación de colisiones. Todo el plan está en `docs/ROADMAP.md`.
 
 ## 🌍 Idiomas
 
@@ -308,7 +309,6 @@ El README y los textos existen en inglés, español, francés, italiano, alemán
 * [Reglas para cambiar el repositorio](AGENTS.md): las reglas para quien cambie el repositorio.
 * [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Arquitectura del programa, crate a crate
 * [docs/ROADMAP.md](docs/ROADMAP.md): Hoja de ruta: los nueve pasos de la base a un programa completo
-* [docs/NOT_YET.md](docs/NOT_YET.md): Lo que aún no está hecho y lo que necesita cada parte que falta
 * [docs/SERVER.md](docs/SERVER.md): Cómo encaja el programa con el servidor EH3D
 * [docs/architecture.json](docs/architecture.json): Datos de las dos imágenes
 

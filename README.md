@@ -18,7 +18,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust workspace of eight libraries and a command line program (`phoenix-3dp`) with 659 tests that run on a computer. It reads STL, OBJ and 3MF models and checks them, holds a catalog of 120 printer profiles built from public data (none of them tried on a machine), writes G-code for the Marlin, Klipper, RepRapFirmware and Bambu dialects with temperature limits that refuse a value instead of cutting it down, and drives Moonraker and OctoPrint printers and the EH3D server, but only against simulators (in memory, and on a socket of this computer). It slices a closed model into flat layers with perimeters, a rectilinear infill and solid skins (a small slicer with grid and gyroid infill, bridges, plain supports, seams, variable width, a lift on travel, a skirt, a brim or a raft, a vase mode, slower short layers, retraction that follows the travel and an estimate of the time with acceleration; nothing for several materials yet); the window has not been built or looked at on a screen; nothing has run on a real printer.
+**Honesty check - what actually runs today:** a Rust workspace of eight libraries and a command line program (`phoenix-3dp`) with 659 tests that run on a computer. It reads STL, OBJ and 3MF models and checks them, holds a catalog of 120 printer profiles built from public data (none of them tried on a machine), writes G-code for the Marlin, Klipper, RepRapFirmware and Bambu dialects with temperature limits that refuse a value instead of cutting it down, and drives Moonraker and OctoPrint printers and the EH3D server, but only against simulators (in memory, and on a socket of this computer). It slices a closed model into flat layers with perimeters, a rectilinear infill and solid skins (a small slicer with grid and gyroid infill, bridges, plain supports, seams, variable width, a lift on travel, a skirt, a brim or a raft, a vase mode, slower short layers, retraction that follows the travel and an estimate of the time with acceleration; nothing for several materials yet); the window, the docking frame of the suite with five workspaces (built with `--features gui`), has not been looked at on a screen by a person; nothing has run on a real printer.
 
 ---
 
@@ -57,7 +57,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Command line | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) runs the functions of the libraries and prints the result; every error comes back as a message and a non-zero exit code. |
 | Tests | 🟡 | 659 tests pass (`cargo test --workspace`), with normal cases, edge cases, damaged input and a fixed seed wherever they are random. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): a limit is a refusal and never a trim; the token never prints; nothing panics on the files it is given; no independent review. |
-| Window | 🔴 | The four tabs (Prepare, Preview, Device, Project) are written with `--features gui`: lists of printers and filaments with filters, the plan by layers with a slider, the queue of the server with a start that needs a confirmation, an emergency stop, shortcuts that can be changed, a picture mode (`--shot`), a 3D view of the bed with the parts as shaded solids, a panel of the parts with auto-orient and arrange, slicing in the background with the estimates, temperature limits that can be edited and a dark and a light look; the panels sit in the docking frame of the suite (they can be taken away, put back, moved, floated and folded, with workspaces that have names, kept in the settings file, and a menu bar); the logic is tested without a screen, but the window has not been built or looked at on a screen yet. |
+| Window | 🟠 | Written with `--features gui` as the docking frame of the suite, with five workspaces (Prepare, Review, Run, Setup and Compact) whose panels can be taken away, put back, moved, tabbed, floated and folded, and a menu bar: lists of printers and filaments with filters, the plan by layers with a slider, the queue of the server with a start that needs a confirmation, an emergency stop, shortcuts that can be changed, a picture mode (`--shot`), a 3D view of the bed with the parts as shaded solids, a panel of the parts with auto-orient and arrange, slicing in the background with the estimates, temperature limits that can be edited and a dark and a light look; the arrangement is kept in the settings file; the logic is tested without a screen and the README shows drawings of the workspaces made from the model, but the panels have never been drawn on a screen and no person has looked at them. |
 | Real hardware | 🔴 | Not tried: nothing here has run on a printer, not even on a Bambu Lab A1 or a P1S. |
 | Documentation | 🟡 | README in eight languages, the changelog, the `docs/` folder (architecture, roadmap, what is not done yet, the server) and the two pictures drawn from `docs/`. |
 
@@ -117,7 +117,7 @@ Drawings of the factory arrangement of each workspace, made from the model of th
 * **Nothing starts by itself:** the requests to the queue of the server say `auto_start: false` and ask for confirmation; raw G-code is off by default and, when on, is one line at a time under the same limits.
 * **One state for every protocol:** fifteen normalized states, temperatures, job and alerts, with the raw text of the printer kept apart, so the rest of the program speaks one language.
 * **Simulators for the tests:** each protocol has an in-memory simulator with faults on demand (no connection, time-out, 503), so retries, refusals and shutdowns are tested without a network.
-* **A window like a slicer's:** tabs for Prepare, Preview, Device and Project; a 3D view of the bed with the parts as shaded solids; a panel for the printer, the filament and the process; the numbers of each part (place, turn, size), auto-orient and arrange; slicing in the background with the estimates at the bottom; a dark and a light look. The panels sit in the docking frame of the suite: they can be taken away, put back, moved, tabbed, floated and folded, the four tabs are workspaces (Prepare, Review, Run, Setup and Compact), the arrangement is kept in the settings file and a menu bar has File, Edit, View, Tools, Window and Help. The logic is tested without a screen; the window itself has not been looked at yet.
+* **A window like a slicer's:** five workspaces (Prepare, Review, Run, Setup and Compact) in the docking frame of the suite; panels for the printer, the filament and the process; a 3D view of the bed with the parts as shaded solids; the numbers of each part (place, turn, size), auto-orient and arrange; slicing in the background with the estimates at the bottom; a dark and a light look. The panels can be taken away, put back, moved, tabbed, floated and folded, the arrangement is kept in the settings file and a menu bar has File, Edit, View, Tools, Window and Help. The logic is tested without a screen; the window itself has not been looked at on a screen by a person.
 * **Clean room and own art:** written from public protocols, manuals and facts; no code, texts, icons or profile files of another slicer; every profile says `verified = false` until it has been tried.
 * **Eight languages:** the texts of the program and the documentation exist in English, Spanish, German, French, Italian, Japanese, Chinese and European Portuguese.
 * **No unsafe code:** `#![forbid(unsafe_code)]` in every crate.
@@ -181,7 +181,7 @@ The suite has 659 tests (`cargo test --workspace`, run on Windows and Linux in t
 
 ## 🏗️ Build & Release
 
-The version lives in `Cargo.toml` and in `eh3d.project.json`; each version has its entry in [CHANGELOG.md](CHANGELOG.md). `build.bat` / `build.sh` build the program, `test.bat` / `test.sh` run the tests and `run.bat` / `run.sh` run it with a sample. Releases are published on GitHub. No release has been published yet.
+The version lives in `Cargo.toml` and in `eh3d.project.json`; each version has its entry in [CHANGELOG.md](CHANGELOG.md). `build.bat` / `build.sh` build the program, `test.bat` / `test.sh` run the tests and `run.bat` / `run.sh` run it with a sample. Releases are published on GitHub with ready-made programs for Windows (64 and 32 bits), Linux (64 bits) and macOS (Apple silicon and Intel): each package, `phoenix-3dp-<version>-<system>.zip` or `.tar.gz`, comes with its `.sha256` and `.sig` files.
 
 ## 📂 Repository Structure
 
@@ -275,15 +275,16 @@ EH3D-PHOENIX-3DP/
 * No printer has been connected, not even the Bambu Lab A1 or P1S; every profile says `verified = false`.
 * The 3MF reader takes the mesh only (components and the production extension are refused); the projects of other programs are read for their objects, plates and settings and never changed.
 * The drivers have a plain HTTP transport, tried only against a socket of this computer and the simulators; no TLS and no WebSocket push; Bambu LAN is a design that does not connect, and the cloud of Bambu is not part of it.
-* The window has not been built or looked at on a screen.
+* The window (five workspaces in the docking frame of the suite) has not been looked at on a screen by a person; the pictures of the README are drawings made from its model.
 
 **Next**
 
-* H1: mesh geometry and a 3D viewer of its own.
+* H1: the drawing of the 3D viewer with wgpu (its model exists) and the repair of meshes.
 * H2: a calibration cube printed on a real machine (the grid and gyroid infill, the seams, the variable width, the bridges and the plain supports are written and tested on shapes from a fixed seed).
-* H3: the editor of profiles and the base window.
-* H7: the other transports (WebSocket push, PrusaLink, Duet) and the Bambu LAN link.
-* H8: try it on a Bambu Lab A1 and P1S and mark the profiles that work as verified. The whole plan is in `docs/ROADMAP.md`.
+* H3: the editor of profiles with inheritance and the sync of profiles with the server.
+* H4 to H6: ironing and the rest of the quality settings, tree supports and advanced infill, and several materials.
+* H7: the other transports (WebSocket push, PrusaLink, Duet), the Bambu LAN link and the choice of its TLS.
+* H8: profiles with evidence from real machines (a Bambu Lab A1 and a P1S are the first planned), guided calibrations and a simulation of collisions. The whole plan is in `docs/ROADMAP.md`.
 
 ## 🌍 Languages
 
@@ -308,7 +309,6 @@ README and texts exist in English, Spanish, French, Italian, German, Chinese, Ja
 * [Rules for changing the repository](AGENTS.md): the rules for anyone who changes the repository.
 * [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Architecture of the program, crate by crate
 * [docs/ROADMAP.md](docs/ROADMAP.md): Roadmap: the nine steps from the base to a complete program
-* [docs/NOT_YET.md](docs/NOT_YET.md): What is not done yet, and what each missing part needs
 * [docs/SERVER.md](docs/SERVER.md): How the program fits with the EH3D server
 * [docs/architecture.json](docs/architecture.json): Data of the two pictures
 

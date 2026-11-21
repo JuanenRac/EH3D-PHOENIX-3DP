@@ -18,7 +18,7 @@
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** ein Rust-Workspace mit acht Bibliotheken und einem Kommandozeilenprogramm (`phoenix-3dp`) mit 659 Tests, die auf einem Computer laufen. Es liest und prüft STL-, OBJ- und 3MF-Modelle, enthält einen Katalog von 120 Druckerprofilen aus öffentlichen Daten (keines an einer Maschine getestet), schreibt G-Code für die Dialekte Marlin, Klipper, RepRapFirmware und Bambu mit Temperaturgrenzen, die einen Wert ablehnen, statt ihn zu kappen, und steuert Moonraker- und OctoPrint-Drucker sowie den EH3D-Server, aber nur gegen Simulatoren (im Speicher und an einem Socket dieses Computers). Es zerlegt ein geschlossenes Modell in ebene Schichten mit Perimetern, geradliniger Füllung und massiven Außenhäuten (ein kleiner Slicer mit Gitter- und Gyroid-Füllung, Brücken, einfachen Stützen, Nähten, variabler Breite, Anheben beim Verfahren, Skirt, Brim oder Raft, einem Vasenmodus, langsameren kurzen Schichten, einem Rückzug nach der Länge der Fahrt und einer Zeitschätzung mit Beschleunigung; für mehrere Materialien noch nichts); das Fenster wurde weder gebaut noch auf einem Bildschirm angesehen; nichts lief an einem echten Drucker.
+**Ehrlichkeitscheck - was heute wirklich läuft:** ein Rust-Workspace mit acht Bibliotheken und einem Kommandozeilenprogramm (`phoenix-3dp`) mit 659 Tests, die auf einem Computer laufen. Es liest und prüft STL-, OBJ- und 3MF-Modelle, enthält einen Katalog von 120 Druckerprofilen aus öffentlichen Daten (keines an einer Maschine getestet), schreibt G-Code für die Dialekte Marlin, Klipper, RepRapFirmware und Bambu mit Temperaturgrenzen, die einen Wert ablehnen, statt ihn zu kappen, und steuert Moonraker- und OctoPrint-Drucker sowie den EH3D-Server, aber nur gegen Simulatoren (im Speicher und an einem Socket dieses Computers). Es zerlegt ein geschlossenes Modell in ebene Schichten mit Perimetern, geradliniger Füllung und massiven Außenhäuten (ein kleiner Slicer mit Gitter- und Gyroid-Füllung, Brücken, einfachen Stützen, Nähten, variabler Breite, Anheben beim Verfahren, Skirt, Brim oder Raft, einem Vasenmodus, langsameren kurzen Schichten, einem Rückzug nach der Länge der Fahrt und einer Zeitschätzung mit Beschleunigung; für mehrere Materialien noch nichts); das Fenster, der andockbare Rahmen der Suite mit fünf Arbeitsbereichen (mit `--features gui` gebaut), wurde von keiner Person auf einem Bildschirm angesehen; nichts lief an einem echten Drucker.
 
 ---
 
@@ -57,7 +57,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 | Kommandozeile | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) führt die Funktionen der Bibliotheken aus und gibt das Ergebnis aus; jeder Fehler kommt als Meldung und mit einem Exit-Code ungleich null zurück. |
 | Tests | 🟡 | 659 Tests bestehen (`cargo test --workspace`), mit Normalfällen, Grenzfällen, beschädigten Eingaben und festem Seed, wo Zufall im Spiel ist. |
 | Sicherheit | 🟡 | Schlichtes sicheres Rust (`forbid(unsafe_code)`): eine Grenze ist eine Ablehnung und nie eine Kappung; das Token wird nie ausgegeben; nichts gerät bei den Dateien in Panik; keine unabhängige Prüfung. |
-| Fenster | 🔴 | Die vier Reiter (Vorbereiten, Vorschau, Gerät, Projekt) sind mit `--features gui` geschrieben: Listen von Druckern und Filamenten mit Filtern, der Plan nach Schichten mit Schieberegler, die Warteschlange des Servers mit einem Start, der eine Bestätigung braucht, ein Not-Halt, änderbare Tastenkürzel, ein Bildmodus (`--shot`), eine 3D-Ansicht des Druckbetts mit schattierten Teilen, ein Teilebereich mit automatischem Ausrichten und Anordnen, Slicen im Hintergrund mit Schätzungen, bearbeitbare Temperaturgrenzen und ein dunkles und ein helles Aussehen; die Bereiche sitzen im andockbaren Rahmen der Suite (sie lassen sich entfernen, zurückholen, verschieben, schweben lassen und einklappen, mit benannten Arbeitsbereichen, die in der Einstellungsdatei bleiben, und einer Menüleiste); die Logik wird ohne Bildschirm getestet, aber das Fenster wurde noch nicht gebaut oder auf einem Bildschirm angesehen. |
+| Fenster | 🟠 | Mit `--features gui` geschrieben als andockbarer Rahmen der Suite, mit fünf Arbeitsbereichen (Vorbereiten, Prüfen, Ausführen, Einrichten und Kompakt), deren Bereiche sich entfernen, zurückholen, verschieben, als Reiter gruppieren, schweben lassen und einklappen lassen, und einer Menüleiste: Listen von Druckern und Filamenten mit Filtern, der Plan nach Schichten mit Schieberegler, die Warteschlange des Servers mit einem Start, der eine Bestätigung braucht, ein Not-Halt, änderbare Tastenkürzel, ein Bildmodus (`--shot`), eine 3D-Ansicht des Druckbetts mit schattierten Teilen, ein Teilebereich mit automatischem Ausrichten und Anordnen, Slicen im Hintergrund mit Schätzungen, bearbeitbare Temperaturgrenzen und ein dunkles und ein helles Aussehen; die Anordnung bleibt in der Einstellungsdatei; die Logik wird ohne Bildschirm getestet und das README zeigt aus dem Modell gezeichnete Bilder der Arbeitsbereiche, aber die Bereiche wurden nie auf einem Bildschirm gezeichnet und keine Person hat sie gesehen. |
 | Echte Hardware | 🔴 | Nicht getestet: nichts davon lief an einem Drucker, nicht einmal an einem Bambu Lab A1 oder P1S. |
 | Dokumentation | 🟡 | README in acht Sprachen, das Änderungsprotokoll, der Ordner `docs/` (Architektur, Roadmap, was noch nicht fertig ist, der Server) und die zwei aus `docs/` gezeichneten Bilder. |
 
@@ -117,7 +117,7 @@ Zeichnungen der Werksanordnung jedes Arbeitsbereichs, aus dem Modell des Fenster
 * **Nichts startet von selbst:** die Anfragen an die Warteschlange des Servers sagen `auto_start: false` und verlangen eine Bestätigung; rohes G-Code ist standardmäßig aus und läuft, wenn an, Zeile für Zeile unter denselben Grenzen.
 * **Ein Zustand für alle Protokolle:** fünfzehn normalisierte Zustände, Temperaturen, Auftrag und Warnungen, mit dem Originaltext des Druckers getrennt, sodass der Rest des Programms eine Sprache spricht.
 * **Simulatoren für die Tests:** jedes Protokoll hat einen Speicher-Simulator mit Fehlern auf Abruf (keine Verbindung, Zeitüberschreitung, 503); so werden Wiederholungen, Ablehnungen und Abschaltungen ohne Netzwerk getestet.
-* **Ein Fenster wie bei einem Slicer:** Reiter Vorbereiten, Vorschau, Gerät und Projekt; eine 3D-Ansicht des Druckbetts mit den Teilen als schattierten Körpern; ein Bereich für Drucker, Filament und Prozess; die Zahlen jedes Teils (Platz, Drehung, Größe), automatisch ausrichten und anordnen; Slicen im Hintergrund mit den Schätzungen unten; ein dunkles und ein helles Aussehen. Die Bereiche sitzen im andockbaren Rahmen der Suite: Sie lassen sich entfernen, zurückholen, verschieben, als Reiter gruppieren, schweben lassen und einklappen, die vier Reiter sind Arbeitsbereiche (Vorbereiten, Prüfen, Ausführen, Einrichten und Kompakt), die Anordnung steht in der Einstellungsdatei, und eine Menüleiste hat Datei, Bearbeiten, Ansicht, Werkzeuge, Fenster und Hilfe. Die Logik wird ohne Bildschirm getestet; das Fenster selbst wurde noch nicht angesehen.
+* **Ein Fenster wie bei einem Slicer:** fünf Arbeitsbereiche (Vorbereiten, Prüfen, Ausführen, Einrichten und Kompakt) im andockbaren Rahmen der Suite; Bereiche für Drucker, Filament und Prozess; eine 3D-Ansicht des Druckbetts mit den Teilen als schattierten Körpern; die Zahlen jedes Teils (Platz, Drehung, Größe), automatisch ausrichten und anordnen; Slicen im Hintergrund mit den Schätzungen unten; ein dunkles und ein helles Aussehen. Die Bereiche lassen sich entfernen, zurückholen, verschieben, als Reiter gruppieren, schweben lassen und einklappen, die Anordnung steht in der Einstellungsdatei, und eine Menüleiste hat Datei, Bearbeiten, Ansicht, Werkzeuge, Fenster und Hilfe. Die Logik wird ohne Bildschirm getestet; das Fenster selbst wurde von keiner Person auf einem Bildschirm angesehen.
 * **Clean Room und eigene Grafik:** aus öffentlichen Protokollen, Handbüchern und Fakten geschrieben; kein Code, Text, Symbol oder Profildatei eines anderen Slicers; jedes Profil sagt `verified = false`, bis es getestet wurde.
 * **Acht Sprachen:** die Texte des Programms und die Dokumentation gibt es auf Englisch, Spanisch, Deutsch, Französisch, Italienisch, Japanisch, Chinesisch und europäischem Portugiesisch.
 * **Kein unsicherer Code:** `#![forbid(unsafe_code)]` in jedem Crate.
@@ -181,7 +181,7 @@ Die Suite hat 659 Tests (`cargo test --workspace`, in der CI unter Windows und L
 
 ## 🏗️ Build und Veröffentlichung
 
-Die Version steht in `Cargo.toml` und in `eh3d.project.json`; jede Version hat ihren Eintrag in [CHANGELOG.md](CHANGELOG.md). `build.bat` / `build.sh` bauen das Programm, `test.bat` / `test.sh` führen die Tests aus und `run.bat` / `run.sh` starten es mit einem Beispiel. Veröffentlichungen erscheinen auf GitHub. Es wurde noch keine veröffentlicht.
+Die Version steht in `Cargo.toml` und in `eh3d.project.json`; jede Version hat ihren Eintrag in [CHANGELOG.md](CHANGELOG.md). `build.bat` / `build.sh` bauen das Programm, `test.bat` / `test.sh` führen die Tests aus und `run.bat` / `run.sh` starten es mit einem Beispiel. Veröffentlichungen erscheinen auf GitHub mit fertigen Programmen für Windows (64 und 32 Bit), Linux (64 Bit) und macOS (Apple Silicon und Intel): jedes Paket, `phoenix-3dp-<Version>-<System>.zip` oder `.tar.gz`, kommt mit seinen Dateien `.sha256` und `.sig`.
 
 ## 📂 Struktur des Repositorys
 
@@ -275,15 +275,16 @@ EH3D-PHOENIX-3DP/
 * Es wurde kein Drucker angeschlossen, nicht einmal der Bambu Lab A1 oder P1S; jedes Profil sagt `verified = false`.
 * Der 3MF-Leser nimmt nur das Netz (Komponenten und die Produktionserweiterung werden abgelehnt); Projekte anderer Programme werden auf Objekte, Platten und Einstellungen gelesen und nie verändert.
 * Die Treiber haben einen einfachen HTTP-Transport, nur an einem Socket dieses Computers und an den Simulatoren erprobt; kein TLS und kein WebSocket-Push; Bambu LAN ist ein Entwurf, der nicht verbindet, und die Bambu-Cloud gehört nicht dazu.
-* Das Fenster wurde weder gebaut noch auf einem Bildschirm angesehen.
+* Das Fenster (fünf Arbeitsbereiche im andockbaren Rahmen der Suite) wurde von keiner Person auf einem Bildschirm angesehen; die Bilder im README sind aus seinem Modell gezeichnet.
 
 **Als Nächstes**
 
-* H1: Netzgeometrie und ein eigener 3D-Betrachter.
+* H1: das Zeichnen des 3D-Betrachters mit wgpu (sein Modell gibt es) und die Reparatur von Netzen.
 * H2: ein Kalibrierwürfel, auf einer echten Maschine gedruckt (Gitter- und Gyroid-Füllung, Nähte, variable Breite, Brücken und einfache Stützen sind geschrieben und an Formen aus festem Seed getestet).
-* H3: der Profileditor und das Grundfenster.
-* H7: die übrigen Transporte (WebSocket-Push, PrusaLink, Duet) und die Bambu-LAN-Verbindung.
-* H8: an einem Bambu Lab A1 und P1S ausprobieren und funktionierende Profile als verifiziert markieren. Der ganze Plan steht in `docs/ROADMAP.md`.
+* H3: der Profileditor mit Vererbung und der Abgleich der Profile mit dem Server.
+* H4 bis H6: Glätten, der Rest der Qualitätseinstellungen, Baumstützen und fortgeschrittene Füllung sowie mehrere Materialien.
+* H7: die übrigen Transporte (WebSocket-Push, PrusaLink, Duet), die Bambu-LAN-Verbindung und die Wahl ihres TLS.
+* H8: Profile mit Nachweis von echten Maschinen (ein Bambu Lab A1 und ein P1S sind die ersten geplanten), geführte Kalibrierungen und eine Simulation von Kollisionen. Der ganze Plan steht in `docs/ROADMAP.md`.
 
 ## 🌍 Sprachen
 
@@ -308,7 +309,6 @@ README und Texte gibt es auf Englisch, Spanisch, Französisch, Italienisch, Deut
 * [Regeln für Änderungen am Repository](AGENTS.md): die Regeln für alle, die das Repository ändern.
 * [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Architektur des Programms, Crate für Crate
 * [docs/ROADMAP.md](docs/ROADMAP.md): Roadmap: die neun Schritte von der Basis zum vollständigen Programm
-* [docs/NOT_YET.md](docs/NOT_YET.md): Was noch nicht gemacht ist und was jeder fehlende Teil braucht
 * [docs/SERVER.md](docs/SERVER.md): Wie das Programm zum EH3D-Server passt
 * [docs/architecture.json](docs/architecture.json): Daten der beiden Bilder
 

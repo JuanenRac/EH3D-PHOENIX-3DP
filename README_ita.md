@@ -18,7 +18,7 @@
 
 ---
 
-**Controllo di onestà - ciò che funziona davvero oggi:** un workspace Rust con otto librerie e un programma a riga di comando (`phoenix-3dp`) con 659 test che girano su un computer. Legge e controlla modelli STL, OBJ e 3MF, contiene un catalogo di 120 profili di stampante costruiti da dati pubblici (nessuno provato su una macchina), scrive G-code per i dialetti Marlin, Klipper, RepRapFirmware e Bambu con limiti di temperatura che rifiutano un valore invece di tagliarlo, e pilota stampanti Moonraker e OctoPrint e il server EH3D, ma solo contro simulatori (in memoria e su un socket di questo computer). Taglia un modello chiuso in strati piani con perimetri, riempimento rettilineo e pelli piene (un piccolo slicer con riempimento a griglia e giroide, ponti, supporti semplici, giunzioni, larghezza variabile, sollevamento negli spostamenti, skirt, brim o raft, modalità vaso, strati corti rallentati, retrazione che segue lo spostamento e una stima del tempo con accelerazione; ancora niente per più materiali); la finestra non è stata compilata né vista su uno schermo; nulla è stato eseguito su una stampante reale.
+**Controllo di onestà - ciò che funziona davvero oggi:** un workspace Rust con otto librerie e un programma a riga di comando (`phoenix-3dp`) con 659 test che girano su un computer. Legge e controlla modelli STL, OBJ e 3MF, contiene un catalogo di 120 profili di stampante costruiti da dati pubblici (nessuno provato su una macchina), scrive G-code per i dialetti Marlin, Klipper, RepRapFirmware e Bambu con limiti di temperatura che rifiutano un valore invece di tagliarlo, e pilota stampanti Moonraker e OctoPrint e il server EH3D, ma solo contro simulatori (in memoria e su un socket di questo computer). Taglia un modello chiuso in strati piani con perimetri, riempimento rettilineo e pelli piene (un piccolo slicer con riempimento a griglia e giroide, ponti, supporti semplici, giunzioni, larghezza variabile, sollevamento negli spostamenti, skirt, brim o raft, modalità vaso, strati corti rallentati, retrazione che segue lo spostamento e una stima del tempo con accelerazione; ancora niente per più materiali); la finestra, il telaio ancorabile della suite con cinque aree di lavoro (compilata con `--features gui`), non è stata vista su uno schermo da una persona; nulla è stato eseguito su una stampante reale.
 
 ---
 
@@ -57,7 +57,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | Riga di comando | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) esegue le funzioni delle librerie e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
 | Test | 🟡 | 659 test passano (`cargo test --workspace`), con casi normali, casi limite, input danneggiati e un seme fisso dove c'è casualità. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): un limite è un rifiuto e mai un taglio; il token non si stampa mai; nulla va in panico con i file ricevuti; nessuna revisione indipendente. |
-| Finestra | 🔴 | Le quattro schede (Prepara, Anteprima, Dispositivo, Progetto) sono scritte con `--features gui`: elenchi di stampanti e filamenti con filtri, il piano per strati con un cursore, la coda del server con un avvio che chiede conferma, un arresto di emergenza, scorciatoie modificabili, una modalità immagine (`--shot`), una vista 3D del piano con i pezzi come solidi ombreggiati, un pannello dei pezzi con orienta in automatico e disponi, elaborazione in background con stime, limiti di temperatura modificabili e un aspetto scuro e uno chiaro; i pannelli stanno nel telaio ancorabile della suite (si possono togliere, rimettere, spostare, far fluttuare e ripiegare, con aree di lavoro con nome conservate nel file delle impostazioni e una barra dei menu); la logica è testata senza schermo, ma la finestra non è ancora stata compilata né vista su uno schermo. |
+| Finestra | 🟠 | Scritta con `--features gui` come telaio ancorabile della suite, con cinque aree di lavoro (Prepara, Verifica, Esegui, Configura e Compatto) i cui pannelli si possono togliere, rimettere, spostare, raggruppare in schede, far fluttuare e ripiegare, e una barra dei menu: elenchi di stampanti e filamenti con filtri, il piano per strati con un cursore, la coda del server con un avvio che chiede conferma, un arresto di emergenza, scorciatoie modificabili, una modalità immagine (`--shot`), una vista 3D del piano con i pezzi come solidi ombreggiati, un pannello dei pezzi con orienta in automatico e disponi, elaborazione in background con stime, limiti di temperatura modificabili e un aspetto scuro e uno chiaro; la disposizione è conservata nel file delle impostazioni; la logica è testata senza schermo e il README mostra disegni delle aree di lavoro fatti dal modello, ma i pannelli non sono mai stati disegnati su uno schermo e nessuna persona li ha visti. |
 | Hardware reale | 🔴 | Non provato: nulla di tutto ciò è stato eseguito su una stampante, nemmeno su una Bambu Lab A1 o una P1S. |
 | Documentazione | 🟡 | README in otto lingue, il registro delle modifiche, la cartella `docs/` (architettura, roadmap, cosa non è ancora fatto, il server) e le due immagini disegnate da `docs/`. |
 
@@ -117,7 +117,7 @@ Disegni della disposizione di fabbrica di ogni spazio di lavoro, fatti dal model
 * **Niente parte da solo:** le richieste alla coda del server dicono `auto_start: false` e chiedono conferma; il G-code diretto è spento per impostazione predefinita e, acceso, va riga per riga con gli stessi limiti.
 * **Uno stato per tutti i protocolli:** quindici stati normalizzati, temperature, lavoro e avvisi, con il testo originale della stampante tenuto a parte, così il resto del programma parla una sola lingua.
 * **Simulatori per i test:** ogni protocollo ha un simulatore in memoria con guasti a richiesta (nessuna connessione, timeout, 503), quindi tentativi, rifiuti e arresti si provano senza rete.
-* **Una finestra come quella di uno slicer:** schede Prepara, Anteprima, Dispositivo e Progetto; una vista 3D del piano con i pezzi come solidi ombreggiati; un pannello per stampante, filamento e processo; i numeri di ogni pezzo (posizione, rotazione, dimensione), orienta in automatico e disponi; elaborazione in background con le stime in basso; un aspetto scuro e uno chiaro. I pannelli stanno nel telaio ancorabile della suite: si possono togliere, rimettere, spostare, raggruppare in schede, far fluttuare e ripiegare, le quattro schede sono aree di lavoro (Prepara, Verifica, Esegui, Configura e Compatto), la disposizione è conservata nel file delle impostazioni e una barra dei menu ha File, Modifica, Visualizza, Strumenti, Finestra e Aiuto. La logica è testata senza schermo; la finestra in sé non è ancora stata vista.
+* **Una finestra come quella di uno slicer:** cinque aree di lavoro (Prepara, Verifica, Esegui, Configura e Compatto) nel telaio ancorabile della suite; pannelli per stampante, filamento e processo; una vista 3D del piano con i pezzi come solidi ombreggiati; i numeri di ogni pezzo (posizione, rotazione, dimensione), orienta in automatico e disponi; elaborazione in background con le stime in basso; un aspetto scuro e uno chiaro. I pannelli si possono togliere, rimettere, spostare, raggruppare in schede, far fluttuare e ripiegare, la disposizione è conservata nel file delle impostazioni e una barra dei menu ha File, Modifica, Visualizza, Strumenti, Finestra e Aiuto. La logica è testata senza schermo; la finestra in sé non è stata vista su uno schermo da una persona.
 * **Clean room e grafica propria:** scritto da protocolli pubblici, manuali e fatti; nessun codice, testo, icona o file di profilo di un altro slicer; ogni profilo dice `verified = false` finché non è stato provato.
 * **Otto lingue:** i testi del programma e la documentazione esistono in inglese, spagnolo, tedesco, francese, italiano, giapponese, cinese e portoghese del Portogallo.
 * **Nessun codice `unsafe`:** `#![forbid(unsafe_code)]` in ogni crate.
@@ -181,7 +181,7 @@ La suite ha 659 test (`cargo test --workspace`, eseguiti su Windows e Linux nell
 
 ## 🏗️ Compilazione e rilascio
 
-La versione vive in `Cargo.toml` e in `eh3d.project.json`; ogni versione ha la sua voce in [CHANGELOG.md](CHANGELOG.md). `build.bat` / `build.sh` compilano il programma, `test.bat` / `test.sh` eseguono i test e `run.bat` / `run.sh` lo eseguono con un esempio. Le versioni sono pubblicate su GitHub. Non ne è stata ancora pubblicata nessuna.
+La versione vive in `Cargo.toml` e in `eh3d.project.json`; ogni versione ha la sua voce in [CHANGELOG.md](CHANGELOG.md). `build.bat` / `build.sh` compilano il programma, `test.bat` / `test.sh` eseguono i test e `run.bat` / `run.sh` lo eseguono con un esempio. Le versioni sono pubblicate su GitHub con programmi già pronti per Windows (64 e 32 bit), Linux (64 bit) e macOS (Apple silicon e Intel): ogni pacchetto, `phoenix-3dp-<versione>-<sistema>.zip` o `.tar.gz`, arriva con i suoi file `.sha256` e `.sig`.
 
 ## 📂 Struttura del repository
 
@@ -275,15 +275,16 @@ EH3D-PHOENIX-3DP/
 * Nessuna stampante è stata collegata, nemmeno la Bambu Lab A1 o la P1S; ogni profilo dice `verified = false`.
 * Il lettore 3MF prende solo la mesh (componenti ed estensione di produzione vengono rifiutati); i progetti di altri programmi sono letti per oggetti, piatti e impostazioni e mai modificati.
 * I driver hanno un trasporto HTTP semplice, provato solo su un socket di questo computer e con i simulatori; niente TLS né push WebSocket; Bambu LAN è un progetto che non si collega, e il cloud di Bambu non ne fa parte.
-* La finestra non è stata compilata né vista su uno schermo.
+* La finestra (cinque aree di lavoro nel telaio ancorabile della suite) non è stata vista su uno schermo da una persona; le immagini del README sono disegni fatti dal suo modello.
 
 **Prossimi passi**
 
-* H1: geometria delle mesh e un visualizzatore 3D proprio.
+* H1: il disegno del visualizzatore 3D con wgpu (il suo modello esiste) e la riparazione delle mesh.
 * H2: un cubo di calibrazione stampato su una macchina reale (il riempimento a griglia e giroide, le giunzioni, la larghezza variabile, i ponti e i supporti semplici sono scritti e provati su forme a seme fisso).
-* H3: l'editor dei profili e la finestra di base.
-* H7: gli altri trasporti (push WebSocket, PrusaLink, Duet) e il collegamento Bambu LAN.
-* H8: provarlo su una Bambu Lab A1 e una P1S e marcare come verificati i profili che funzionano. L'intero piano è in `docs/ROADMAP.md`.
+* H3: l'editor dei profili con ereditarietà e la sincronizzazione dei profili con il server.
+* Da H4 a H6: la stiratura, il resto delle impostazioni di qualità, i supporti ad albero e il riempimento avanzato, e più materiali.
+* H7: gli altri trasporti (push WebSocket, PrusaLink, Duet), il collegamento Bambu LAN e la scelta del suo TLS.
+* H8: profili con prove di macchine reali (una Bambu Lab A1 e una P1S sono le prime previste), calibrazioni guidate e una simulazione delle collisioni. L'intero piano è in `docs/ROADMAP.md`.
 
 ## 🌍 Lingue
 
@@ -308,7 +309,6 @@ Il README e i testi esistono in inglese, spagnolo, francese, italiano, tedesco, 
 * [Regole per modificare il repository](AGENTS.md): le regole per chi modifica il repository.
 * [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Architettura del programma, crate per crate
 * [docs/ROADMAP.md](docs/ROADMAP.md): Roadmap: i nove passi dalla base a un programma completo
-* [docs/NOT_YET.md](docs/NOT_YET.md): Cosa non è ancora fatto e di cosa ha bisogno ogni parte mancante
 * [docs/SERVER.md](docs/SERVER.md): Come si integra il programma con il server EH3D
 * [docs/architecture.json](docs/architecture.json): Dati delle due immagini
 

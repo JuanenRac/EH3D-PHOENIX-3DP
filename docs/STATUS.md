@@ -6,7 +6,7 @@ EH3D-PHOENIX-3DP works on a computer against simulators: the command line reads,
 
 ## Recent work
 
-The window became the docking frame of the suite with four workspaces for tasks, the filaments and the resins now come from the database of printing materials of the suite, a check before printing compares the temperatures and the flow with what the database says of the chosen filament, and the READMEs show drawings of the five workspaces made from the model of the window. The roadmap of the repository (`ROADMAP.md`) ties the work to the steps H0 to H9.
+The window became the docking frame of the suite with five workspaces for tasks, the filaments and the resins now come from the database of printing materials of the suite, a check before printing compares the temperatures and the flow with what the database says of the chosen filament, and the READMEs show drawings of the five workspaces made from the model of the window. The roadmap of the repository (`ROADMAP.md`) ties the work to the steps H0 to H9.
 
 ## Capabilities
 
