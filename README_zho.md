@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-1196-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-1216-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**诚实检查 - 今天真正能运行的内容：** 一个由八个库和一个命令行程序（`phoenix-3dp`）组成的 Rust 工作区，带有 1196 个可在电脑上运行的测试。它读取并检查 STL、OBJ 和 3MF 模型，包含一个由公开数据建立的 120 个打印机配置的目录（没有一个在机器上试过），为 Marlin、Klipper、RepRapFirmware 和 Bambu 方言写出 G 代码，温度上限会拒绝超限的值而不是截断它，并能操作 Moonraker 和 OctoPrint 打印机以及 EH3D 服务器，但仅限模拟器（内存中的，以及本机的套接字）。它能把封闭模型切成平整的层，生成外壁、直线填充和实心表层（一个小型切片器，有网格和螺旋体填充、桥接、简易支撑、接缝、可变线宽、移动时抬升、裙边/帽檐/筏板、花瓶模式、短层降速、随移动距离变化的回抽，以及带加速度的时间估算；已有按高度划分的多材料（带清洗塔）、顶面熨平、压力提前、高度随形状变化的层、为防象脚而内缩的首层和流量上限，但尚无颜色涂绘）；窗口（套件的可停靠框架，有五个工作区，用 `--features gui` 构建）还没有人在屏幕上看过；没有任何内容在真实打印机上运行过。
+**诚实检查 - 今天真正能运行的内容：** 一个由八个库和一个命令行程序（`phoenix-3dp`）组成的 Rust 工作区，带有 1216 个可在电脑上运行的测试。它读取并检查 STL、OBJ 和 3MF 模型，包含一个由公开数据建立的 120 个打印机配置的目录（没有一个在机器上试过），为 Marlin、Klipper、RepRapFirmware 和 Bambu 方言写出 G 代码，温度上限会拒绝超限的值而不是截断它，并能操作 Moonraker 和 OctoPrint 打印机以及 EH3D 服务器，但仅限模拟器（内存中的，以及本机的套接字）。它能把封闭模型切成平整的层，生成外壁、直线填充和实心表层（一个小型切片器，有网格和螺旋体填充、桥接、简易支撑、接缝、可变线宽、移动时抬升、裙边/帽檐/筏板、花瓶模式、短层降速、随移动距离变化的回抽，以及带加速度的时间估算；已有按高度划分的多材料（带清洗塔）、顶面熨平、压力提前、高度随形状变化的层、为防象脚而内缩的首层和流量上限，但尚无颜色涂绘）；窗口（套件的可停靠框架，有五个工作区，用 `--features gui` 构建）还没有人在屏幕上看过；没有任何内容在真实打印机上运行过。
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | 版本 | `0.0.8` |
 | 成熟度 | 可用 |
-| 测试 | 1196 |
+| 测试 | 1216 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试验：这里的任何内容都没有在打印机上运行过，包括 Bambu Lab A1 和 P1S。 |
 
@@ -55,7 +55,7 @@
 | 服务器连接 | 🟠 | 连接的设置，以及建立在套件通用客户端（登录、续期、重试、八种语言的错误信息）之上的服务器打印机插件客户端，已针对内存中的服务器试过；从未对真实服务器试过。 |
 | 切片器 | 🟡 | 封闭网格的平整层、外壁、直线、网格或螺旋体填充、实心表层、桥接、简易支撑、接缝、可变线宽、按方言生成的 G 代码、以数据形式提供的逐层预览，以及带加速度的时间估算；已用固定种子形状上的性质测试检查（挤出的塑料量等于零件体积，没有任何内容超出热床，没有温度超过上限）；还没有用它在打印机上打印过。 |
 | 命令行 | 🟡 | `phoenix-3dp`（`printers`、`info`、`check-profile`、`convert`、`filaments`、`resins`、`slice`、`project`、`version`）运行库中的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 1196 个测试通过（`cargo test --workspace`），包含正常情况、边界情况、损坏的输入，涉及随机的地方使用固定种子。 |
+| 测试 | 🟡 | 1216 个测试通过（`cargo test --workspace`），包含正常情况、边界情况、损坏的输入，涉及随机的地方使用固定种子。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：上限是拒绝而不是截断；令牌绝不打印；收到的文件不会引发 panic；没有独立审查。 |
 | 窗口 | 🟠 | 用 `--features gui` 写成，作为套件的可停靠框架，有五个工作区（准备、检查、运行、配置和紧凑），其面板可取下、放回、移动、组成标签页、浮动和折叠，另有菜单栏：带筛选的打印机和耗材列表、带滑块的分层方案、需要确认才能开始的服务器队列、紧急停止、可修改的快捷键、图片模式（`--shot`）、以着色实体显示零件的热床 3D 视图、带自动摆放方向和排列的零件面板、带预估的后台切片、可编辑的温度上限以及深色和浅色外观；布局保存在设置文件中；逻辑已在无屏幕下测试，README 展示了由模型生成的工作区示意图，但这些面板从未在屏幕上绘制过，也没有人看过。 |
 | 真实硬件 | 🔴 | 未试验：这里的任何内容都没有在打印机上运行过，包括 Bambu Lab A1 和 P1S。 |
@@ -123,6 +123,7 @@ EH3D-PHOENIX-3DP 是 EH3D Fabrication Suite 中 PHOENIX 家族的 3D 打印程�
 * **净室与自有图形：** 依据公开协议、手册和事实编写；不使用其他切片软件的代码、文字、图标或配置文件；在试用之前每个配置都标为 `verified = false`。
 * **八种语言：** 程序文字和文档提供英语、西班牙语、德语、法语、意大利语、日语、中文和葡萄牙（葡萄牙）语版本。
 * **没有 unsafe 代码：** 每个 crate 都有 `#![forbid(unsafe_code)]`。
+* **从模型到打印机文件：** 零件可在热床上旋转、缩放和复制，可单独修改设置、选择起始工艺并加入您自己的起始和结束 G-code；因打印机而限制的内容会连同原因一起说明。对 Bambu 打印机，以 `.gcode.3mf` 结尾的名称会写出打包文件（G-code、校验和、图片、数据），`project` 可检查并打开它。尚未交给任何打印机：厂商未公开其完整结构。
 
 ## 🔒 安全与防护
 
@@ -156,9 +157,9 @@ phoenix-3dp check-profile ID|--file PROFILE --set "key=value;key=value" [--save 
 phoenix-3dp convert IN OUT [--printer ID] [--force]
 phoenix-3dp filaments [--printer ID] [--nozzle MM] [--hardened]
 phoenix-3dp resins [--kind KIND] [--printer ID] [--part-ml ML]
-phoenix-3dp fit MODEL --printer ID [--process LEVEL] [--settings FILE] [--filament ID] [--nozzle MM] [--hardened]
-phoenix-3dp slice MODEL --printer ID [--process LEVEL] [--settings FILE] [--filament ID] [--nozzle MM] [--hardened] [--start-gcode FILE] [--end-gcode FILE] [--report] [--out FILE.gcode] [--force]
-phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.gcode|FILE.sl1 [--thumbnail FILE] [--force] [--bottom-layers N] [--lift MM] [--light-power MW]
+phoenix-3dp fit MODEL --printer ID [--process LEVEL] [--settings FILE] [--set "key=value;key=value"] [--filament ID] [--nozzle MM] [--hardened] [--turn DEG] [--scale PERCENT] [--copies N] [--start-gcode FILE] [--end-gcode FILE]
+phoenix-3dp slice MODEL --printer ID [--process LEVEL] [--settings FILE] [--set "key=value;key=value"] [--filament ID] [--nozzle MM] [--hardened] [--turn DEG] [--scale PERCENT] [--copies N] [--start-gcode FILE] [--end-gcode FILE] [--report] [--out FILE.gcode|FILE.gcode.3mf] [--save-settings FILE] [--force]
+phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.gcode|FILE.sl1 [--thumbnail FILE] [--extract-gcode FILE] [--force] [--bottom-layers N] [--lift MM] [--light-power MW]
 phoenix-3dp version
 phoenix-3dp gui [SETTINGS] [--open MODEL] [--printer ID] [--shot FILE.png [--window TAB] [--size WxH] [--slice] [--demo] [--peek]]  the window (a build with --features gui)
 ```
@@ -183,7 +184,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 测试
 
-测试套件有 1196 个测试（`cargo test --workspace`，CI 中在 Windows 和 Linux 上运行），涉及随机的地方使用固定种子。它们检查正常情况、边界情况和损坏的输入：被截断的文件、乱码和恶意文件头绝不会 panic，目录中任何打印机的温度都不会超过其上限。CI 还会运行 `cargo fmt --all --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
+测试套件有 1216 个测试（`cargo test --workspace`，CI 中在 Windows 和 Linux 上运行），涉及随机的地方使用固定种子。它们检查正常情况、边界情况和损坏的输入：被截断的文件、乱码和恶意文件头绝不会 panic，目录中任何打印机的温度都不会超过其上限。CI 还会运行 `cargo fmt --all --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 

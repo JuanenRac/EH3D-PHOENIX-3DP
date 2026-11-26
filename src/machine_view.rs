@@ -216,6 +216,30 @@ pub fn show_lines(printer: &Printer, nozzle_mm: f64, lang: Lang) -> Result<Vec<S
     Ok(out)
 }
 
+/// Puts the settings of the starting process of a level over the ones given, for a printer and a nozzle. All of them or none: a process that does not hold together with the
+/// settings changes nothing.
+pub fn apply_process(
+    config: &mut SliceConfig,
+    level: Level,
+    printer_id: &str,
+    nozzle_mm: f64,
+) -> Result<(), String> {
+    let process = Processes::embedded()
+        .and_then(|r| r.for_nozzle(level, nozzle_mm))
+        .map_err(|e| e.to_string())?;
+    let filament_mm = p3dp_profiles::suite_machines()
+        .map_err(|e| e.to_string())?
+        .find(printer_id)
+        .and_then(|m| m.filament_diameter_mm);
+    let mut next = config.clone();
+    for (key, value) in settings_of(&process, filament_mm) {
+        next.set(key, &value).map_err(|e| e.to_string())?;
+    }
+    next.check().map_err(|e| e.to_string())?;
+    *config = next;
+    Ok(())
+}
+
 pub(crate) fn settings_of(
     p: &Process,
     filament_diameter_mm: Option<f64>,
@@ -270,6 +294,19 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn a_starting_process_is_put_over_the_settings_whole_or_not_at_all() {
+        let mut config = SliceConfig::default();
+        apply_process(&mut config, Level::Draft, "bambu-lab-a1", 0.4).unwrap();
+        let draft = config.layer_height_mm;
+        apply_process(&mut config, Level::Fine, "bambu-lab-a1", 0.4).unwrap();
+        assert!(config.layer_height_mm < draft);
+        assert_eq!(config.nozzle_diameter_mm, 0.4);
+        let before = config.clone();
+        assert!(apply_process(&mut config, Level::Fine, "bambu-lab-a1", f64::NAN).is_err());
+        assert_eq!(config, before);
     }
 
     #[test]

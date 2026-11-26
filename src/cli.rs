@@ -3,24 +3,32 @@
 
 use crate::app_state::{profile_report, AppState};
 use crate::config::AppConfig;
+use crate::held;
 use crate::i18n::{fill, Lang, Msg};
 use crate::import::{self, Word as ImportWord};
 use crate::machine_view;
+use crate::objects::{Plate, MAX_OBJECTS, SCALE_MAX, SCALE_MIN};
+use crate::package::{self, Facts, Target};
 use crate::report;
 use eh3d_printers::{Level, Processes};
+use p3dp_core::Mesh;
+use p3dp_formats::gcode3mf::{self, Checksum};
 use p3dp_formats::picture::PictureFormat;
 use p3dp_formats::project3mf::read_project;
 use p3dp_formats::{bgcode, gcode_meta, resin, resin_control};
 use p3dp_formats::{write_mesh, Format};
-use p3dp_gcode::check_program;
+use p3dp_gcode::{check_block, check_program, BlockJob, Place};
 use p3dp_profiles::filament::{FilamentCatalog, Nozzle};
 use p3dp_profiles::{
     motion_limits, suite_machines, MotionLimits, PrinterProfile, ResinCatalog, ResinKind,
     Technology,
 };
 use p3dp_slicer::machine_check::{self, Held};
-use p3dp_slicer::{Machine, SliceConfig, UserGcode};
+use p3dp_slicer::{Machine, Placement, SliceConfig, UserGcode};
 use std::collections::HashMap;
+
+/// The room left between copies, over what the settings lay round each part, in millimetres.
+const COPY_GAP_MM: f64 = 5.0;
 
 /// What a run produced.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -70,9 +78,9 @@ pub const USAGE: &str = "phoenix-3dp: prepare and send 3D prints (simulators onl
   phoenix-3dp convert IN OUT [--printer ID] [--force]
   phoenix-3dp filaments [--printer ID] [--nozzle MM] [--hardened]
   phoenix-3dp resins [--kind KIND] [--printer ID] [--part-ml ML]
-  phoenix-3dp fit MODEL --printer ID [--process draft|standard|fine|strong] [--settings FILE] [--filament ID] [--nozzle MM] [--hardened]
-  phoenix-3dp slice MODEL --printer ID [--process LEVEL] [--settings FILE] [--filament ID] [--nozzle MM] [--hardened] [--start-gcode FILE] [--end-gcode FILE] [--report] [--out FILE.gcode] [--force]
-  phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.gcode|FILE.sl1 [--thumbnail FILE] [--force] [--bottom-layers N] [--lift MM] [--light-power MW]
+  phoenix-3dp fit MODEL --printer ID [--process LEVEL] [--settings FILE] [--set \"key=value;key=value\"] [--filament ID] [--nozzle MM] [--hardened] [--turn DEG] [--scale PERCENT] [--copies N] [--start-gcode FILE] [--end-gcode FILE]
+  phoenix-3dp slice MODEL --printer ID [--process LEVEL] [--settings FILE] [--set \"key=value;key=value\"] [--filament ID] [--nozzle MM] [--hardened] [--turn DEG] [--scale PERCENT] [--copies N] [--start-gcode FILE] [--end-gcode FILE] [--report] [--out FILE.gcode|FILE.gcode.3mf] [--save-settings FILE] [--force]
+  phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.gcode|FILE.sl1 [--thumbnail FILE] [--extract-gcode FILE] [--force] [--bottom-layers N] [--lift MM] [--light-power MW]
   phoenix-3dp version
 
 Every command also takes --config FILE (the settings) and --lang CODE (en, es, de, fr, it, ja, zh, pt).
@@ -83,7 +91,10 @@ or did not read, and with --out writes the applied ones as a settings file. Noth
 `slice` makes the layers and the G-code of a closed model for a printer of the catalog and refuses, never cuts down, what does not fit or goes past a limit;
 without --out it only reports; with --process it starts from that process for the nozzle (the keys of --settings win over it); the highest speed, acceleration and flow
 the maker states are kept to. --start-gcode and --end-gcode add your own lines to the ones of the program, checked line by line against the limits and the volume. `fit` tells,
-without slicing, whether the job fits and keeps to the machine. With --report it also tells the material, its cost, the time and the layers. `resins` lists the resins and, with --part-ml, what a part of that
+without slicing, whether the job fits and keeps to the machine. --turn turns the part about the vertical, --scale sizes it and --copies lays several of it in rows on the bed
+(all of them or none); --set changes single settings over the settings file and --save-settings writes the ones the slice used. A name that ends in .gcode.3mf writes the package
+of a printer of the Bambu family (G-code, checksum, picture and figures; its layout is not published in full by the maker and no printer has been given one); `project` checks such
+a package and takes its G-code or its picture out. With --report it also tells the material, its cost, the time and the layers. `resins` lists the resins and, with --part-ml, what a part of that
 volume takes. `check-profile --set` edits a copy of a profile (a limit past the figure of the maker is allowed and told) and --save writes it as a profile file. `project` reads the
 objects, plates and settings of a 3MF project saved by another program, the header and thumbnails of a binary G-code file, the figures and thumbnails in the comments of a plain
 G-code file, or the header of an open package of resin layers (.sl1) with an estimate of its time; all of it read only, and the closed formats of resin printers are refused with the reason.";
@@ -646,15 +657,10 @@ fn check_profile(args: &[String], env_lang: Option<&str>) -> Outcome {
     let mut profile = profile;
     let mut notes = String::new();
     if let Some(spec) = p.flags.get("set") {
-        let mut edits: Vec<(&str, &str)> = Vec::new();
-        for part in spec.split(';').map(str::trim).filter(|s| !s.is_empty()) {
-            let Some((k, v)) = part.split_once('=') else {
-                return Outcome::usage(&format!(
-                    "--set takes key=value pairs separated by semicolons, not {part:?}"
-                ));
-            };
-            edits.push((k.trim(), v.trim()));
-        }
+        let edits = match set_pairs(spec) {
+            Ok(e) => e,
+            Err(e) => return Outcome::usage(&e),
+        };
         match original.edited(&edits) {
             Ok(e) => {
                 for c in original.diff(&e.profile) {
@@ -720,6 +726,23 @@ fn check_profile(args: &[String], env_lang: Option<&str>) -> Outcome {
         ));
     }
     let text = match std::fs::read(gpath) {
+        Ok(b) if package::target_of(gpath) == Target::Package => {
+            match gcode3mf::read_gcode(&b, &state.config.limits) {
+                Ok(Some(g)) if g.checksum != Checksum::Differs => g.text,
+                Ok(Some(g)) => {
+                    return Outcome::fail(format!(
+                        "{out}{gpath}: {}",
+                        fill(Msg::PackageSumBad.tr(state.lang), &[&g.name])
+                    ))
+                }
+                Ok(None) => {
+                    return Outcome::fail(format!(
+                        "{out}{gpath}: the package carries no plate of G-code"
+                    ))
+                }
+                Err(e) => return Outcome::fail(format!("{gpath}: {e}")),
+            }
+        }
         Ok(b) => String::from_utf8_lossy(&b).into_owned(),
         Err(e) => return Outcome::fail(format!("{gpath}: {e}")),
     };
@@ -830,6 +853,105 @@ struct Job {
     config: SliceConfig,
     notes: String,
     density: f64,
+    /// The family of the plastic in capitals, empty without a filament.
+    material: String,
+}
+
+/// The `key=value` pairs of `--set`.
+fn set_pairs(spec: &str) -> Result<Vec<(&str, &str)>, String> {
+    let mut out = Vec::new();
+    for part in spec.split(';').map(str::trim).filter(|s| !s.is_empty()) {
+        let Some((k, v)) = part.split_once('=') else {
+            return Err(format!(
+                "--set takes key=value pairs separated by semicolons, not {part:?}"
+            ));
+        };
+        out.push((k.trim(), v.trim()));
+    }
+    Ok(out)
+}
+
+/// How the part is put on the bed before it is sliced.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Bed {
+    turn_deg: f64,
+    scale_percent: f64,
+    copies: usize,
+}
+
+impl Bed {
+    const AS_IT_IS: Bed = Bed {
+        turn_deg: 0.0,
+        scale_percent: 100.0,
+        copies: 1,
+    };
+
+    fn of(p: &Parsed) -> Result<Bed, String> {
+        let number = |name: &str, lo: f64, hi: f64, or: f64| match p.flags.get(name) {
+            None => Ok(or),
+            Some(v) => v
+                .parse::<f64>()
+                .ok()
+                .filter(|n| n.is_finite() && (lo..=hi).contains(n))
+                .ok_or_else(|| format!("--{name} is a number from {lo} to {hi}, not {v:?}")),
+        };
+        let copies = match p.flags.get("copies") {
+            None => 1,
+            Some(v) => v
+                .parse::<usize>()
+                .ok()
+                .filter(|n| (1..=MAX_OBJECTS).contains(n))
+                .ok_or_else(|| {
+                    format!("--copies is a number from 1 to {MAX_OBJECTS}, not {v:?}")
+                })?,
+        };
+        Ok(Bed {
+            turn_deg: number("turn", -360.0, 360.0, 0.0)?,
+            scale_percent: number("scale", SCALE_MIN * 100.0, SCALE_MAX * 100.0, 100.0)?,
+            copies,
+        })
+    }
+
+    /// The mesh to slice and, when the copies were laid out here, the placement that keeps their places. Copies that do not all fit are refused: none is left out.
+    fn lay(
+        self,
+        mesh: &Mesh,
+        volume_mm: [f64; 3],
+        config: &SliceConfig,
+        lang: Lang,
+    ) -> Result<(Mesh, Option<Placement>), String> {
+        if self == Bed::AS_IT_IS {
+            return Ok((mesh.clone(), None));
+        }
+        let bed = [volume_mm[0], volume_mm[1]];
+        let mut plate = Plate::new();
+        let id = plate
+            .add("part", mesh.clone(), bed)
+            .ok_or_else(|| "the bed takes no part".to_string())?;
+        if let Some(o) = plate.get_mut(id) {
+            if !o.set_scale_percent(self.scale_percent) || !o.set_rotation(2, self.turn_deg) {
+                return Err("the turn or the scale cannot be used".to_string());
+            }
+        }
+        if self.copies == 1 {
+            return Ok((plate.merged()?, None));
+        }
+        plate.duplicate(id, self.copies - 1);
+        // what the settings lay round a part, and the clearance of the bed
+        let round = machine_check::fit([0.0; 3], volume_mm, config, None).needs_mm[0] / 2.0;
+        let gap = 2.0 * (round - config.bed_margin_mm).max(0.0) + COPY_GAP_MM;
+        let arranged = plate.arrange(bed, gap, round);
+        if !arranged.left_out.is_empty() {
+            return Err(fill(
+                Msg::CopiesNoRoom.tr(lang),
+                &[
+                    &arranged.left_out.len().to_string(),
+                    &self.copies.to_string(),
+                ],
+            ));
+        }
+        Ok((plate.merged()?, Some(Placement::Origin)))
+    }
 }
 
 fn read_text(path: &str) -> Result<String, String> {
@@ -837,8 +959,8 @@ fn read_text(path: &str) -> Result<String, String> {
         .and_then(|b| String::from_utf8(b).map_err(|_| format!("{path}: not UTF-8")))
 }
 
-/// The settings of a job: the ones of the program, over them the process asked for, over that the settings file and over that the filament.
-fn job_config(p: &Parsed, profile: &PrinterProfile) -> Result<Job, Outcome> {
+/// The settings of a job: the ones of the program, over them the process asked for, over that the settings file, then `--set`, and over that the filament.
+fn job_config(p: &Parsed, profile: &PrinterProfile, lang: Lang) -> Result<Job, Outcome> {
     let mut config = SliceConfig::default();
     let nozzle = nozzle_of(p, profile).map_err(|e| Outcome::usage(&e))?;
     if let Some(name) = p.flags.get("process") {
@@ -870,9 +992,17 @@ fn job_config(p: &Parsed, profile: &PrinterProfile) -> Result<Job, Outcome> {
                 .map_err(|err| Outcome::fail(format!("{path}: line {}: {err}", e.line)))?;
         }
     }
+    if let Some(spec) = p.flags.get("set") {
+        for (key, value) in set_pairs(spec).map_err(|e| Outcome::usage(&e))? {
+            config
+                .set(key, value)
+                .map_err(|e| Outcome::fail(format!("--set: {e}")))?;
+        }
+    }
     config.check().map_err(|e| Outcome::fail(e.to_string()))?;
     let mut notes = String::new();
     let mut density = report::DEFAULT_DENSITY_G_CM3;
+    let mut material = String::new();
     if let Some(fid) = p.flags.get("filament") {
         let filaments = FilamentCatalog::builtin().map_err(|e| Outcome::fail(e.to_string()))?;
         let Some(f) = filaments.find(fid) else {
@@ -881,28 +1011,18 @@ fn job_config(p: &Parsed, profile: &PrinterProfile) -> Result<Job, Outcome> {
             )));
         };
         density = f.density_g_cm3;
-        let compat = config
-            .apply_filament(f, profile, nozzle)
-            .map_err(|e| Outcome::fail(e.to_string()))?;
-        notes.push_str(&format!(
-            "filament {}: nozzle {} C, bed {} C, fan {} %\n",
-            f.name, config.nozzle_c, config.bed_c, config.fan_percent
-        ));
-        for a in compat.advice {
-            notes.push_str(&format!("note: {}\n", a.text()));
-        }
-        if let Some(r) = crate::preflight::record(&f.id) {
-            if let Some(limit) = crate::preflight::hold_flow(r, &mut config) {
-                notes.push_str(&format!(
-                    "flow: held to {limit} mm3/s, what the maker gives for the filament\n"
-                ));
-            }
+        material = f.material.as_str().to_uppercase();
+        let told = held::filament_notes(&mut config, f, profile, nozzle).map_err(Outcome::fail)?;
+        for n in told {
+            notes.push_str(&n.text(lang));
+            notes.push('\n');
         }
     }
     Ok(Job {
         config,
         notes,
         density,
+        material,
     })
 }
 
@@ -918,7 +1038,19 @@ fn fit_job(args: &[String], env_lang: Option<&str>) -> Outcome {
     let p = match parse(
         args,
         &[
-            "printer", "settings", "config", "lang", "filament", "nozzle", "process",
+            "printer",
+            "settings",
+            "config",
+            "lang",
+            "filament",
+            "nozzle",
+            "process",
+            "set",
+            "turn",
+            "scale",
+            "copies",
+            "start-gcode",
+            "end-gcode",
         ],
         &["hardened"],
     ) {
@@ -941,17 +1073,29 @@ fn fit_job(args: &[String], env_lang: Option<&str>) -> Outcome {
     let Some(profile) = state.printer().cloned() else {
         return Outcome::fail(format!("{id}: no such printer in the catalog"));
     };
-    if let Err(e) = Machine::from_profile(&profile) {
-        return Outcome::fail(e.to_string());
-    }
-    let job = match job_config(&p, &profile) {
+    let machine = match Machine::from_profile(&profile) {
+        Ok(m) => m,
+        Err(e) => return Outcome::fail(e.to_string()),
+    };
+    let job = match job_config(&p, &profile, state.lang) {
         Ok(j) => j,
         Err(e) => return e,
+    };
+    let bed = match Bed::of(&p) {
+        Ok(b) => b,
+        Err(e) => return Outcome::usage(&e),
     };
     if !state.load_model_file(model) {
         return Outcome::fail(state.status.text(state.lang));
     }
-    let Some(size) = state.model.as_ref().and_then(|m| m.size_mm()) else {
+    let Some(mesh) = state.model.as_ref() else {
+        return Outcome::fail("no model".to_string());
+    };
+    let laid = match bed.lay(mesh, profile.volume_mm, &job.config, state.lang) {
+        Ok((m, _)) => m,
+        Err(e) => return Outcome::fail(e),
+    };
+    let Some(size) = laid.size_mm() else {
         return Outcome::fail("no model".to_string());
     };
     let suite = match suite_machines() {
@@ -1027,6 +1171,36 @@ fn fit_job(args: &[String], env_lang: Option<&str>) -> Outcome {
             ));
         }
     }
+    // the blocks of the person are checked as they would be in the slice
+    let block_job = BlockJob {
+        nozzle_c: config.nozzle_c,
+        bed_c: config.bed_c,
+        chamber_c: config.chamber_c,
+        top_z_mm: found.needs_mm[2].min(v[2]),
+    };
+    for (flag, place) in [("start-gcode", Place::Start), ("end-gcode", Place::End)] {
+        let Some(path) = p.flags.get(flag) else {
+            continue;
+        };
+        let text = match read_text(path) {
+            Ok(t) => t,
+            Err(e) => return Outcome::fail(e),
+        };
+        match check_block(
+            &text,
+            place,
+            &block_job,
+            machine.dialect,
+            machine.limits,
+            machine.volume_mm,
+        ) {
+            Ok(_) => lines.push(fill(Msg::BlockAllowed.tr(lang), &[path])),
+            Err(e) => {
+                good = false;
+                lines.push(format!("{path}: {e}"));
+            }
+        }
+    }
     if limits.max_speed_mm_s.is_none() && limits.max_flow_mm3_s.is_none() {
         lines.push(Msg::FitNoFigures.tr(lang).to_string());
     }
@@ -1061,6 +1235,11 @@ fn slice(args: &[String], env_lang: Option<&str>) -> Outcome {
             "process",
             "start-gcode",
             "end-gcode",
+            "set",
+            "turn",
+            "scale",
+            "copies",
+            "save-settings",
         ],
         &["force", "hardened", "report"],
     ) {
@@ -1087,7 +1266,7 @@ fn slice(args: &[String], env_lang: Option<&str>) -> Outcome {
         Ok(m) => m,
         Err(e) => return Outcome::fail(e.to_string()),
     };
-    let job = match job_config(&p, &profile) {
+    let job = match job_config(&p, &profile, state.lang) {
         Ok(j) => j,
         Err(e) => return e,
     };
@@ -1095,7 +1274,12 @@ fn slice(args: &[String], env_lang: Option<&str>) -> Outcome {
         mut config,
         mut notes,
         density,
+        material,
     } = job;
+    let bed = match Bed::of(&p) {
+        Ok(b) => b,
+        Err(e) => return Outcome::usage(&e),
+    };
     let limits = match motion_limits(&profile.id) {
         Ok(l) => l,
         Err(e) => return Outcome::fail(e.to_string()),
@@ -1120,18 +1304,42 @@ fn slice(args: &[String], env_lang: Option<&str>) -> Outcome {
             }
         }
     }
-    if let Some(out) = p.flags.get("out") {
-        if !p.flags.contains_key("force") && std::path::Path::new(out).exists() {
+    // nothing is written over a file the job reads, and an existing file only with --force
+    let inputs: Vec<&str> = [
+        Some(model.as_str()),
+        p.flags.get("settings").map(String::as_str),
+        p.flags.get("config").map(String::as_str),
+        p.flags.get("start-gcode").map(String::as_str),
+        p.flags.get("end-gcode").map(String::as_str),
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
+    for flag in ["out", "save-settings"] {
+        let Some(target) = p.flags.get(flag) else {
+            continue;
+        };
+        if inputs.iter().any(|i| same_file(i, target)) {
+            return Outcome::fail(format!("{target}: the output is a file the job reads"));
+        }
+        if !p.flags.contains_key("force") && std::path::Path::new(target).exists() {
             return Outcome::fail(format!(
-                "{out}: the file exists (use --force to replace it)"
+                "{target}: the file exists (use --force to replace it)"
             ));
         }
-        let same = match (std::fs::canonicalize(model), std::fs::canonicalize(out)) {
-            (Ok(a), Ok(b)) => a == b,
-            _ => model == out,
-        };
-        if same {
-            return Outcome::fail("the output is the model file".to_string());
+    }
+    if let (Some(a), Some(b)) = (p.flags.get("out"), p.flags.get("save-settings")) {
+        if same_file(a, b) {
+            return Outcome::fail("--out and --save-settings name the same file".to_string());
+        }
+    }
+    if let Some(target) = p.flags.get("out") {
+        match package::target_of(target) {
+            Target::Other3mf => return Outcome::fail(Msg::OutOther3mf.tr(state.lang).to_string()),
+            Target::Package if !package::takes_package(machine.dialect) => {
+                return Outcome::fail(Msg::OutNotBambu.tr(state.lang).to_string())
+            }
+            _ => {}
         }
     }
     if !state.load_model_file(model) {
@@ -1140,7 +1348,16 @@ fn slice(args: &[String], env_lang: Option<&str>) -> Outcome {
     let Some(mesh) = state.model.as_ref() else {
         return Outcome::fail("no model".to_string());
     };
-    let sliced = p3dp_slicer::plan(mesh, &machine, &config).and_then(|plan| {
+    let (mesh, placement) = match bed.lay(mesh, machine.volume_mm, &config, state.lang) {
+        Ok(l) => l,
+        Err(e) => return Outcome::fail(e),
+    };
+    // the settings that are saved are the ones of a job of one part: the places of the copies are not a setting
+    let used_settings = config.to_text();
+    if let Some(placement) = placement {
+        config.placement = placement;
+    }
+    let sliced = p3dp_slicer::plan(&mesh, &machine, &config).and_then(|plan| {
         let gcode = plan.gcode_with(p3dp_slicer::VERSION, &user)?;
         Ok((plan, gcode))
     });
@@ -1161,9 +1378,8 @@ fn slice(args: &[String], env_lang: Option<&str>) -> Outcome {
     out.push_str(&notes);
     for w in &plan.warnings {
         let p3dp_slicer::Warning::ThinRegion { layer } = w;
-        out.push_str(&format!(
-            "warning: layer {layer} has a part thinner than the perimeters; it has fewer of them or none\n"
-        ));
+        out.push_str(&fill(Msg::WarnThin.tr(state.lang), &[&layer.to_string()]));
+        out.push('\n');
     }
     if p.flags.contains_key("report") {
         match report::slice_lines(&plan, density, &state.config, state.lang) {
@@ -1177,18 +1393,95 @@ fn slice(args: &[String], env_lang: Option<&str>) -> Outcome {
         }
     }
     out.push_str(&format!("{}\n", Msg::SimulatorOnly.tr(state.lang)));
-    let Some(target) = p.flags.get("out") else {
-        return Outcome::ok(out);
+    if let Some(target) = p.flags.get("out") {
+        let title = std::path::Path::new(model)
+            .file_stem()
+            .map_or_else(String::new, |s| s.to_string_lossy().into_owned());
+        let facts = Facts {
+            title: &title,
+            material: &material,
+            density_g_cm3: density,
+        };
+        let written = package::file_for(target, &plan, &gcode, &facts, state.lang)
+            .and_then(|(bytes, told)| package::write_whole(target, &bytes).map(|()| told));
+        match written {
+            Ok(told) => {
+                out.push_str(&format!("{target} ({} lines)\n", gcode.lines().count()));
+                if let Some(msg) = told {
+                    out.push_str(msg.tr(state.lang));
+                    out.push('\n');
+                }
+            }
+            Err(e) => return Outcome::fail(e),
+        }
+    }
+    if let Some(target) = p.flags.get("save-settings") {
+        if let Err(e) = write_new(target, &used_settings, p.flags.contains_key("force")) {
+            return Outcome::fail(e);
+        }
+        out.push_str(&format!("{target}\n"));
+    }
+    Outcome::ok(out)
+}
+
+/// Whether two names are the same file (as far as the file system tells, or letter by letter for one that is not there yet).
+fn same_file(a: &str, b: &str) -> bool {
+    match (std::fs::canonicalize(a), std::fs::canonicalize(b)) {
+        (Ok(x), Ok(y)) => x == y,
+        _ => a == b,
+    }
+}
+
+/// Checks the G-code a package carries and takes the G-code or the picture out when asked. The exit code is 1 when the checksum does not agree, and nothing is taken out then.
+fn package_report(
+    file: &str,
+    bytes: &[u8],
+    mut out: String,
+    p: &Parsed,
+    state: &AppState,
+) -> Outcome {
+    let lang = state.lang;
+    let force = p.flags.contains_key("force");
+    let found = match gcode3mf::read_gcode(bytes, &state.config.limits) {
+        Ok(f) => f,
+        Err(e) => return Outcome::fail(format!("{file}: {e}")),
     };
-    let tmp = format!("{target}.tmp-{}", std::process::id());
-    if let Err(e) = std::fs::write(&tmp, gcode.as_bytes()) {
-        return Outcome::fail(format!("{tmp}: {e}"));
+    if let Some(g) = &found {
+        let msg = match g.checksum {
+            Checksum::Agrees => Msg::PackageSumOk,
+            Checksum::Differs => Msg::PackageSumBad,
+            Checksum::Missing => Msg::PackageSumMissing,
+        };
+        out.push_str(&fill(msg.tr(lang), &[&g.name]));
+        out.push('\n');
+        if g.checksum == Checksum::Differs {
+            return Outcome {
+                code: 1,
+                out,
+                err: String::new(),
+            };
+        }
     }
-    if let Err(e) = std::fs::rename(&tmp, target) {
-        let _ = std::fs::remove_file(&tmp);
-        return Outcome::fail(format!("{target}: {e}"));
+    if let Some(target) = p.flags.get("extract-gcode") {
+        let Some(g) = &found else {
+            return Outcome::fail(format!("{file}: the package carries no plate of G-code"));
+        };
+        if let Err(e) = write_new(target, &g.text, force) {
+            return Outcome::fail(e);
+        }
+        out.push_str(&format!("{target}\n"));
     }
-    out.push_str(&format!("{target} ({} lines)\n", gcode.lines().count()));
+    if let Some(target) = p.flags.get("thumbnail") {
+        let picture = match gcode3mf::read_picture(bytes, &state.config.limits) {
+            Ok(Some(d)) => d,
+            Ok(None) => return Outcome::fail(format!("{file}: the package has no picture")),
+            Err(e) => return Outcome::fail(format!("{file}: {e}")),
+        };
+        if let Err(e) = write_picture(target, PictureFormat::Png, &picture, force) {
+            return Outcome::fail(e);
+        }
+        out.push_str(&format!("{target}\n"));
+    }
     Outcome::ok(out)
 }
 
@@ -1440,6 +1733,7 @@ fn project(args: &[String], env_lang: Option<&str>) -> Outcome {
             "lift",
             "light-power",
             "thumbnail",
+            "extract-gcode",
         ],
         &["force"],
     ) {
@@ -1461,13 +1755,16 @@ fn project(args: &[String], env_lang: Option<&str>) -> Outcome {
         out: p.flags.get("thumbnail").cloned(),
         force: p.flags.contains_key("force"),
     };
-    if bgcode::is_bgcode(&bytes) {
-        return bgcode_report(file, &bytes, &state.config, state.lang, &thumb);
-    }
     let ext = file
         .rsplit_once('.')
         .map(|(_, e)| e.to_ascii_lowercase())
         .unwrap_or_default();
+    if p.flags.contains_key("extract-gcode") && ext != "3mf" {
+        return Outcome::usage("--extract-gcode takes the G-code out of a .3mf package");
+    }
+    if bgcode::is_bgcode(&bytes) {
+        return bgcode_report(file, &bytes, &state.config, state.lang, &thumb);
+    }
     if ["gcode", "gco", "g"].contains(&ext.as_str()) {
         return gcode_report(file, &bytes, &state.config, state.lang, &thumb);
     }
@@ -1522,7 +1819,7 @@ fn project(args: &[String], env_lang: Option<&str>) -> Outcome {
         out.push_str("the package carries G-code\n");
     }
     out.push_str("read only: nothing was changed and the model itself was not read\n");
-    Outcome::ok(out)
+    package_report(file, &bytes, out, &p, &state)
 }
 
 #[cfg(test)]
@@ -2692,6 +2989,179 @@ mod tests {
             .code,
             2
         );
+    }
+
+    #[test]
+    fn slice_writes_the_package_of_a_bambu_printer_and_project_checks_and_opens_it() {
+        let dir = std::env::temp_dir().join(format!("p3dp-package-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let model = format!("{}/examples/cube-20mm.stl", env!("CARGO_MANIFEST_DIR"));
+        let at = |name: &str| dir.join(name).to_string_lossy().into_owned();
+        let go = |v: &[&str]| run(&v.iter().map(|s| s.to_string()).collect::<Vec<_>>(), None);
+        let pack = at("cube.gcode.3mf");
+        let r = go(&["slice", &model, "--printer", "bambu-lab-a1", "--out", &pack]);
+        assert_eq!(r.code, 0, "{}", r.err);
+        assert!(r.out.contains("no printer has been given one"), "{}", r.out);
+        let (gcode, picture) = (at("plate.gcode"), at("plate.png"));
+        let r = go(&[
+            "project",
+            &pack,
+            "--extract-gcode",
+            &gcode,
+            "--thumbnail",
+            &picture,
+        ]);
+        assert_eq!(r.code, 0, "{}", r.err);
+        assert!(
+            r.out
+                .contains("the checksum of Metadata/plate_1.gcode agrees"),
+            "{}",
+            r.out
+        );
+        let text = std::fs::read_to_string(&gcode).unwrap();
+        assert!(text.contains("; layer_num: 99"), "{} lines", text.len());
+        assert!(std::fs::read(&picture).unwrap().starts_with(&[0x89, b'P']));
+        let r = go(&["check-profile", "bambu-lab-a1", "--gcode", &pack]);
+        assert_eq!(r.code, 0, "{}{}", r.out, r.err);
+
+        // a loose file for the same printer is written and told; the wrong names and printers are refused
+        let loose = go(&[
+            "slice",
+            &model,
+            "--printer",
+            "bambu-lab-a1",
+            "--out",
+            &at("cube.gcode"),
+        ]);
+        assert!(loose.out.contains(".gcode.3mf"), "{}", loose.out);
+        for (printer, name) in [
+            ("bambu-lab-a1", "cube.3mf"),
+            ("creality-k1c", "other.gcode.3mf"),
+        ] {
+            let r = go(&["slice", &model, "--printer", printer, "--out", &at(name)]);
+            assert_eq!(r.code, 1, "{printer} {name}: {}", r.out);
+            assert!(!std::path::Path::new(&at(name)).exists());
+        }
+        assert_eq!(
+            go(&["project", &gcode, "--extract-gcode", &at("x.gcode")]).code,
+            2
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn slice_turns_scales_copies_and_saves_the_settings_it_used() {
+        let dir = std::env::temp_dir().join(format!("p3dp-bed-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let model = format!("{}/examples/cube-20mm.stl", env!("CARGO_MANIFEST_DIR"));
+        let at = |name: &str| dir.join(name).to_string_lossy().into_owned();
+        let go = |command: &str, extra: &[&str]| {
+            let mut v = vec![
+                command.to_string(),
+                model.clone(),
+                "--printer".to_string(),
+                "bambu-lab-a1".to_string(),
+            ];
+            v.extend(extra.iter().map(|s| s.to_string()));
+            run(&v, None)
+        };
+        let one = go("slice", &[]);
+        assert!(one.out.contains("100 layers, 20.0 mm high"), "{}", one.out);
+        let half = go("slice", &["--scale", "50"]);
+        assert!(half.out.contains("50 layers, 10.0 mm high"), "{}", half.out);
+        let straight = go("fit", &[]);
+        let turned = go("fit", &["--turn", "45"]);
+        assert_eq!(turned.code, 0, "{}{}", turned.out, turned.err);
+        assert_ne!(turned.out, straight.out, "a turned cube takes more room");
+
+        let saved = at("used.cfg");
+        let four = go(
+            "slice",
+            &[
+                "--copies",
+                "4",
+                "--set",
+                "layer_height_mm=0.25; perimeters=3",
+                "--out",
+                &at("four.gcode"),
+                "--save-settings",
+                &saved,
+            ],
+        );
+        assert_eq!(four.code, 0, "{}", four.err);
+        let layers = |o: &str| {
+            o.split(" layers")
+                .next()
+                .and_then(|s| s.rsplit(' ').next())
+                .and_then(|n| n.parse::<u32>().ok())
+        };
+        let count = layers(&four.out);
+        assert!(count.is_some_and(|n| n < 100), "{}", four.out);
+        let text = std::fs::read_to_string(&saved).unwrap();
+        assert!(text.contains("layer_height_mm = 0.25") && text.contains("perimeters = 3"));
+        let again = go("slice", &["--settings", &saved]);
+        assert_eq!(again.code, 0, "{}", again.err);
+        assert_eq!(layers(&again.out), count, "{}", again.out);
+
+        // too many copies leave nothing out, and the mistakes are told
+        let r = go("slice", &["--copies", "9", "--scale", "500"]);
+        assert_eq!(r.code, 1, "{}", r.out);
+        for wrong in [
+            ["--copies", "0"],
+            ["--copies", "many"],
+            ["--turn", "inf"],
+            ["--scale", "0"],
+        ] {
+            assert_eq!(go("slice", &wrong).code, 2, "{wrong:?}");
+        }
+        assert_eq!(go("slice", &["--set", "layer_height_mm"]).code, 2);
+        assert_eq!(go("slice", &["--set", "no_such_key=1"]).code, 1);
+        // a file the job reads is never written over, even when forced
+        let start = at("mine.gcode");
+        std::fs::write(&start, "G1 X5 Y5 F3000\n").unwrap();
+        let r = go(
+            "slice",
+            &["--start-gcode", &start, "--out", &start, "--force"],
+        );
+        assert_eq!(r.code, 1);
+        assert_eq!(std::fs::read_to_string(&start).unwrap(), "G1 X5 Y5 F3000\n");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn fit_checks_your_blocks_without_slicing_and_the_filament_lines_follow_the_language() {
+        let dir = std::env::temp_dir().join(format!("p3dp-fit-blocks-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let model = format!("{}/examples/cube-20mm.stl", env!("CARGO_MANIFEST_DIR"));
+        let start = format!(
+            "{}/examples/start-prime-line.gcode",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        let bad = dir.join("hot.gcode").to_string_lossy().into_owned();
+        std::fs::write(&bad, "M104 S999\n").unwrap();
+        let go = |extra: &[&str]| {
+            let mut v = vec![
+                "fit".to_string(),
+                model.clone(),
+                "--printer".to_string(),
+                "bambu-lab-a1".to_string(),
+            ];
+            v.extend(extra.iter().map(|s| s.to_string()));
+            run(&v, None)
+        };
+        let ok = go(&["--start-gcode", &start]);
+        assert_eq!(ok.code, 0, "{}{}", ok.out, ok.err);
+        assert!(ok.out.contains("every line is allowed"), "{}", ok.out);
+        let no = go(&["--end-gcode", &bad]);
+        assert_eq!(no.code, 1);
+        assert!(no.out.contains("end G-code, line 1"), "{}", no.out);
+        let es = go(&["--filament", "generic-petg", "--lang", "es"]);
+        assert!(
+            es.out.contains("filamento Generic PETG: boquilla 235 C"),
+            "{}",
+            es.out
+        );
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

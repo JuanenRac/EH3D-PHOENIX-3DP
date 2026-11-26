@@ -9,11 +9,14 @@ use crate::app_state::{demo_device, AppState, Status, Tab};
 use crate::config::AppConfig;
 use crate::demo;
 use crate::device::{self, DevicePanel, Done};
+use crate::held::{self, Recipe};
 use crate::i18n::{fill, state_text, Lang, Msg};
 use crate::keys::{Action, Chord, Scheme, SchemeId};
 use crate::limits_ui::{self, LimitsDraft};
 use crate::lists::{FilamentFilter, PrinterFilter};
 use crate::look::{self, Palette, Theme};
+use crate::machine_view;
+use crate::package;
 use crate::panels::{self, id as pid, Cmd, LayoutWatch, MenuFacts};
 use crate::preflight::{self, Severity};
 use crate::preview::{self, PreviewState};
@@ -26,6 +29,7 @@ use eh3d_dock::about::Phoenix;
 use eh3d_dock::core::AboutInfo;
 use eh3d_dock::gui::{primary_button, program_mark, Dock};
 use eh3d_dock::menu::{Chosen, DockAction, MenuBar, StdAction};
+use eh3d_printers::Level;
 use eh3d_view::server_gui;
 use p3dp_core::Mesh;
 use p3dp_link::PrinterState;
@@ -246,6 +250,13 @@ struct App {
     pending_view: Option<StdView>,
     /// The last thing the slice said.
     note: Option<String>,
+    /// The starting process that was put over the settings; `None` when they are as typed.
+    process: Option<Level>,
+    /// The files of the start and end G-code of the person.
+    start_text: String,
+    end_text: String,
+    /// What the plan on view was sliced with.
+    sliced_with: Option<Recipe>,
     shot: Option<ShotState>,
     visuals_theme: Option<Theme>,
 }
@@ -310,6 +321,10 @@ impl App {
             limits_note: Vec::new(),
             pending_view: None,
             note: None,
+            process: None,
+            start_text: String::new(),
+            end_text: String::new(),
+            sliced_with: None,
             shot,
             visuals_theme: None,
             state,
@@ -394,10 +409,10 @@ impl App {
     fn export_gcode(&mut self) {
         let lang = self.lang();
         let path = self.export_text.trim().to_string();
-        let Some(plan) = &self.preview.plan else {
+        if self.preview.plan.is_none() {
             self.state.status = Status::Problem(Msg::NothingToExport.tr(lang).to_string());
             return;
-        };
+        }
         if path.is_empty() {
             self.pending_dock
                 .push(DockAction::ShowPanel(pid::PROJECT.to_string()));
@@ -410,16 +425,51 @@ impl App {
             self.state.status = Status::Problem(format!("{path}: the file exists"));
             return;
         }
-        match plan
-            .gcode(env!("CARGO_PKG_VERSION"))
-            .map_err(|e| e.to_string())
-            .and_then(|g| std::fs::write(&path, g).map_err(|e| e.to_string()))
-        {
-            Ok(()) => {
+        let title = if self.state.model_name.is_empty() {
+            "print"
+        } else {
+            &self.state.model_name
+        };
+        let written = self
+            .preview
+            .file_for(&path, title, lang)
+            .and_then(|(bytes, told)| package::write_whole(&path, &bytes).map(|()| told));
+        match written {
+            Ok(told) => {
                 self.state.status = Status::Exported(path.clone());
                 self.exported_path = Some(path);
+                self.note = told.map(|m| m.tr(lang).to_string());
             }
             Err(e) => self.state.status = Status::Problem(e),
+        }
+    }
+
+    /// What a slice would be made with now.
+    fn recipe(&self) -> Recipe {
+        let nozzle = Nozzle {
+            diameter_mm: self.nozzle_mm,
+            hardened: self.nozzle_hardened,
+        };
+        Recipe::new(
+            self.state.printer().map_or("", |p| p.id.as_str()),
+            self.filament_id.as_deref().map(|id| (id, nozzle)),
+            &self.preview.config,
+            &self.start_text,
+            &self.end_text,
+        )
+    }
+
+    /// Reads the start and end G-code of the person into the state of the slice; `false` with the reason when a file cannot be read.
+    fn take_user_gcode(&mut self) -> bool {
+        match held::read_user_gcode(&self.start_text, &self.end_text) {
+            Ok(user) => {
+                self.preview.user = user;
+                true
+            }
+            Err(e) => {
+                self.state.status = Status::Problem(e);
+                false
+            }
         }
     }
 
@@ -532,9 +582,10 @@ impl App {
             return;
         };
         let filament = self.chosen_filament();
-        if self.studio.is_slicing() {
+        if self.studio.is_slicing() || !self.take_user_gcode() {
             return;
         }
+        self.sliced_with = Some(self.recipe());
         if self.studio.start_slice(&self.preview, &printer, filament) {
             self.note = None;
         } else {
@@ -548,6 +599,10 @@ impl App {
             return;
         };
         let filament = self.chosen_filament();
+        if !self.take_user_gcode() {
+            return;
+        }
+        self.sliced_with = Some(self.recipe());
         self.studio
             .slice_blocking(&mut self.preview, &printer, filament);
     }
@@ -568,6 +623,16 @@ impl App {
             SliceEvent::Lost => {
                 self.preview.error = Some("the slice stopped without an answer".to_string());
             }
+        }
+        // a change of the printer, the filament, a setting or a block makes the plan on view out of date
+        if !self.studio.is_slicing()
+            && self.preview.plan.is_some()
+            && self
+                .sliced_with
+                .as_ref()
+                .is_some_and(|r| *r != self.recipe())
+        {
+            self.studio.stale = true;
         }
     }
 
@@ -1165,8 +1230,69 @@ impl App {
         }
     }
 
+    /// The starting process: choosing one puts its figures over the settings, where they can still be changed.
+    fn process_choice(&mut self, ui: &mut egui::Ui) {
+        let lang = self.lang();
+        let words = |level: Option<Level>| {
+            match level {
+                None => Msg::ProcessAsTyped,
+                Some(Level::Draft) => Msg::ProcessDraft,
+                Some(Level::Standard) => Msg::ProcessStandard,
+                Some(Level::Fine) => Msg::ProcessFine,
+                Some(Level::Strong) => Msg::ProcessStrong,
+            }
+            .tr(lang)
+        };
+        let mut chosen = self.process;
+        ui.horizontal(|ui| {
+            ui.label(Msg::LblProcess.tr(lang));
+            egui::ComboBox::from_id_salt("process_level")
+                .selected_text(words(chosen))
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut chosen, None, words(None));
+                    for level in Level::ALL {
+                        ui.selectable_value(&mut chosen, Some(level), words(Some(level)));
+                    }
+                });
+        });
+        if chosen == self.process {
+            return;
+        }
+        let Some(level) = chosen else {
+            self.process = None;
+            return;
+        };
+        let printer = self.state.printer().map_or(String::new(), |p| p.id.clone());
+        match machine_view::apply_process(&mut self.preview.config, level, &printer, self.nozzle_mm)
+        {
+            Ok(()) => self.process = chosen,
+            Err(e) => self.state.status = Status::Problem(e),
+        }
+    }
+
+    /// What the slice took from the filament, what was held to the printer and why a slice was refused.
+    fn held_section(&self, ui: &mut egui::Ui) {
+        let lang = self.lang();
+        ui.label(egui::RichText::new(Msg::HeldTitle.tr(lang)).strong());
+        if self.preview.refused.is_empty() && self.preview.notes.is_empty() {
+            ui.label(
+                egui::RichText::new(Msg::HeldNothing.tr(lang))
+                    .small()
+                    .color(col(self.look.dim)),
+            );
+        }
+        for n in &self.preview.refused {
+            ui.label(egui::RichText::new(n.text(lang)).color(col(self.look.danger)));
+        }
+        // after a refusal the notes are the ones of the plan that stays on view
+        for n in &self.preview.notes {
+            ui.label(egui::RichText::new(n.text(lang)).small());
+        }
+    }
+
     fn slice_options(&mut self, ui: &mut egui::Ui) {
         let lang = self.lang();
+        self.process_choice(ui);
         let c = &mut self.preview.config;
         egui::Grid::new("process_grid")
             .num_columns(2)
@@ -1255,14 +1381,23 @@ impl App {
                 Adhesion::None
             };
         }
-        for a in &self.preview.advice {
-            ui.label(egui::RichText::new(a).small().color(col(self.look.dim)));
+        for (label, text) in [
+            (Msg::LblStartGcode, &mut self.start_text),
+            (Msg::LblEndGcode, &mut self.end_text),
+        ] {
+            ui.label(label.tr(lang));
+            ui.add(
+                egui::TextEdit::singleline(text)
+                    .desired_width(panels::path_field_width(ui.available_width(), 0.0)),
+            );
         }
         if let Some(e) = &self.preview.error {
             ui.label(
                 egui::RichText::new(fill(Msg::Problem.tr(lang), &[e])).color(col(self.look.danger)),
             );
         }
+        ui.separator();
+        self.held_section(ui);
     }
 
     // ---- the panels of the window: each one is drawn by the frame in the place the person put it
@@ -1425,17 +1560,15 @@ impl App {
                 }
             }
             None => {
-                // a filament that is not in the database has the advice of the check against the printer, in English
                 if self.filament_id.is_none() {
                     ui.label(
                         egui::RichText::new(Msg::PfNoFilament.tr(lang)).color(col(self.look.dim)),
                     );
                 }
-                for advice in &self.preview.advice {
-                    ui.label(egui::RichText::new(advice).color(col(self.look.accent)));
-                }
             }
         }
+        ui.separator();
+        self.held_section(ui);
         ui.separator();
         ui.label(egui::RichText::new(Msg::SimulatorOnly.tr(lang)).color(col(self.look.dim)));
         ui.label(
@@ -1998,14 +2131,11 @@ impl App {
     }
 
     fn send_to_queue(&mut self) {
-        let Some(plan) = &self.preview.plan else {
-            return;
-        };
         let Some(printer) = self.state.printer() else {
             return;
         };
-        let (Some(limits), Ok(gcode)) = (printer.limits, plan.gcode(env!("CARGO_PKG_VERSION")))
-        else {
+        // the G-code as it was sliced, with the start and end G-code of that slice
+        let (Some(limits), Some(gcode)) = (printer.limits, self.preview.gcode.clone()) else {
             return;
         };
         let name = if self.state.model_name.is_empty() {
@@ -2314,6 +2444,11 @@ impl App {
         });
         ui.add_space(6.0);
         ui.label(Msg::ExportToLabel.tr(lang));
+        ui.label(
+            egui::RichText::new(Msg::ExportKinds.tr(lang))
+                .small()
+                .color(col(self.look.dim)),
+        );
         ui.horizontal(|ui| {
             ui.add(
                 egui::TextEdit::singleline(&mut self.export_text)

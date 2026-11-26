@@ -430,7 +430,11 @@ impl Studio {
                     self.last_slice_s = seconds.max(0.05);
                     self.stale = false;
                 }
-                *preview = done.preview;
+                // what the person changed while the slice ran is kept: only the result is taken
+                let mut next = done.preview;
+                next.config = preview.config.clone();
+                next.user = preview.user.clone();
+                *preview = next;
                 SliceEvent::Finished { ok, seconds }
             }
             Poll::Lost => {

@@ -2,14 +2,16 @@
 //! the plan already projected on the screen. The slicer and the viewer model do the work; this puts them in the order a person uses them.
 
 use crate::config::AppConfig;
+use crate::held::{self, Note};
 use crate::i18n::{fill, Lang, Msg};
+use crate::package::{self, Facts};
 use crate::report;
 use crate::shade::{self, BedDrawing, LineKind};
 use p3dp_core::Mesh;
 use p3dp_profiles::filament::{FilamentProfile, Nozzle};
 use p3dp_profiles::PrinterProfile;
 use p3dp_slicer::report::{progress, Progress};
-use p3dp_slicer::{Kind, LayerSummary, Machine, Plan, SliceConfig};
+use p3dp_slicer::{Kind, LayerSummary, Machine, Plan, SliceConfig, UserGcode};
 use p3dp_viewer::layers::{lines_of, travel_lines, KindFilter, LayerRange, FLOATS_PER_VERTEX};
 use p3dp_viewer::{OrbitCamera, Viewport};
 
@@ -117,6 +119,16 @@ pub struct PreviewState {
     pub error: Option<String>,
     /// Advice from the check of the filament against the printer, that did not stop the slice.
     pub advice: Vec<String>,
+    /// The start and end G-code of the person for the next slice.
+    pub user: UserGcode,
+    /// What the plan took from the filament and what was held to the printer, and why.
+    pub notes: Vec<Note>,
+    /// Why the printer refused the last slice, one line for each figure.
+    pub refused: Vec<Note>,
+    /// The G-code of the plan, as it was sliced (with the start and end G-code of that slice).
+    pub gcode: Option<String>,
+    /// The family of the plastic of the plan (`PLA`), empty when no filament was chosen.
+    pub material: String,
     /// Draw the moves of the head between the paths too (pale blue lines).
     pub show_travel: bool,
     /// See inside: the top and bottom skins are left out, so the infill and the walls under them show.
@@ -146,6 +158,11 @@ impl Default for PreviewState {
             only_one: false,
             error: None,
             advice: Vec::new(),
+            user: UserGcode::default(),
+            notes: Vec::new(),
+            refused: Vec::new(),
+            gcode: None,
+            material: String::new(),
             show_travel: false,
             peek_inside: false,
             grid_mm: 10.0,
@@ -176,6 +193,7 @@ impl PreviewState {
     ) -> bool {
         self.error = None;
         self.advice.clear();
+        self.refused.clear();
         let machine = match Machine::from_profile(printer) {
             Ok(m) => m,
             Err(e) => {
@@ -185,37 +203,55 @@ impl PreviewState {
         };
         let mut config = self.config.clone();
         let mut density = report::DEFAULT_DENSITY_G_CM3;
+        let mut material = String::new();
+        let mut notes = Vec::new();
         if let Some((f, nozzle)) = filament {
             density = f.density_g_cm3;
-            match config.apply_filament(f, printer, nozzle) {
-                Ok(c) => {
-                    self.advice = c.advice.iter().map(|a| a.text().to_string()).collect();
-                    // the flow the maker gives for the filament holds every line of the slice
-                    if let Some(r) = crate::preflight::record(&f.id) {
-                        crate::preflight::hold_flow(r, &mut config);
-                    }
-                }
+            material = f.material.as_str().to_uppercase();
+            match held::filament_notes(&mut config, f, printer, nozzle) {
+                Ok(n) => notes = n,
                 Err(e) => {
-                    self.error = Some(e.to_string());
+                    self.error = Some(e);
                     return false;
                 }
             }
+            self.advice = notes
+                .iter()
+                .filter_map(|n| match n {
+                    Note::Advice(a) => Some(a.clone()),
+                    _ => None,
+                })
+                .collect();
         }
-        let held = p3dp_profiles::motion_limits(&printer.id)
-            .map_err(|e| e.to_string())
-            .and_then(|l| {
-                p3dp_slicer::machine_check::apply(&mut config, &l).map_err(|e| e.to_string())
-            });
-        if let Err(e) = held {
-            self.error = Some(e);
-            return false;
+        match held::machine_notes(&mut config, &printer.id) {
+            Ok(Ok(n)) => notes.extend(n),
+            Ok(Err(refused)) => {
+                let lines: Vec<String> = refused.iter().map(|n| n.text(Lang::En)).collect();
+                self.error = Some(lines.join("; "));
+                self.refused = refused;
+                return false;
+            }
+            Err(e) => {
+                self.error = Some(e);
+                return false;
+            }
         }
-        match p3dp_slicer::plan(mesh, &machine, &config) {
-            Ok(plan) => {
+        if self.user.start.is_some() || self.user.end.is_some() {
+            notes.push(Note::OwnGcode);
+        }
+        let sliced = p3dp_slicer::plan(mesh, &machine, &config).and_then(|plan| {
+            let gcode = plan.gcode_with(p3dp_slicer::VERSION, &self.user)?;
+            Ok((plan, gcode))
+        });
+        match sliced {
+            Ok((plan, gcode)) => {
                 let top = plan.layer_count().saturating_sub(1);
                 self.summaries = plan.summaries();
                 self.progress = progress(&self.summaries, plan.config.filament_area_mm2());
                 self.density_g_cm3 = density;
+                self.material = material;
+                self.notes = notes;
+                self.gcode = Some(gcode);
                 self.plan = Some(plan);
                 self.layer = top;
                 self.fit_next = true;
@@ -228,6 +264,24 @@ impl PreviewState {
         }
     }
 
+    /// The file to write for a name: the G-code as it was sliced, or its package for a name ending in `.gcode.3mf`, with what is to be told about it.
+    pub fn file_for(
+        &self,
+        path: &str,
+        title: &str,
+        lang: Lang,
+    ) -> Result<(Vec<u8>, Option<Msg>), String> {
+        let (Some(plan), Some(gcode)) = (self.plan.as_ref(), self.gcode.as_ref()) else {
+            return Err(Msg::NothingToExport.tr(lang).to_string());
+        };
+        let facts = Facts {
+            title,
+            material: &self.material,
+            density_g_cm3: self.density_g_cm3,
+        };
+        package::file_for(path, plan, gcode, &facts, lang)
+    }
+
     /// Forgets the plan (a new model was loaded).
     pub fn forget(&mut self) {
         self.plan = None;
@@ -235,6 +289,9 @@ impl PreviewState {
         self.progress.clear();
         self.error = None;
         self.advice.clear();
+        self.notes.clear();
+        self.refused.clear();
+        self.gcode = None;
         self.layer = 0;
     }
 
@@ -453,6 +510,54 @@ mod tests {
         let p = c.find("prusa-mk4s").unwrap();
         assert!(s.slice(&cube(20.0), p, None), "{:?}", s.error);
         (s, c)
+    }
+
+    #[test]
+    fn a_slice_keeps_what_was_held_the_gcode_and_gives_the_package_of_a_bambu_printer() {
+        let c = catalog();
+        let a1 = c.find("bambu-lab-a1").unwrap();
+        let filaments = FilamentCatalog::builtin().unwrap();
+        let pla = filaments.find("generic-pla").unwrap();
+        let nozzle = Nozzle {
+            diameter_mm: 0.4,
+            hardened: false,
+        };
+        let mut s = PreviewState::default();
+        assert!(s.file_for("a.gcode", "a", Lang::En).is_err(), "no plan yet");
+        s.config.max_volumetric_flow_mm3_s = 90.0;
+        s.user.start = Some("G1 X10 Y10 F3000\n".to_string());
+        assert!(
+            s.slice(&cube(10.0), a1, Some((pla, nozzle))),
+            "{:?}",
+            s.error
+        );
+        assert!(matches!(s.notes.first(), Some(Note::Filament { .. })));
+        assert!(s.notes.contains(&Note::OwnGcode), "{:?}", s.notes);
+        assert_eq!(s.material, "PLA");
+        assert!(s.gcode.as_ref().unwrap().contains("; your start G-code"));
+        let (bytes, told) = s.file_for("a.gcode.3mf", "a", Lang::En).unwrap();
+        assert_eq!(told, Some(Msg::PackageNotTried));
+        let got = p3dp_formats::gcode3mf::read_gcode(&bytes, &p3dp_core::Limits::default())
+            .unwrap()
+            .unwrap();
+        assert_eq!(Some(got.text), s.gcode);
+
+        // a speed over the printer refuses, says which, and the plan on view stays
+        let layers = s.layer_count();
+        s.config.travel_speed_mm_s = 900.0;
+        assert!(!s.slice(&cube(10.0), a1, None));
+        assert!(s.refused.iter().all(Note::refuses) && s.refused.len() == 1);
+        assert!(s.error.as_ref().unwrap().contains("travel_speed_mm_s"));
+        assert_eq!(s.layer_count(), layers);
+
+        // a block that is not allowed refuses the whole slice
+        s.config.travel_speed_mm_s = 150.0;
+        s.user.start = Some("M104 S999\n".to_string());
+        assert!(!s.slice(&cube(10.0), a1, None));
+        assert!(s.refused.is_empty());
+        assert!(s.error.as_ref().unwrap().contains("start G-code, line 1"));
+        s.forget();
+        assert!(s.notes.is_empty() && s.gcode.is_none());
     }
 
     #[test]
