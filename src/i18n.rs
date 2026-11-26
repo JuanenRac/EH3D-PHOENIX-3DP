@@ -1041,7 +1041,7 @@ mod tests {
         seen.sort_by_key(|m| format!("{m:?}"));
         seen.dedup();
         assert_eq!(seen.len(), Msg::ALL.len());
-        assert_eq!(Msg::ALL.len(), 231);
+        assert_eq!(Msg::ALL.len(), 243);
     }
 
     #[test]
