@@ -2,7 +2,7 @@
   <img src="images/EH3D_PHOENIX_3DP_BANNER.svg" alt="EH3D-PHOENIX-3DP banner" width="100%">
 </p>
 
-# EH3D-PHOENIX-3DP
+# <img src="images/brand/icon-64.png" alt="" width="40" height="40" align="absmiddle"> EH3D-PHOENIX-3DP
 <p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 中文</a> | 🇯🇵 <b>日本語</b> | <a href="README_por.md">🇵🇹 Português</a></p>
 
 ### 3D プリントの準備と送信：モデル、プリンター プロファイル、安全な G コード、プリンターおよび EH3D サーバーとの接続
@@ -258,7 +258,7 @@ EH3D-PHOENIX-3DP/
 │   ├── architecture.json                        アーキテクチャ図のデータ
 │   └── structure.json                           構成図のデータ
 ├── tools/                                       CI チェック、README チェック、図のツール
-├── images/                                      バナー、2 枚の図、README のワークスペースの図
+├── images/                                      アイコンとロゴ、バナー、2 枚の図、ワークスペースの図
 ├── .github/                                     CI とリリースのワークフロー、Issue と PR のテンプレート
 ├── eh3d.project.json                            マニフェスト：バージョン、役割、成熟度、ビルド コマンド
 ├── Cargo.toml                                   ワークスペースとそのクレート

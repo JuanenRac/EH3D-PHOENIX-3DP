@@ -2,7 +2,7 @@
   <img src="images/EH3D_PHOENIX_3DP_BANNER.svg" alt="EH3D-PHOENIX-3DP banner" width="100%">
 </p>
 
-# EH3D-PHOENIX-3DP
+# <img src="images/brand/icon-64.png" alt="" width="40" height="40" align="absmiddle"> EH3D-PHOENIX-3DP
 <p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | 🇨🇳 <b>中文</b> | <a href="README_jpn.md">🇯🇵 日本語</a> | <a href="README_por.md">🇵🇹 Português</a></p>
 
 ### 准备并发送 3D 打印：模型、打印机配置、安全的 G 代码，以及与你的打印机和 EH3D 服务器的连接
@@ -258,7 +258,7 @@ EH3D-PHOENIX-3DP/
 │   ├── architecture.json                        架构图数据
 │   └── structure.json                           结构图数据
 ├── tools/                                       CI 检查、README 检查和图片工具
-├── images/                                      横幅图、两张示意图和 README 的工作区示意图
+├── images/                                      图标和徽标、横幅图、两张示意图和工作区示意图
 ├── .github/                                     CI 与发布工作流、议题和拉取请求模板
 ├── eh3d.project.json                            清单：版本、角色、成熟度和构建命令
 ├── Cargo.toml                                   工作区及其 crate

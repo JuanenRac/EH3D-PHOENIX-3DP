@@ -2713,6 +2713,26 @@ impl eframe::App for Shell {
     }
 }
 
+/// The icon of the program, for the title bar and the task bar.
+const ICON_PNG: &[u8] = include_bytes!("../images/brand/icon-256.png");
+
+/// Decodes the icon (a PNG of 8 bits per channel with alpha); `None` when it is anything else.
+fn decode_icon() -> Option<egui::IconData> {
+    let decoder = png::Decoder::new(std::io::Cursor::new(ICON_PNG));
+    let mut reader = decoder.read_info().ok()?;
+    let mut buf = vec![0; reader.output_buffer_size()];
+    let info = reader.next_frame(&mut buf).ok()?;
+    if info.color_type != png::ColorType::Rgba || info.bit_depth != png::BitDepth::Eight {
+        return None;
+    }
+    buf.truncate(info.buffer_size());
+    Some(egui::IconData {
+        rgba: buf,
+        width: info.width,
+        height: info.height,
+    })
+}
+
 /// The fonts of the system that draw Japanese and Chinese are added to the ones of egui, which have no such letters.
 fn install_fonts(ctx: &egui::Context) {
     let candidates = [
@@ -2765,10 +2785,13 @@ pub fn run(config: AppConfig, lang: Lang, args: &WindowArgs) -> Result<(), Strin
         outcome: outcome.clone(),
     });
     let size = args.shot.as_ref().map_or((1360, 860), |r| r.size);
-    let viewport = egui::ViewportBuilder::default()
+    let mut viewport = egui::ViewportBuilder::default()
         .with_inner_size([size.0 as f32, size.1 as f32])
         .with_min_inner_size([900.0, 560.0])
         .with_title("EH3D-PHOENIX-3DP");
+    if let Some(icon) = decode_icon() {
+        viewport = viewport.with_icon(icon);
+    }
     let options = eframe::NativeOptions {
         viewport,
         ..Default::default()

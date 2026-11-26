@@ -2,7 +2,7 @@
   <img src="images/EH3D_PHOENIX_3DP_BANNER.svg" alt="EH3D-PHOENIX-3DP banner" width="100%">
 </p>
 
-# EH3D-PHOENIX-3DP
+# <img src="images/brand/icon-64.png" alt="" width="40" height="40" align="absmiddle"> EH3D-PHOENIX-3DP
 <p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | 🇫🇷 <b>Français</b> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 中文</a> | <a href="README_jpn.md">🇯🇵 日本語</a> | <a href="README_por.md">🇵🇹 Português</a></p>
 
 ### Préparer et envoyer des impressions 3D : modèles, profils d'imprimante, G-code sûr et la liaison avec vos imprimantes et le serveur EH3D
@@ -258,7 +258,7 @@ EH3D-PHOENIX-3DP/
 │   ├── architecture.json                        données de l'image d'Architecture
 │   └── structure.json                           données de l'image de Structure
 ├── tools/                                       vérification de la CI et du README et outils d'images
-├── images/                                      bannière, les deux schémas et les dessins des espaces de travail du README
+├── images/                                      icône et logos, bannière, les deux schémas et les dessins des espaces de travail
 ├── .github/                                     workflows de CI et de publication, modèles de tickets et de pull requests
 ├── eh3d.project.json                            manifeste : version, rôle, maturité et commande de compilation
 ├── Cargo.toml                                   l'espace de travail et ses crates
