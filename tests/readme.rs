@@ -81,6 +81,9 @@ fn every_readme_states_the_real_number_of_tests() {
 fn the_readmes_show_only_commands_the_program_has() {
     let known = [
         "printers",
+        "machines",
+        "machine",
+        "import",
         "info",
         "check-profile",
         "convert",

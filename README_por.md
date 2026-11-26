@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-1154-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-1184-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Verificação de honestidade - o que funciona mesmo hoje:** um espaço de trabalho Rust com oito bibliotecas e um programa de linha de comandos (`phoenix-3dp`) com 1154 testes que correm num computador. Lê e verifica modelos STL, OBJ e 3MF, tem um catálogo de 120 perfis de impressora feitos com dados públicos (nenhum testado numa máquina), escreve G-code para os dialetos Marlin, Klipper, RepRapFirmware e Bambu com limites de temperatura que recusam um valor em vez de o cortar, e comanda impressoras Moonraker e OctoPrint e o servidor EH3D, mas apenas contra simuladores (em memória e num socket deste computador). Corta um modelo fechado em camadas planas com perímetros, preenchimento retilíneo e peles sólidas (um fatiador pequeno com preenchimento em grelha e giroide, pontes, suportes simples, costuras, largura variável, elevação nas deslocações, skirt, brim ou raft, modo vaso, camadas curtas mais lentas, retração que acompanha a deslocação e uma estimativa do tempo com aceleração; vários materiais por altura com torre de purga, passagem a ferro do topo, avanço de pressão, camadas cuja altura segue a forma, uma primeira camada recolhida contra o pé de elefante e um limite do caudal, mas ainda sem pintura de cores); a janela, a moldura acoplável da suite com cinco áreas de trabalho (compilada com `--features gui`), não foi vista por uma pessoa num ecrã; nada correu numa impressora real.
+**Verificação de honestidade - o que funciona mesmo hoje:** um espaço de trabalho Rust com oito bibliotecas e um programa de linha de comandos (`phoenix-3dp`) com 1184 testes que correm num computador. Lê e verifica modelos STL, OBJ e 3MF, tem um catálogo de 120 perfis de impressora feitos com dados públicos (nenhum testado numa máquina), escreve G-code para os dialetos Marlin, Klipper, RepRapFirmware e Bambu com limites de temperatura que recusam um valor em vez de o cortar, e comanda impressoras Moonraker e OctoPrint e o servidor EH3D, mas apenas contra simuladores (em memória e num socket deste computador). Corta um modelo fechado em camadas planas com perímetros, preenchimento retilíneo e peles sólidas (um fatiador pequeno com preenchimento em grelha e giroide, pontes, suportes simples, costuras, largura variável, elevação nas deslocações, skirt, brim ou raft, modo vaso, camadas curtas mais lentas, retração que acompanha a deslocação e uma estimativa do tempo com aceleração; vários materiais por altura com torre de purga, passagem a ferro do topo, avanço de pressão, camadas cuja altura segue a forma, uma primeira camada recolhida contra o pé de elefante e um limite do caudal, mas ainda sem pintura de cores); a janela, a moldura acoplável da suite com cinco áreas de trabalho (compilada com `--features gui`), não foi vista por uma pessoa num ecrã; nada correu numa impressora real.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Versão | `0.0.8` |
 | Maturidade | Funcional |
-| Testes | 1154 |
+| Testes | 1184 |
 | Tecnologias | Rust |
 | Em hardware real | Por testar: nada disto correu numa impressora, nem sequer numa Bambu Lab A1 ou numa P1S. |
 
@@ -55,7 +55,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 | Ligação ao servidor | 🟠 | as definições da ligação e um cliente do plugin de impressoras do servidor sobre o cliente comum da suite (início de sessão, renovação, novas tentativas, erros em oito línguas), testado contra um servidor em memória; nunca contra o servidor real. |
 | Fatiador | 🟡 | camadas planas de uma malha fechada, perímetros, preenchimento retilíneo, em grelha ou giroide, peles sólidas, pontes, suportes simples, costuras, largura variável, G-code por dialeto, uma pré-visualização por camadas como dados e uma estimativa do tempo com aceleração; verificado com propriedades sobre formas de semente fixa (o plástico depositado é o volume da peça, nada sai da mesa, nenhuma temperatura ultrapassa um limite); nenhuma impressão saiu dele numa impressora. |
 | Linha de comandos | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) executa as funções das bibliotecas e imprime o resultado; cada erro volta como mensagem e código de saída diferente de zero. |
-| Testes | 🟡 | 1154 testes passam (`cargo test --workspace`), com casos normais, casos-limite, entradas danificadas e uma semente fixa onde há aleatoriedade. |
+| Testes | 🟡 | 1184 testes passam (`cargo test --workspace`), com casos normais, casos-limite, entradas danificadas e uma semente fixa onde há aleatoriedade. |
 | Segurança | 🟡 | Rust seguro e simples (`forbid(unsafe_code)`): um limite é uma recusa e nunca um corte; o token nunca se imprime; nada entra em pânico com os ficheiros recebidos; sem revisão independente. |
 | Janela | 🟠 | Escrita com `--features gui` como a moldura acoplável da suite, com cinco áreas de trabalho (Preparar, Rever, Executar, Configurar e Compacto) cujos painéis podem ser retirados, repostos, movidos, agrupados em separadores, flutuar e recolher-se, e uma barra de menus: listas de impressoras e filamentos com filtros, o plano por camadas com um cursor, a fila do servidor com um arranque que pede confirmação, uma paragem de emergência, atalhos alteráveis, um modo de imagem (`--shot`), uma vista 3D da mesa com as peças como sólidos sombreados, um painel de peças com orientar automaticamente e organizar, fatiagem em segundo plano com estimativas, limites de temperatura editáveis e um aspeto escuro e um claro; a disposição guarda-se no ficheiro de configuração; a lógica é testada sem ecrã e o README mostra desenhos das áreas de trabalho feitos a partir do modelo, mas os painéis nunca foram desenhados num ecrã e nenhuma pessoa os viu. |
 | Hardware real | 🔴 | Por testar: nada disto correu numa impressora, nem sequer numa Bambu Lab A1 ou numa P1S. |
@@ -66,6 +66,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 * **A ideia:** o PHOENIX-3DP é o programa de impressão 3D da família PHOENIX. O servidor EH3D e os seus clientes são o centro da suite: este programa é mais um cliente do servidor, e o modo autónomo, que fala diretamente com uma impressora, é uma opção desligada por omissão.
 * **Os modelos** (`p3dp-formats`): STL (texto e binário), OBJ e 3MF básico são lidos com limites de tamanho, de número de triângulos e de conteúdo de um pacote ZIP; o que não se consegue ler é recusado com o nome do que foi encontrado. Escreve STL binário, OBJ, o seu próprio pacote 3MF e ficheiros de G-code. Os projetos guardados como 3MF por outros programas são lidos pelos seus objetos, placas e algumas definições (só leitura, com limites contra pacotes feitos para prejudicar).
 * **Os perfis** (`p3dp-profiles`): um catálogo de 120 modelos de impressora, FDM e resina, escrito com factos públicos: volume, bicos, dialeto, formas de ligação, sistema multimaterial e as temperaturas máximas (a cifra do fabricante nos primeiros 46 modelos, os limites prudentes do programa nos restantes, e cada perfil diz quais). Os filamentos (477: os perfis genéricos, que mantêm os seus identificadores antigos como `generic-pla`, e os que os fabricantes publicam) vêm da base de dados de materiais de impressão da suite (`eh3d-printmaterials`), procuram-se por fabricante, material ou nome e são verificados contra a impressora e o bico: um par que não serve é recusado com as razões. Sete resinas genéricas da mesma base (padrão, lavável com água, tenaz, flexível, para fundição, transparente e de alto detalhe) trazem as exposições e a elevação do seu tipo como pontos de partida. Um perfil pode ser editado a partir da linha de comandos: o resultado é verificado por inteiro, um perfil editado deixa de estar `verified`, e um limite de temperatura aumentado acima da cifra do fabricante (a mesa de uma Bambu Lab A1 mini, 80 C, aumentada à mão para 100 C) é permitido e assinalado. Cada perfil diz se foi testado numa máquina; nenhum foi.
+* **As impressoras da suite e os seus ficheiros:** `machines` e `machine` mostram o catálogo de impressoras de EH3D-COMMON (Bambu Lab A1 e P1S, dois modelos da Creality e dois da Artillery), cada valor com a página do fabricante, com os filamentos e processos de partida; os seus valores prevalecem sobre a tabela nesses modelos e os dois da Artillery são acrescentados, pelo que o programa oferece 122 impressoras. `import` traz as definições de um projeto 3MF ou de um perfil JSON ou INI seu e indica cada chave que aplicou, não aplicou, não usa ou não leu; o valor de uma chave que não usa nunca é mostrado. Nada é enviado para uma impressora.
 * **O G-code** (`p3dp-gcode`): escritores para Marlin, Klipper, RepRapFirmware e Bambu, cada um com cabeçalho, início e fim seguros; uma temperatura ou um movimento não permitidos são recusados, nunca cortados. Um verificador lê qualquer programa e encontra as linhas que ultrapassam os limites de um modelo.
 * **A ligação** (`p3dp-link`): um trait de controlador, um estado normalizado (quinze estados, temperaturas, trabalho, alertas) e uma lista de comandos; Moonraker e OctoPrint estão implementados sobre um transporte (um HTTP simples escrito com a biblioteca padrão, com limites de tempo e de tamanho, experimentado num socket deste computador) e testados contra um simulador em memória de cada protocolo; o Bambu LAN é o desenho dos seus tópicos e mensagens, marcado como experimental.
 * **O servidor** (`p3dp-server-bridge`): as definições `server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries` e `server_mdns`, e um cliente do plugin `printer3d` do servidor sobre o cliente comum da suite (`eh3d-serverclient`): os trabalhos entram na fila e esperam que uma pessoa os inicie, os limites de temperatura são verificados antes de enviar o que quer que seja, e existe a paragem; testado contra um servidor em memória.
@@ -144,6 +145,9 @@ As bibliotecas são `p3dp_core`, `p3dp_formats`, `p3dp_profiles`, `p3dp_gcode`, 
 
 ```text
 phoenix-3dp printers [--vendor NAME] [--tech fdm|msla] [--search TEXT]
+phoenix-3dp machines [--search TEXT]
+phoenix-3dp machine ID [--nozzle MM] [--process draft|standard|fine|strong [--out FILE] [--force]]
+phoenix-3dp import FILE.3mf|FILE.json|FILE.ini [--out SETTINGS] [--force]
 phoenix-3dp info MODEL [--printer ID]
 phoenix-3dp check-profile ID [--gcode FILE]
 phoenix-3dp check-profile --file PROFILE [--gcode FILE]
@@ -177,7 +181,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Testes
 
-O conjunto tem 1154 testes (`cargo test --workspace`, executados em Windows e Linux na CI), com semente fixa onde há aleatoriedade. Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros cortados, lixo e cabeçalhos hostis nunca entram em pânico, e nenhuma temperatura de nenhuma impressora do catálogo ultrapassa o seu limite. A CI também executa `cargo fmt --all --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
+O conjunto tem 1184 testes (`cargo test --workspace`, executados em Windows e Linux na CI), com semente fixa onde há aleatoriedade. Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros cortados, lixo e cabeçalhos hostis nunca entram em pânico, e nenhuma temperatura de nenhuma impressora do catálogo ultrapassa o seu limite. A CI também executa `cargo fmt --all --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilação e publicação
 

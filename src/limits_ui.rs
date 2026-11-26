@@ -5,7 +5,7 @@
 use crate::app_state::{AppState, Status};
 use crate::config::{AppConfig, LimitOverride};
 use crate::i18n::{fill, Lang, Msg};
-use p3dp_profiles::{Catalog, LimitSource, Notice, PrinterProfile, Technology};
+use p3dp_profiles::{suite_overlay, Catalog, LimitSource, Notice, PrinterProfile, Technology};
 
 /// What a person types: the three limits, in degrees Celsius. A chamber of `None` is a printer with no heated chamber.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -172,7 +172,7 @@ impl AppState {
     /// Gives the printer that is chosen back the limits of the catalog (the maker's, or the careful ones the catalog starts with).
     pub fn reset_printer_limits(&mut self) -> bool {
         let id = self.printer_id.clone();
-        let Ok(fresh) = Catalog::builtin() else {
+        let Ok(fresh) = suite_overlay().map(|o| o.catalog) else {
             return false;
         };
         let (Some(original), Some(slot)) = (

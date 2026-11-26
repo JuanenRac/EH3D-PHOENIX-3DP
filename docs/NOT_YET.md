@@ -11,6 +11,7 @@ Good ideas that are not in the current version. Writing them here keeps anybody 
 | A driver for resin printers | The catalog lists resin printers, but they take layers and not G-code; the writer refuses them and no driver exists | the format of the layers of a printer is chosen |
 | The WebSocket push of Moonraker and OctoPrint | The drivers poll over plain HTTP; a push needs a WebSocket client written by hand | the polling is too slow for the window |
 | PrusaLink and Duet as drivers | The state tables exist; the drivers are not written | a printer of those families is in the workshop |
+| Writing profiles and projects for other programs, and the settings of single objects, filaments by slot and supports of an imported project | The import brings the settings the slicer has, one value each, and lists the rest; nothing is written for another program | the import has been used with real files of the person |
 | Guided calibrations and a simulator of collisions | They need the real printers first | a printer has been verified |
 | The cloud of Bambu | The design is local and through the server; a cloud would be off by default and is not part of it | the owner asks for it |
 
@@ -46,7 +47,7 @@ Whatever is chosen, the access code of the printer must live in a store that is 
 
 ### Models
 
-The projects that other programs save as 3MF are read for their metadata only (which program made them, the objects, the plates and a few settings), from the layout of their files as it looks in a package, and nothing is written back; the settings that are not in that short list are not read. The 3MF reader of the mesh takes the mesh objects of the core specification, with units and the transform of the build items. It refuses components, objects in other files (the production extension), and it ignores colours, materials, plates and the settings that other programs store in a package. Writing a 3MF that carries the G-code for a Bambu printer is step H6.
+The projects that other programs save as 3MF are read for their metadata only (which program made them, the objects, the plates and a few settings), from the layout of their files as it looks in a package, and nothing is written back; the settings that are not in that short list are not read by that command (`import` reads every setting of the project and says where each one ended). The 3MF reader of the mesh takes the mesh objects of the core specification, with units and the transform of the build items. It refuses components, objects in other files (the production extension), and it ignores colours, materials, plates and the settings that other programs store in a package. Writing a 3MF that carries the G-code for a Bambu printer is step H6.
 
 ### Resin printers
 

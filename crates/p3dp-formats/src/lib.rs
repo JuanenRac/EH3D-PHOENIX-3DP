@@ -15,6 +15,7 @@ pub mod png_write;
 pub mod project3mf;
 pub mod resin;
 pub mod resin_control;
+pub mod settings_import;
 pub mod stl;
 pub mod summary;
 pub mod threemf;

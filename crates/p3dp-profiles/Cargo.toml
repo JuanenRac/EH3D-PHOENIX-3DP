@@ -13,5 +13,7 @@ path = "src/lib.rs"
 
 [dependencies]
 p3dp-core = { path = "../p3dp-core" }
+# the catalog of printers of the suite: the figures of each model with the page of the maker (the sibling folder EH3D-COMMON is needed)
+eh3d-printers = { version = ">=0.0.1", path = "../../../EH3D-COMMON/crates/printers" }
 # the database of printing materials of the suite (the sibling folder EH3D-COMMON is needed)
 eh3d-printmaterials = { version = ">=0.0.1", path = "../../../EH3D-COMMON/crates/printmaterials" }

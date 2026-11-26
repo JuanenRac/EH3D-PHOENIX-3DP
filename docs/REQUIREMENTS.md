@@ -2,7 +2,7 @@
 
 This register is the single source of the state of each capability: `STATUS.md` and the README files cite it and never state a state that it does not. A state is one of `planned`, `prototype`, `implemented` and `validated`. `validated` means that a person has run the capability on a real machine and the evidence of the manifest says `bench` or `field`; nothing here is validated, because nothing of this program has run on a real printer, a real server or a screen: the printers are simulators (in memory and on a socket of the same computer), the server is a double, and every profile of the catalog says `verified = false`.
 
-The register has 112 requirements: 98 implemented, 8 prototype, 6 planned and 0 validated. By progress: 98 done, 8 partial, 2 pending and 4 blocked. High coverage is not proof of correctness, so each row says how it is checked: the test that names it, and what it shows.
+The register has 118 requirements: 104 implemented, 8 prototype, 6 planned and 0 validated. By progress: 104 done, 8 partial, 2 pending and 4 blocked. High coverage is not proof of correctness, so each row says how it is checked: the test that names it, and what it shows.
 
 ## How to read the register
 
@@ -171,3 +171,14 @@ The check is `tests/reqs.rs`: it reads this table, finds each test and fails whe
 | P3DP-110 | The stand-alone Bambu driver reads the state of a printer over the pinned channel into the normalized state. | prototype | partial | simulator | `crates/p3dp-link/src/bambu_lan::an_idle_printer_is_read_into_the_normalized_state` | Against a printer made in memory; nothing has been read from a real printer by this program. |
 | P3DP-111 | The stand-alone Bambu driver pauses, resumes and stops a print and refuses everything else without writing a byte. | prototype | partial | simulator | `crates/p3dp-link/src/bambu_lan::pause_resume_and_stop_reach_the_printer_and_nothing_else_does` | Against a printer made in memory; the upload and the start of a file are not built, and nothing has been sent to a real printer. |
 | P3DP-112 | The report of a Bambu printer is read as the figures it gives, and a damaged or partial one is refused or left out and never panics. | implemented | done | host-test | `crates/p3dp-link/src/bambu_lan::reports_with_pieces_missing_or_damaged_are_read_or_refused_and_never_panic` | The fields follow the public description of the messages of the family; none was read from a real printer by this program. |
+
+## Printers of the suite and the import of your own files
+
+| ID | Requirement | State | Progress | Evidence | Test | Limits |
+|---|---|---|---|---|---|---|
+| P3DP-113 | The catalog of printers of the suite is laid over the table of the program: its models are added, its figures win and every difference is kept. | implemented | done | host-test | `crates/p3dp-profiles/src/machines::the_suite_adds_its_models_and_keeps_the_table` | - |
+| P3DP-114 | A printer of the suite is shown with everything its maker publishes, its pages, and the filaments and processes to start from, in the eight languages. | implemented | done | host-test | `src/machine_view::the_record_is_shown_with_its_pages_in_every_language` | - |
+| P3DP-115 | Every starting process of every printer of the suite is a settings file that the slicer accepts. | implemented | done | host-test | `src/machine_view::every_starting_process_of_every_printer_is_accepted_by_the_slicer` | - |
+| P3DP-116 | Every setting of a 3MF project, a JSON profile or an INI profile is read, and what is not read is listed with the reason. | implemented | done | host-test | `crates/p3dp-formats/src/settings_import::a_project_reads_its_settings_and_lists_everything_else` | - |
+| P3DP-117 | An import tells where every key ended (applied, not applied, not used, not read), changes no value and never prints the value of a key it does not use. | implemented | done | host-test | `src/import::a_json_profile_is_brought_and_every_key_ends_somewhere` | - |
+| P3DP-118 | A hostile settings file (too large, too many keys, deep nesting, numbers that are not finite, names that climb out) is refused or told and never panics. | implemented | done | host-test | `crates/p3dp-formats/src/settings_import::hostile_text_is_an_error_and_never_a_panic` | - |

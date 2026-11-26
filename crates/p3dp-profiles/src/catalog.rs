@@ -136,7 +136,8 @@ impl Catalog {
 
     /// The profile with an id (any case).
     pub fn find(&self, id: &str) -> Option<&PrinterProfile> {
-        let want = id.trim().to_ascii_lowercase();
+        // `maker/model`, the form of the catalog of the suite, is the same printer as `maker-model`
+        let want = id.trim().to_ascii_lowercase().replace('/', "-");
         self.profiles.iter().find(|p| p.id == want)
     }
 
