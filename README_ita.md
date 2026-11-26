@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-1154-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-1184-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Controllo di onestà - ciò che funziona davvero oggi:** un workspace Rust con otto librerie e un programma a riga di comando (`phoenix-3dp`) con 1154 test che girano su un computer. Legge e controlla modelli STL, OBJ e 3MF, contiene un catalogo di 120 profili di stampante costruiti da dati pubblici (nessuno provato su una macchina), scrive G-code per i dialetti Marlin, Klipper, RepRapFirmware e Bambu con limiti di temperatura che rifiutano un valore invece di tagliarlo, e pilota stampanti Moonraker e OctoPrint e il server EH3D, ma solo contro simulatori (in memoria e su un socket di questo computer). Taglia un modello chiuso in strati piani con perimetri, riempimento rettilineo e pelli piene (un piccolo slicer con riempimento a griglia e giroide, ponti, supporti semplici, giunzioni, larghezza variabile, sollevamento negli spostamenti, skirt, brim o raft, modalità vaso, strati corti rallentati, retrazione che segue lo spostamento e una stima del tempo con accelerazione; più materiali per altezza con torre di spurgo, stiratura della parte alta, pressure advance, strati la cui altezza segue la forma, un primo strato rientrato contro il piede d'elefante e un limite della portata, ma ancora niente pittura dei colori); la finestra, il telaio ancorabile della suite con cinque aree di lavoro (compilata con `--features gui`), non è stata vista su uno schermo da una persona; nulla è stato eseguito su una stampante reale.
+**Controllo di onestà - ciò che funziona davvero oggi:** un workspace Rust con otto librerie e un programma a riga di comando (`phoenix-3dp`) con 1184 test che girano su un computer. Legge e controlla modelli STL, OBJ e 3MF, contiene un catalogo di 120 profili di stampante costruiti da dati pubblici (nessuno provato su una macchina), scrive G-code per i dialetti Marlin, Klipper, RepRapFirmware e Bambu con limiti di temperatura che rifiutano un valore invece di tagliarlo, e pilota stampanti Moonraker e OctoPrint e il server EH3D, ma solo contro simulatori (in memoria e su un socket di questo computer). Taglia un modello chiuso in strati piani con perimetri, riempimento rettilineo e pelli piene (un piccolo slicer con riempimento a griglia e giroide, ponti, supporti semplici, giunzioni, larghezza variabile, sollevamento negli spostamenti, skirt, brim o raft, modalità vaso, strati corti rallentati, retrazione che segue lo spostamento e una stima del tempo con accelerazione; più materiali per altezza con torre di spurgo, stiratura della parte alta, pressure advance, strati la cui altezza segue la forma, un primo strato rientrato contro il piede d'elefante e un limite della portata, ma ancora niente pittura dei colori); la finestra, il telaio ancorabile della suite con cinque aree di lavoro (compilata con `--features gui`), non è stata vista su uno schermo da una persona; nulla è stato eseguito su una stampante reale.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Versione | `0.0.8` |
 | Maturità | Funzionale |
-| Test | 1154 |
+| Test | 1184 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di tutto ciò è stato eseguito su una stampante, nemmeno su una Bambu Lab A1 o una P1S. |
 
@@ -55,7 +55,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | Collegamento al server | 🟠 | le impostazioni del collegamento e un client del plugin delle stampanti del server sopra il client comune della suite (accesso, rinnovo, nuovi tentativi, errori in otto lingue), provato contro un server in memoria; mai contro il server reale. |
 | Slicer | 🟡 | strati piani di una mesh chiusa, perimetri, riempimento rettilineo, a griglia o giroide, pelli piene, ponti, supporti semplici, giunzioni, larghezza variabile, G-code per dialetto, un'anteprima per strati come dati e una stima del tempo con accelerazione; verificato con proprietà su forme a seme fisso (la plastica depositata è il volume del pezzo, nulla esce dal piatto, nessuna temperatura supera un limite); nessuna stampa ne è uscita su una stampante. |
 | Riga di comando | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) esegue le funzioni delle librerie e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 1154 test passano (`cargo test --workspace`), con casi normali, casi limite, input danneggiati e un seme fisso dove c'è casualità. |
+| Test | 🟡 | 1184 test passano (`cargo test --workspace`), con casi normali, casi limite, input danneggiati e un seme fisso dove c'è casualità. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): un limite è un rifiuto e mai un taglio; il token non si stampa mai; nulla va in panico con i file ricevuti; nessuna revisione indipendente. |
 | Finestra | 🟠 | Scritta con `--features gui` come telaio ancorabile della suite, con cinque aree di lavoro (Prepara, Verifica, Esegui, Configura e Compatto) i cui pannelli si possono togliere, rimettere, spostare, raggruppare in schede, far fluttuare e ripiegare, e una barra dei menu: elenchi di stampanti e filamenti con filtri, il piano per strati con un cursore, la coda del server con un avvio che chiede conferma, un arresto di emergenza, scorciatoie modificabili, una modalità immagine (`--shot`), una vista 3D del piano con i pezzi come solidi ombreggiati, un pannello dei pezzi con orienta in automatico e disponi, elaborazione in background con stime, limiti di temperatura modificabili e un aspetto scuro e uno chiaro; la disposizione è conservata nel file delle impostazioni; la logica è testata senza schermo e il README mostra disegni delle aree di lavoro fatti dal modello, ma i pannelli non sono mai stati disegnati su uno schermo e nessuna persona li ha visti. |
 | Hardware reale | 🔴 | Non provato: nulla di tutto ciò è stato eseguito su una stampante, nemmeno su una Bambu Lab A1 o una P1S. |
@@ -66,6 +66,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 * **L'idea:** PHOENIX-3DP è il programma di stampa 3D della famiglia PHOENIX. Il server EH3D e i suoi client sono il centro della suite: questo programma è un client in più del server, e la modalità autonoma che parla direttamente con una stampante è un'opzione spenta per impostazione predefinita.
 * **I modelli** (`p3dp-formats`): STL (testo e binario), OBJ e 3MF di base vengono letti con limiti su dimensione, numero di triangoli e contenuto di un pacchetto ZIP; ciò che non si può leggere viene rifiutato con il nome di ciò che è stato trovato. Scrive STL binario, OBJ, il proprio pacchetto 3MF e file di G-code. I progetti salvati come 3MF da altri programmi vengono letti per oggetti, piatti e alcune impostazioni (sola lettura, con limiti contro pacchetti fatti per nuocere).
 * **I profili** (`p3dp-profiles`): un catalogo di 120 modelli di stampante, FDM e resina, scritto da fatti pubblici: volume, ugelli, dialetto, modi di collegamento, sistema multimateriale e le temperature massime (la cifra del produttore per i primi 46 modelli, i limiti prudenti del programma per gli altri, e ogni profilo dice quali). I filamenti (477: i profili generici, che mantengono i vecchi identificatori come `generic-pla`, e quelli pubblicati dai produttori) vengono dal database dei materiali di stampa della suite (`eh3d-printmaterials`), si cercano per produttore, materiale o nome e sono verificati contro la stampante e l'ugello: una coppia che non va è rifiutata con le ragioni. Sette resine generiche dello stesso database (standard, lavabile in acqua, tenace, flessibile, fondibile, trasparente e ad alto dettaglio) arrivano con le esposizioni e la salita del loro tipo come punti di partenza. Un profilo si può modificare dalla riga di comando: il risultato è verificato per intero, un profilo modificato non è più `verified`, e un limite di temperatura alzato oltre la cifra del produttore (il piano di una Bambu Lab A1 mini, 80 C, alzato a mano a 100 C) è permesso e segnalato. Ogni profilo dice se è stato provato su una macchina; nessuno lo è stato.
+* **Le stampanti della suite e i tuoi file:** `machines` e `machine` mostrano il catalogo delle stampanti di EH3D-COMMON (Bambu Lab A1 e P1S, due modelli Creality e due Artillery), ogni dato con la pagina del produttore, con i filamenti e i processi di partenza; i suoi dati prevalgono sulla tabella per quei modelli e i due Artillery vengono aggiunti, quindi il programma offre 122 stampanti. `import` porta le impostazioni di un progetto 3MF o di un tuo profilo JSON o INI e indica ogni chiave applicata, non applicata, non usata o non letta; il valore di una chiave non usata non viene mai stampato. Nulla viene inviato a una stampante.
 * **Il G-code** (`p3dp-gcode`): scrittori per Marlin, Klipper, RepRapFirmware e Bambu, ciascuno con intestazione, inizio e fine sicuri; una temperatura o un movimento non consentiti vengono rifiutati, mai tagliati. Un controllore legge qualsiasi programma e trova le righe che superano i limiti di un modello.
 * **Il collegamento** (`p3dp-link`): un trait di driver, uno stato normalizzato (quindici stati, temperature, lavoro, avvisi) e un elenco di comandi; Moonraker e OctoPrint sono implementati su un trasporto (uno HTTP semplice scritto con la libreria standard, con limiti di tempo e dimensione, provato su un socket di questo computer) e provati contro un simulatore in memoria di ciascun protocollo; Bambu LAN è il progetto dei suoi topic e messaggi, marcato sperimentale.
 * **Il server** (`p3dp-server-bridge`): le impostazioni `server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries` e `server_mdns`, e un client del plugin `printer3d` del server sopra il client comune della suite (`eh3d-serverclient`): i lavori entrano in coda e aspettano che una persona li avvii, i limiti di temperatura sono controllati prima di inviare qualsiasi cosa, e c'è l'arresto; provato contro un server in memoria.
@@ -144,6 +145,9 @@ Le librerie sono `p3dp_core`, `p3dp_formats`, `p3dp_profiles`, `p3dp_gcode`, `p3
 
 ```text
 phoenix-3dp printers [--vendor NAME] [--tech fdm|msla] [--search TEXT]
+phoenix-3dp machines [--search TEXT]
+phoenix-3dp machine ID [--nozzle MM] [--process draft|standard|fine|strong [--out FILE] [--force]]
+phoenix-3dp import FILE.3mf|FILE.json|FILE.ini [--out SETTINGS] [--force]
 phoenix-3dp info MODEL [--printer ID]
 phoenix-3dp check-profile ID [--gcode FILE]
 phoenix-3dp check-profile --file PROFILE [--gcode FILE]
@@ -177,7 +181,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Test
 
-La suite ha 1154 test (`cargo test --workspace`, eseguiti su Windows e Linux nella CI), con seme fisso dove c'è casualità. Verificano i casi normali, i casi limite e gli input danneggiati: file tagliati, rumore e intestazioni ostili non vanno mai in panico, e nessuna temperatura di nessuna stampante del catalogo supera il suo limite. La CI esegue anche `cargo fmt --all --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 1184 test (`cargo test --workspace`, eseguiti su Windows e Linux nella CI), con seme fisso dove c'è casualità. Verificano i casi normali, i casi limite e gli input danneggiati: file tagliati, rumore e intestazioni ostili non vanno mai in panico, e nessuna temperatura di nessuna stampante del catalogo supera il suo limite. La CI esegue anche `cargo fmt --all --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 

@@ -13,7 +13,7 @@ use p3dp_formats::read_mesh;
 use p3dp_link::moonraker::MoonrakerDriver;
 use p3dp_link::sim::{SimCore, SimMoonraker};
 use p3dp_link::{Command, LinkError, PrinterDriver, PrinterState};
-use p3dp_profiles::{Catalog, PrinterProfile, Technology};
+use p3dp_profiles::{suite_overlay, Catalog, PrinterProfile, Technology};
 use p3dp_server_bridge::Connection;
 
 /// The tabs of the window.
@@ -124,16 +124,12 @@ pub struct AppState {
 impl AppState {
     /// The state to start with: the catalog of the program, the printer of the settings if it exists, the first of the catalog if not.
     pub fn new(config: AppConfig, lang: Lang) -> Result<AppState, String> {
-        let catalog = Catalog::builtin().map_err(|e| e.to_string())?;
-        let printer_id = if catalog.find(&config.default_printer).is_some() {
-            config.default_printer.clone()
-        } else {
-            catalog
-                .profiles
-                .first()
-                .map(|p| p.id.clone())
-                .unwrap_or_default()
-        };
+        let catalog = suite_overlay().map_err(|e| e.to_string())?.catalog;
+        let printer_id = catalog
+            .find(&config.default_printer)
+            .or_else(|| catalog.profiles.first())
+            .map(|p| p.id.clone())
+            .unwrap_or_default();
         Ok(AppState {
             tab: Tab::Prepare,
             lang,
@@ -154,8 +150,8 @@ impl AppState {
 
     /// Chooses a printer by its id; an id that is not in the catalog is refused and changes nothing.
     pub fn select_printer(&mut self, id: &str) -> bool {
-        if self.catalog.find(id).is_some() {
-            self.printer_id = id.to_ascii_lowercase();
+        if let Some(found) = self.catalog.find(id).map(|p| p.id.clone()) {
+            self.printer_id = found;
             true
         } else {
             self.status = Status::Problem(format!("{id}: no such printer"));

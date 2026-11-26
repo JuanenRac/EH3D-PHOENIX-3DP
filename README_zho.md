@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-1154-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-1184-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**诚实检查 - 今天真正能运行的内容：** 一个由八个库和一个命令行程序（`phoenix-3dp`）组成的 Rust 工作区，带有 1154 个可在电脑上运行的测试。它读取并检查 STL、OBJ 和 3MF 模型，包含一个由公开数据建立的 120 个打印机配置的目录（没有一个在机器上试过），为 Marlin、Klipper、RepRapFirmware 和 Bambu 方言写出 G 代码，温度上限会拒绝超限的值而不是截断它，并能操作 Moonraker 和 OctoPrint 打印机以及 EH3D 服务器，但仅限模拟器（内存中的，以及本机的套接字）。它能把封闭模型切成平整的层，生成外壁、直线填充和实心表层（一个小型切片器，有网格和螺旋体填充、桥接、简易支撑、接缝、可变线宽、移动时抬升、裙边/帽檐/筏板、花瓶模式、短层降速、随移动距离变化的回抽，以及带加速度的时间估算；已有按高度划分的多材料（带清洗塔）、顶面熨平、压力提前、高度随形状变化的层、为防象脚而内缩的首层和流量上限，但尚无颜色涂绘）；窗口（套件的可停靠框架，有五个工作区，用 `--features gui` 构建）还没有人在屏幕上看过；没有任何内容在真实打印机上运行过。
+**诚实检查 - 今天真正能运行的内容：** 一个由八个库和一个命令行程序（`phoenix-3dp`）组成的 Rust 工作区，带有 1184 个可在电脑上运行的测试。它读取并检查 STL、OBJ 和 3MF 模型，包含一个由公开数据建立的 120 个打印机配置的目录（没有一个在机器上试过），为 Marlin、Klipper、RepRapFirmware 和 Bambu 方言写出 G 代码，温度上限会拒绝超限的值而不是截断它，并能操作 Moonraker 和 OctoPrint 打印机以及 EH3D 服务器，但仅限模拟器（内存中的，以及本机的套接字）。它能把封闭模型切成平整的层，生成外壁、直线填充和实心表层（一个小型切片器，有网格和螺旋体填充、桥接、简易支撑、接缝、可变线宽、移动时抬升、裙边/帽檐/筏板、花瓶模式、短层降速、随移动距离变化的回抽，以及带加速度的时间估算；已有按高度划分的多材料（带清洗塔）、顶面熨平、压力提前、高度随形状变化的层、为防象脚而内缩的首层和流量上限，但尚无颜色涂绘）；窗口（套件的可停靠框架，有五个工作区，用 `--features gui` 构建）还没有人在屏幕上看过；没有任何内容在真实打印机上运行过。
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | 版本 | `0.0.8` |
 | 成熟度 | 可用 |
-| 测试 | 1154 |
+| 测试 | 1184 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试验：这里的任何内容都没有在打印机上运行过，包括 Bambu Lab A1 和 P1S。 |
 
@@ -55,7 +55,7 @@
 | 服务器连接 | 🟠 | 连接的设置，以及建立在套件通用客户端（登录、续期、重试、八种语言的错误信息）之上的服务器打印机插件客户端，已针对内存中的服务器试过；从未对真实服务器试过。 |
 | 切片器 | 🟡 | 封闭网格的平整层、外壁、直线、网格或螺旋体填充、实心表层、桥接、简易支撑、接缝、可变线宽、按方言生成的 G 代码、以数据形式提供的逐层预览，以及带加速度的时间估算；已用固定种子形状上的性质测试检查（挤出的塑料量等于零件体积，没有任何内容超出热床，没有温度超过上限）；还没有用它在打印机上打印过。 |
 | 命令行 | 🟡 | `phoenix-3dp`（`printers`、`info`、`check-profile`、`convert`、`filaments`、`resins`、`slice`、`project`、`version`）运行库中的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 1154 个测试通过（`cargo test --workspace`），包含正常情况、边界情况、损坏的输入，涉及随机的地方使用固定种子。 |
+| 测试 | 🟡 | 1184 个测试通过（`cargo test --workspace`），包含正常情况、边界情况、损坏的输入，涉及随机的地方使用固定种子。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：上限是拒绝而不是截断；令牌绝不打印；收到的文件不会引发 panic；没有独立审查。 |
 | 窗口 | 🟠 | 用 `--features gui` 写成，作为套件的可停靠框架，有五个工作区（准备、检查、运行、配置和紧凑），其面板可取下、放回、移动、组成标签页、浮动和折叠，另有菜单栏：带筛选的打印机和耗材列表、带滑块的分层方案、需要确认才能开始的服务器队列、紧急停止、可修改的快捷键、图片模式（`--shot`）、以着色实体显示零件的热床 3D 视图、带自动摆放方向和排列的零件面板、带预估的后台切片、可编辑的温度上限以及深色和浅色外观；布局保存在设置文件中；逻辑已在无屏幕下测试，README 展示了由模型生成的工作区示意图，但这些面板从未在屏幕上绘制过，也没有人看过。 |
 | 真实硬件 | 🔴 | 未试验：这里的任何内容都没有在打印机上运行过，包括 Bambu Lab A1 和 P1S。 |
@@ -66,6 +66,7 @@
 * **理念：** PHOENIX-3DP 是 PHOENIX 家族中的 3D 打印程序。EH3D 服务器及其客户端是整个套件的中心：本程序只是服务器的又一个客户端，直接与打印机通信的独立模式是默认关闭的选项。
 * **模型**（`p3dp-formats`）：读取 STL（文本和二进制）、OBJ 和基础 3MF，对大小、三角形数量和 ZIP 包内容设有限制；读不了的内容会带着所发现内容的名称被拒绝。可写出二进制 STL、OBJ、自有的 3MF 包和 G 代码文件。其他程序保存为 3MF 的项目，会读取其中的对象、构建板和部分设置（只读，并设有防范恶意包的限制）。
 * **配置**（`p3dp-profiles`）：一个包含 120 款打印机（FDM 和树脂）的目录，依据公开事实编写：打印空间、喷嘴、方言、连接方式、多材料系统，以及最高温度（前 46 个型号为厂商标称值，其余为程序的保守上限，每个配置都会注明是哪一种）。耗材（477 种：保留 `generic-pla` 等旧标识的通用配置，以及厂商公布的配置）来自套件的打印材料数据库（`eh3d-printmaterials`），可按厂商、材料或名称搜索，并会对照打印机和喷嘴检查：不合适的组合会连同原因一起被拒绝。同一数据库的七种通用树脂（标准、水洗、坚韧、柔性、可铸造、透明和高精度）自带各自类型的曝光和抬升值作为起点。配置可以在命令行中编辑：结果会作为整体检查，编辑过的配置不再是 `verified`，把温度上限提高到厂商标称值之上（Bambu Lab A1 mini 的热床 80 C 手动提高到 100 C）是允许的，并会给出提示。每个配置都会说明是否在机器上试过；目前没有一个试过。
+* **套件打印机与你自己的文件：** `machines` 和 `machine` 显示 EH3D-COMMON 的打印机目录（Bambu Lab A1 和 P1S、两款 Creality、两款 Artillery），每项数值都附厂商页面，并给出起步耗材和工艺；这些机型以目录数值为准，并新增两款 Artillery，因此本程序提供 122 台打印机。`import` 导入 3MF 项目或你自己的 JSON、INI 配置中的设置，并逐一说明已应用、未应用、未使用或未读取的键；未使用键的值绝不显示。不会向任何打印机发送内容。
 * **G 代码**（`p3dp-gcode`）：Marlin、Klipper、RepRapFirmware 和 Bambu 的写出器，各自带有安全的文件头、开头和结尾；不允许的温度或移动会被拒绝，绝不截断。检查器可读取任何程序，找出超过型号上限的行。
 * **连接**（`p3dp-link`）：一个驱动 trait、一套规范化状态（十五种状态、温度、作业、警报）和一份命令列表；Moonraker 和 OctoPrint 基于传输层实现（仅用标准库编写的普通 HTTP，带时间和大小限制，已在本机套接字上试过），并针对各协议的内存模拟器测试；Bambu LAN 是其主题和消息的设计，标为实验性。
 * **服务器**（`p3dp-server-bridge`）：设置项 `server_address`、`server_token`、`server_machine`、`server_timeout_s`、`server_retries` 和 `server_mdns`，以及建立在套件通用客户端（`eh3d-serverclient`）之上的服务器 `printer3d` 插件客户端：作业进入队列并等待有人启动，温度上限在发送任何内容之前检查，并提供停止；已用内存中的服务器测试。
@@ -144,6 +145,9 @@ EH3D-PHOENIX-3DP 是 EH3D Fabrication Suite 中 PHOENIX 家族的 3D 打印程�
 
 ```text
 phoenix-3dp printers [--vendor NAME] [--tech fdm|msla] [--search TEXT]
+phoenix-3dp machines [--search TEXT]
+phoenix-3dp machine ID [--nozzle MM] [--process draft|standard|fine|strong [--out FILE] [--force]]
+phoenix-3dp import FILE.3mf|FILE.json|FILE.ini [--out SETTINGS] [--force]
 phoenix-3dp info MODEL [--printer ID]
 phoenix-3dp check-profile ID [--gcode FILE]
 phoenix-3dp check-profile --file PROFILE [--gcode FILE]
@@ -177,7 +181,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 测试
 
-测试套件有 1154 个测试（`cargo test --workspace`，CI 中在 Windows 和 Linux 上运行），涉及随机的地方使用固定种子。它们检查正常情况、边界情况和损坏的输入：被截断的文件、乱码和恶意文件头绝不会 panic，目录中任何打印机的温度都不会超过其上限。CI 还会运行 `cargo fmt --all --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
+测试套件有 1184 个测试（`cargo test --workspace`，CI 中在 Windows 和 Linux 上运行），涉及随机的地方使用固定种子。它们检查正常情况、边界情况和损坏的输入：被截断的文件、乱码和恶意文件头绝不会 panic，目录中任何打印机的温度都不会超过其上限。CI 还会运行 `cargo fmt --all --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 

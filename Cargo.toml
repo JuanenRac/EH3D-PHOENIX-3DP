@@ -67,6 +67,9 @@ eh3d-dock = { version = ">=0.0.1", path = "../EH3D-COMMON/crates/dock", default-
 # the database of printing materials of the suite (the catalog of filaments and resins of the profiles reads it; the check before printing asks it for the flow and the drying)
 eh3d-printmaterials = { version = ">=0.0.1", path = "../EH3D-COMMON/crates/printmaterials" }
 
+# the catalog of printers of the suite, shown by the commands `machines` and `machine`
+eh3d-printers = { version = ">=0.0.1", path = "../EH3D-COMMON/crates/printers" }
+
 # the window
 eframe = { version = "0.37.0", default-features = false, features = ["glow", "default_fonts"], optional = true }
 

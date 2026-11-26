@@ -1,17 +1,20 @@
-//! The command line: `printers`, `info`, `check-profile`, `convert`, `slice`, `project` and `version`. `run` returns what to print and the exit code, so it is tested without a terminal.
+//! The command line: `printers`, `machines`, `machine`, `import`, `info`, `check-profile`, `convert`, `slice`, `project` and `version`. `run` returns what to print and the exit code, so it is tested without a terminal.
 //! Exit code 0 is success, 1 is a failure of the thing that was asked (a check that did not pass, a file that could not be read) and 2 is a mistake in the command.
 
 use crate::app_state::{profile_report, AppState};
 use crate::config::AppConfig;
-use crate::i18n::{Lang, Msg};
+use crate::i18n::{fill, Lang, Msg};
+use crate::import::{self, Word as ImportWord};
+use crate::machine_view;
 use crate::report;
+use eh3d_printers::Level;
 use p3dp_formats::picture::PictureFormat;
 use p3dp_formats::project3mf::read_project;
 use p3dp_formats::{bgcode, gcode_meta, resin, resin_control};
 use p3dp_formats::{write_mesh, Format};
 use p3dp_gcode::check_program;
 use p3dp_profiles::filament::{FilamentCatalog, Nozzle};
-use p3dp_profiles::{PrinterProfile, ResinCatalog, ResinKind, Technology};
+use p3dp_profiles::{suite_machines, PrinterProfile, ResinCatalog, ResinKind, Technology};
 use p3dp_slicer::{Machine, SliceConfig};
 use std::collections::HashMap;
 
@@ -53,6 +56,9 @@ impl Outcome {
 pub const USAGE: &str = "phoenix-3dp: prepare and send 3D prints (simulators only: nothing here has run on a printer)
 
   phoenix-3dp printers [--vendor NAME] [--tech fdm|msla] [--search TEXT]
+  phoenix-3dp machines [--search TEXT]
+  phoenix-3dp machine ID [--nozzle MM] [--process draft|standard|fine|strong [--out FILE] [--force]]
+  phoenix-3dp import FILE.3mf|FILE.json|FILE.ini [--out SETTINGS] [--force]
   phoenix-3dp info MODEL [--printer ID]
   phoenix-3dp check-profile ID [--gcode FILE]
   phoenix-3dp check-profile --file PROFILE [--gcode FILE]
@@ -66,6 +72,9 @@ pub const USAGE: &str = "phoenix-3dp: prepare and send 3D prints (simulators onl
 
 Every command also takes --config FILE (the settings) and --lang CODE (en, es, de, fr, it, ja, zh, pt).
 The models are STL, OBJ and 3MF; OUT is chosen by its extension (.stl, .obj, .3mf).
+`machines` and `machine` show the catalog of printers of the suite: what each maker publishes, with its pages, the filaments and processes to start from and, with --process,
+a settings file for `slice`. `import` brings the settings of a 3MF project or of a JSON or INI profile of yours, tells every key it applied, did not apply, did not use
+or did not read, and with --out writes the applied ones as a settings file. Nothing is sent to a printer.
 `slice` makes the layers and the G-code of a closed model for a printer of the catalog and refuses, never cuts down, what does not fit or goes past a limit;
 without --out it only reports; with --report it also tells the material, its cost, the time and the layers. `resins` lists the resins and, with --part-ml, what a part of that
 volume takes. `check-profile --set` edits a copy of a profile (a limit past the figure of the maker is allowed and told) and --save writes it as a profile file. `project` reads the
@@ -136,6 +145,9 @@ pub fn run(args: &[String], env_lang: Option<&str>) -> Outcome {
         "help" | "--help" | "-h" => Outcome::ok(format!("{USAGE}\n")),
         "version" | "--version" | "-V" => Outcome::ok(format!("phoenix-3dp {}\n", crate::VERSION)),
         "printers" => printers(rest, env_lang),
+        "machines" => machines(rest, env_lang),
+        "machine" => machine(rest, env_lang),
+        "import" => import_file(rest, env_lang),
         "info" => info(rest, env_lang),
         "check-profile" => check_profile(rest, env_lang),
         "convert" => convert(rest, env_lang),
@@ -144,6 +156,169 @@ pub fn run(args: &[String], env_lang: Option<&str>) -> Outcome {
         "slice" => slice(rest, env_lang),
         "project" => project(rest, env_lang),
         other => Outcome::usage(&format!("{other:?} is not a command")),
+    }
+}
+
+/// Writes a text to a file: an existing file is replaced only with `--force`, and the file is whole or not there.
+fn write_new(target: &str, text: &str, force: bool) -> Result<(), String> {
+    if !force && std::path::Path::new(target).exists() {
+        return Err(format!(
+            "{target}: the file exists (use --force to replace it)"
+        ));
+    }
+    let tmp = format!("{target}.tmp-{}", std::process::id());
+    std::fs::write(&tmp, text.as_bytes()).map_err(|e| format!("{tmp}: {e}"))?;
+    std::fs::rename(&tmp, target).map_err(|e| {
+        let _ = std::fs::remove_file(&tmp);
+        format!("{target}: {e}")
+    })
+}
+
+fn text_of_lines(lines: Vec<String>) -> String {
+    let mut out = lines.join("\n");
+    out.push('\n');
+    out
+}
+
+fn machines(args: &[String], env_lang: Option<&str>) -> Outcome {
+    let p = match parse(args, &["search", "config", "lang"], &[]) {
+        Ok(p) => p,
+        Err(e) => return Outcome::usage(&e),
+    };
+    if !p.positional.is_empty() {
+        return Outcome::usage("machines takes no file");
+    }
+    let state = match state_of(&p, env_lang) {
+        Ok(s) => s,
+        Err(e) => return Outcome::fail(e),
+    };
+    let catalog = match suite_machines() {
+        Ok(c) => c,
+        Err(e) => return Outcome::fail(e.to_string()),
+    };
+    let query = p.flags.get("search").cloned().unwrap_or_default();
+    let found = catalog.search(&query);
+    Outcome::ok(text_of_lines(machine_view::list_lines(&found, state.lang)))
+}
+
+fn machine(args: &[String], env_lang: Option<&str>) -> Outcome {
+    let p = match parse(
+        args,
+        &["nozzle", "process", "out", "config", "lang"],
+        &["force"],
+    ) {
+        Ok(p) => p,
+        Err(e) => return Outcome::usage(&e),
+    };
+    let [id] = p.positional.as_slice() else {
+        return Outcome::usage("machine takes one printer id (see `phoenix-3dp machines`)");
+    };
+    if p.flags.contains_key("out") && !p.flags.contains_key("process") {
+        return Outcome::usage("--out writes the settings of a process: give --process");
+    }
+    let state = match state_of(&p, env_lang) {
+        Ok(s) => s,
+        Err(e) => return Outcome::fail(e),
+    };
+    let catalog = match suite_machines() {
+        Ok(c) => c,
+        Err(e) => return Outcome::fail(e.to_string()),
+    };
+    let Some(printer) = catalog.find(id) else {
+        return Outcome::fail(format!(
+            "{id}: not in the catalog of the suite (see `phoenix-3dp machines`)"
+        ));
+    };
+    let asked = match p.flags.get("nozzle").map(|v| v.parse::<f64>()) {
+        None => None,
+        Some(Ok(n)) => Some(n),
+        Some(Err(_)) => return Outcome::usage("--nozzle takes a number of millimetres"),
+    };
+    let nozzle = match machine_view::nozzle_of(printer, asked) {
+        Ok(n) => n,
+        Err(e) => return Outcome::fail(e),
+    };
+    let Some(name) = p.flags.get("process") else {
+        return match machine_view::show_lines(printer, nozzle, state.lang) {
+            Ok(lines) => Outcome::ok(text_of_lines(lines)),
+            Err(e) => Outcome::fail(e),
+        };
+    };
+    let Some(level) = Level::from_name(name) else {
+        return Outcome::usage("--process is draft, standard, fine or strong");
+    };
+    let text = match machine_view::process_settings(printer, level, nozzle) {
+        Ok(t) => t,
+        Err(e) => return Outcome::fail(e),
+    };
+    match p.flags.get("out") {
+        None => Outcome::ok(text),
+        Some(target) => match write_new(target, &text, p.flags.contains_key("force")) {
+            Ok(()) => Outcome::ok(format!(
+                "{}\n",
+                fill(ImportWord::Written.tr(state.lang), &[target])
+            )),
+            Err(e) => Outcome::fail(e),
+        },
+    }
+}
+
+fn import_file(args: &[String], env_lang: Option<&str>) -> Outcome {
+    let p = match parse(args, &["out", "config", "lang"], &["force"]) {
+        Ok(p) => p,
+        Err(e) => return Outcome::usage(&e),
+    };
+    let [file] = p.positional.as_slice() else {
+        return Outcome::usage("import takes one project or profile file");
+    };
+    let state = match state_of(&p, env_lang) {
+        Ok(s) => s,
+        Err(e) => return Outcome::fail(e),
+    };
+    let bytes = match read_limited(file, state.config.limits.max_file_bytes) {
+        Ok(b) => b,
+        Err(e) => return Outcome::fail(e),
+    };
+    let report = match import::import(&bytes, &state.config.limits, &state.catalog) {
+        Ok(r) => r,
+        Err(e) => return Outcome::fail(format!("{file}: {e}")),
+    };
+    let mut out = text_of_lines(import::report_lines(&report, state.lang));
+    let Some(target) = p.flags.get("out") else {
+        return Outcome::ok(out);
+    };
+    // what was asked and cannot be done is a failure, and the report is still given
+    let refused = |out: String, why: String| Outcome {
+        code: 1,
+        out,
+        err: format!("{why}\n"),
+    };
+    if let Some(conflict) = &report.conflict {
+        let why = fill(ImportWord::DoesNotHold.tr(state.lang), &[conflict]);
+        return refused(out, why);
+    }
+    if report.applied.is_empty() {
+        let why = ImportWord::NothingToWrite.tr(state.lang).to_string();
+        return refused(out, why);
+    }
+    let same = match (std::fs::canonicalize(file), std::fs::canonicalize(target)) {
+        (Ok(a), Ok(b)) => a == b,
+        _ => file == target,
+    };
+    if same {
+        return refused(out, "the output is the file that was imported".to_string());
+    }
+    match write_new(
+        target,
+        &report.settings_text(),
+        p.flags.contains_key("force"),
+    ) {
+        Ok(()) => {
+            out.push_str(&fill(ImportWord::Written.tr(state.lang), &[target]));
+            out.push('\n');
+            Outcome::ok(out)
+        }
+        Err(e) => refused(out, e),
     }
 }
 
@@ -1140,6 +1315,119 @@ mod tests {
         let path = tmp(name);
         std::fs::write(&path, write_mesh(&cube(10.0), f, "c").unwrap()).unwrap();
         path
+    }
+
+    #[test]
+    fn the_catalog_of_the_suite_is_listed_shown_and_gives_a_process_to_slice_with() {
+        let list = run(&args("machines --search artillery"), None);
+        assert_eq!(list.code, 0, "{}", list.err);
+        assert!(
+            list.out.contains("artillery/sidewinder-x4-pro-s1"),
+            "{}",
+            list.out
+        );
+        assert!(!list.out.contains("bambu"));
+        let shown = run(&args("machine bambu-lab/a1 --lang es"), None);
+        assert_eq!(shown.code, 0, "{}", shown.err);
+        assert!(shown.out.contains("https://bambulab.com/en/a1/tech-specs"));
+        assert!(
+            shown
+                .out
+                .contains("Volumen de impresión: 256 x 256 x 256 mm"),
+            "{}",
+            shown.out
+        );
+        let file = tmp("process.cfg");
+        let _ = std::fs::remove_file(&file);
+        let made = run(
+            &args(&format!("machine creality-k1c --process fine --out {file}")),
+            None,
+        );
+        assert_eq!(made.code, 0, "{}", made.err);
+        let text = std::fs::read_to_string(&file).unwrap();
+        assert_eq!(SliceConfig::from_text(&text).unwrap().layer_height_mm, 0.1);
+        let again = run(
+            &args(&format!(
+                "machine creality-k1c --process draft --out {file}"
+            )),
+            None,
+        );
+        assert_eq!(again.code, 1);
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), text);
+        let _ = std::fs::remove_file(&file);
+        assert_eq!(run(&args("machine no-such-printer"), None).code, 1);
+        assert_eq!(
+            run(&args("machine bambu-lab-a1 --nozzle 0.5"), None).code,
+            1
+        );
+        assert_eq!(run(&args("machine bambu-lab-a1 --nozzle x"), None).code, 2);
+        assert_eq!(
+            run(&args("machine bambu-lab-a1 --process best"), None).code,
+            2
+        );
+        assert_eq!(run(&args("machine bambu-lab-a1 --out x.cfg"), None).code, 2);
+        assert_eq!(run(&args("machine"), None).code, 2);
+        // the models the suite adds are printers of the program too, in both forms of the id
+        let sliced = run(
+            &args("filaments --printer artillery/sidewinder-x4-plus-s1"),
+            None,
+        );
+        assert_eq!(sliced.code, 0, "{}", sliced.err);
+    }
+
+    #[test]
+    fn import_reports_writes_only_what_it_applied_and_never_replaces_the_source() {
+        let source = tmp("profile.ini");
+        let target = tmp("imported.cfg");
+        let _ = std::fs::remove_file(&target);
+        std::fs::write(
+            &source,
+            "layer_height = 0.16\nperimeters = 3\nprinthost_apikey = HIDDEN-9\n",
+        )
+        .unwrap();
+        let report = run(&args(&format!("import {source}")), None);
+        assert_eq!(report.code, 0, "{}", report.err);
+        assert!(
+            report.out.contains("layer_height_mm = 0.16"),
+            "{}",
+            report.out
+        );
+        assert!(report.out.contains("printhost_apikey"));
+        assert!(!report.out.contains("HIDDEN-9"));
+        assert!(!std::path::Path::new(&target).exists());
+        let written = run(&args(&format!("import {source} --out {target}")), None);
+        assert_eq!(written.code, 0, "{}", written.err);
+        let text = std::fs::read_to_string(&target).unwrap();
+        assert!(text.contains("perimeters = 3") && !text.contains("HIDDEN-9"));
+        let kept = run(&args(&format!("import {source} --out {target}")), None);
+        assert_eq!(kept.code, 1);
+        let over = run(
+            &args(&format!("import {source} --out {source} --force")),
+            None,
+        );
+        assert_eq!(over.code, 1);
+        assert!(std::fs::read_to_string(&source)
+            .unwrap()
+            .contains("HIDDEN-9"));
+        std::fs::write(&source, "nozzle_diameter = 0.2\nlayer_height = 0.4\n").unwrap();
+        let bad = run(
+            &args(&format!("import {source} --out {target} --force")),
+            None,
+        );
+        assert_eq!(bad.code, 1);
+        assert_eq!(std::fs::read_to_string(&target).unwrap(), text);
+        std::fs::write(&source, "name = nothing of ours\n").unwrap();
+        let nothing = run(
+            &args(&format!("import {source} --out {target} --force")),
+            None,
+        );
+        assert_eq!(nothing.code, 1);
+        assert_eq!(std::fs::read_to_string(&target).unwrap(), text);
+        std::fs::write(&source, [0xffu8, 0xfe, 0x00]).unwrap();
+        assert_eq!(run(&args(&format!("import {source}")), None).code, 1);
+        assert_eq!(run(&args("import"), None).code, 2);
+        let _ = std::fs::remove_file(&source);
+        let _ = std::fs::remove_file(&target);
     }
 
     #[test]
