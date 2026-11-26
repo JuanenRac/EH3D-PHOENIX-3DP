@@ -234,7 +234,8 @@ fn apply(
     let Some(value) = next.value_of(to) else {
         return Fate::NotApplied(Why::Empty);
     };
-    let of = Some(pair.values.len()).filter(|_| pair.values.iter().any(|v| v.trim() != first));
+    let differ = pair.values.iter().any(|v| v.trim() != first);
+    let of = differ.then_some(pair.values.len());
     match applied.iter().find(|(k, _, _)| *k == to) {
         Some((_, before, from)) if *before != value => {
             return Fate::NotApplied(Why::Conflict(from.clone()));
