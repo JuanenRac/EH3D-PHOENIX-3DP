@@ -91,6 +91,24 @@ Como as partes deste repositório se encaixam: quem o usa, o que contém e de qu
 
 ## 🖼️ Capturas de ecrã
 
+Fotografias da janela, tiradas pelo próprio programa com o seu modo de imagem (`--shot --demo`: um modelo e um servidor criados em memória, pelo que nada chega a uma impressora):
+
+<p align="center">
+  <img src="images/screenshots/prepare.png" alt="Preparar: as definições de impressão com o processo de partida, o seu G-code de início e de fim e o que foi limitado, o modelo na base e os objetos" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/preview.png" alt="Pré-visualização: o modelo fatiado, a legenda do G-code, as definições de impressão e o tempo, o filamento, o custo e as camadas" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/device.png" alt="Dispositivo: as máquinas do servidor, o estado da máquina simulada e a fila" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/project.png" alt="Projeto: guardar, abrir e exportar, as definições da janela e os atalhos de teclado" width="100%">
+</p>
+
 <p align="center">
   <img src="images/layouts/prepare.svg" alt="Espaço Preparar: a barra de menus no topo; as definições de impressão e os materiais como separadores à esquerda, a vista 3D ao centro por cima da consola e do G-code, e os objetos e a impressora como separadores à direita." width="100%">
 </p>
@@ -111,7 +129,7 @@ Como as partes deste repositório se encaixam: quem o usa, o que contém e de qu
   <img src="images/layouts/compact.svg" alt="Espaço Compacto: um único grupo de separadores, a vista 3D e as definições de impressão." width="100%">
 </p>
 
-Desenhos da disposição de fábrica de cada espaço de trabalho, feitos a partir do modelo da janela (`cargo run --example workspace_pictures`): a barra de menus e os grupos de painéis com os seus separadores. Não são fotografias da janela; as fotografias tiram-se com o modo de imagem do programa (`--shot --demo`, um modelo e um servidor criados em memória, pelo que nada chega a uma impressora) com o fluxo `Window pictures`.
+Desenhos da disposição de fábrica de cada espaço de trabalho, feitos a partir do modelo da janela (`cargo run --example workspace_pictures`): a barra de menus e os grupos de painéis com os seus separadores. As fotografias e os desenhos são renovados pelo fluxo `Window pictures`.
 
 ## ✨ Funcionalidades
 
@@ -263,7 +281,7 @@ EH3D-PHOENIX-3DP/
 │   ├── architecture.json                        dados da imagem de Arquitetura
 │   └── structure.json                           dados da imagem de Estrutura
 ├── tools/                                       verificação da CI e do README e ferramentas de imagens
-├── images/                                      ícone e logótipos, banner, os dois diagramas e os desenhos dos espaços de trabalho
+├── images/                                      ícone e logótipos, banner, os dois diagramas e as imagens dos espaços de trabalho
 ├── .github/                                     fluxos de CI e de publicação, modelos de issues e pull requests
 ├── eh3d.project.json                            manifesto: versão, função, maturidade e comando de compilação
 ├── Cargo.toml                                   o espaço de trabalho e os seus crates
