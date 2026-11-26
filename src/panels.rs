@@ -25,6 +25,14 @@ pub fn about_brand() -> AboutBrand {
     }
 }
 
+/// The same picture, small, for the header of the window.
+pub fn header_brand() -> AboutBrand {
+    AboutBrand {
+        program: Phoenix::Printer3d,
+        logo_png: include_bytes!("../images/brand/icon-64.png"),
+    }
+}
+
 /// The names of the panels (what the settings file stores, so they never change).
 pub mod id {
     /// The 3D view of the bed.
@@ -849,6 +857,10 @@ mod about_tests {
             brand.program.repository(),
             "https://github.com/JuanenRac/EH3D-PHOENIX-3DP"
         );
+        // the header draws the same phoenix at a size of its own, 64 points wide (bytes 16 to 20 of a PNG)
+        let header = header_brand();
+        assert_eq!(header.program, brand.program);
+        assert_eq!(header.logo_png.get(16..20), Some(&64u32.to_be_bytes()[..]));
         let png = brand.logo_png;
         assert_eq!(png.get(1..4), Some(&b"PNG"[..]));
         // the width and the height in the header of the picture

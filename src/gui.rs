@@ -22,8 +22,9 @@ use crate::shade::{self, LineKind, ShadedTriangle, StdView};
 use crate::shot::{self, ShotRequest, WindowArgs};
 use crate::studio::{Estimates, SliceEvent, Studio};
 use eframe::egui::{self, Color32, FontData, FontDefinitions, FontFamily, Pos2, Stroke};
+use eh3d_dock::about::Phoenix;
 use eh3d_dock::core::AboutInfo;
-use eh3d_dock::gui::Dock;
+use eh3d_dock::gui::{primary_button, program_mark, Dock};
 use eh3d_dock::menu::{Chosen, DockAction, MenuBar, StdAction};
 use eh3d_view::server_gui;
 use p3dp_core::Mesh;
@@ -668,20 +669,6 @@ impl App {
 
     // ---- small pieces
 
-    fn draw_logo(&self, ui: &mut egui::Ui, size: f32) {
-        let (rect, _) = ui.allocate_exact_size(egui::vec2(size, size), egui::Sense::hover());
-        let painter = ui.painter_at(rect);
-        let at = |p: [f32; 2]| Pos2::new(rect.min.x + p[0] * size, rect.min.y + p[1] * size);
-        for line in look::logo() {
-            for w in line.windows(2) {
-                painter.line_segment(
-                    [at(w[0]), at(w[1])],
-                    Stroke::new(1.6, col(self.look.accent)),
-                );
-            }
-        }
-    }
-
     fn draw_glyph(&self, ui: &mut egui::Ui, tab: Tab, active: bool) {
         let size = 16.0;
         let (rect, _) = ui.allocate_exact_size(egui::vec2(size, size), egui::Sense::hover());
@@ -742,7 +729,7 @@ impl App {
         let lang = self.lang();
         egui::Panel::top("top").show(ui, |ui| {
             ui.horizontal(|ui| {
-                self.draw_logo(ui, 26.0);
+                program_mark(ui, &panels::header_brand(), 26.0);
                 ui.label(
                     egui::RichText::new("EH3D-PHOENIX-3DP")
                         .strong()
@@ -826,20 +813,11 @@ impl App {
     fn slice_bar(&mut self, ui: &mut egui::Ui) {
         let lang = self.lang();
         let volume = self.volume();
-        let ink = col(look::readable_on(
-            self.look.accent,
-            self.look.text,
-            self.look.background,
-        ));
         egui::Panel::bottom("slice_bar").show(ui, |ui| {
             ui.horizontal(|ui| {
                 let slicing = self.studio.is_slicing();
                 let can = !self.studio.plate.is_empty() && !slicing;
-                let label = egui::RichText::new(Msg::SliceNow.tr(lang))
-                    .strong()
-                    .color(ink);
-                let button = egui::Button::new(label)
-                    .fill(col(self.look.accent))
+                let button = primary_button(Phoenix::Printer3d, Msg::SliceNow.tr(lang))
                     .min_size(egui::vec2(150.0, 30.0));
                 if ui.add_enabled(can, button).clicked() {
                     self.slice();
@@ -2528,8 +2506,7 @@ impl App {
         v.panel_fill = col(p.background);
         v.window_fill = col(p.panel);
         v.override_text_color = Some(col(p.text));
-        v.selection.bg_fill = alpha(col(p.accent), 90);
-        v.selection.stroke = Stroke::new(1.5, col(p.accent));
+        // the selection and the links take the colour of the program from the frame of the window
         ctx.set_visuals(v);
     }
 }
@@ -2806,7 +2783,12 @@ pub fn run(config: AppConfig, lang: Lang, args: &WindowArgs) -> Result<(), Strin
             if start.slice {
                 app.slice_blocking();
             }
-            Ok(Box::new(Shell::new(app, start.window.is_some())))
+            let mut shell = Shell::new(app, start.window.is_some());
+            // the list of recent projects lives in the folder of the user; a picture reads and writes none
+            if start.shot.is_none() {
+                shell.dock.keep_user_recent(Phoenix::Printer3d);
+            }
+            Ok(Box::new(shell))
         }),
     )
     .map_err(|e| e.to_string())?;

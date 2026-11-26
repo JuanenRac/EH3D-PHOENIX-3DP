@@ -69,14 +69,14 @@ impl Theme {
 }
 
 impl Palette {
-    /// The look of the program: a dark warm ground with a flame-coloured accent.
+    /// The look of the program: a dark warm ground with the gold of the program as its accent.
     pub const fn phoenix() -> Palette {
         Palette {
             background: [0x16, 0x14, 0x12],
             panel: [0x20, 0x1d, 0x1a],
             text: [0xee, 0xe6, 0xdc],
             dim: [0xa8, 0x9a, 0x88],
-            accent: [0xff, 0x6a, 0x3d],
+            accent: [0xff, 0xd5, 0x3e],
             good: [0x9b, 0xe3, 0x4a],
             danger: [0xff, 0x54, 0x70],
             line: [0x4d, 0xd0, 0xe1],
@@ -89,14 +89,14 @@ impl Palette {
         }
     }
 
-    /// The light look: a warm paper ground with a darker flame accent, so that the text and the colours keep their contrast.
+    /// The light look: a warm paper ground with a darker gold accent, so that the text and the colours keep their contrast.
     pub const fn daylight() -> Palette {
         Palette {
             background: [0xf4, 0xf0, 0xea],
             panel: [0xfb, 0xf8, 0xf4],
             text: [0x22, 0x1e, 0x1a],
             dim: [0x5c, 0x52, 0x48],
-            accent: [0xb3, 0x3a, 0x12],
+            accent: [0x7b, 0x60, 0x00],
             good: [0x2d, 0x6a, 0x12],
             danger: [0xb0, 0x1c, 0x3c],
             line: [0x0b, 0x6a, 0x7a],
@@ -194,38 +194,6 @@ pub fn contrast(a: Rgb, b: Rgb) -> f64 {
 
 /// A drawing: lines of points in a square of side 1, from the top left.
 pub type Drawing = Vec<Vec<[f32; 2]>>;
-
-fn bezier(p0: [f32; 2], p1: [f32; 2], p2: [f32; 2], steps: usize) -> Vec<[f32; 2]> {
-    (0..=steps)
-        .map(|i| {
-            let t = i as f32 / steps as f32;
-            let u = 1.0 - t;
-            [
-                u * u * p0[0] + 2.0 * u * t * p1[0] + t * t * p2[0],
-                u * u * p0[1] + 2.0 * u * t * p1[1] + t * t * p2[1],
-            ]
-        })
-        .collect()
-}
-
-/// The mark of the program: three flames that rise from one base, the middle one the tallest. It is the same figure at any size.
-pub fn logo() -> Drawing {
-    let flame = |x0: f32, x1: f32, top: f32, lean: f32| {
-        let mid = (x0 + x1) / 2.0;
-        let mut line = bezier([x0, 0.92], [x0 - 0.08, 0.55], [mid + lean, top], 12);
-        line.extend(
-            bezier([mid + lean, top], [x1 + 0.08, 0.55], [x1, 0.92], 12)
-                .into_iter()
-                .skip(1),
-        );
-        line
-    };
-    vec![
-        flame(0.10, 0.50, 0.40, -0.04),
-        flame(0.50, 0.90, 0.36, 0.04),
-        flame(0.28, 0.72, 0.06, 0.0),
-    ]
-}
 
 /// The small drawing of a tab, in the same square.
 pub fn glyph(tab: Tab) -> Drawing {
@@ -533,7 +501,7 @@ mod tests {
 
     #[test]
     fn every_drawing_stays_in_its_square_and_is_made_of_real_lines() {
-        let mut all = vec![("logo".to_string(), logo())];
+        let mut all = Vec::new();
         for t in Tab::ALL {
             all.push((t.key().to_string(), glyph(t)));
         }
@@ -553,25 +521,33 @@ mod tests {
                 );
             }
         }
-        // the four glyphs are four different drawings, and the logo is the three flames
+        // the four glyphs are four different drawings
         for i in 0..4 {
             for j in i + 1..4 {
                 assert_ne!(glyph(Tab::ALL[i]), glyph(Tab::ALL[j]));
             }
         }
-        assert_eq!(logo().len(), 3);
-        assert_eq!(logo(), logo(), "the mark is the same every time");
     }
 
     #[test]
-    fn the_flames_close_on_their_base_and_the_middle_one_is_the_tallest() {
-        let flames = logo();
-        for f in &flames {
-            let (a, b) = (f.first().unwrap(), f.last().unwrap());
-            assert!((a[1] - 0.92).abs() < 1e-6 && (b[1] - 0.92).abs() < 1e-6);
-        }
-        let top = |f: &Vec<[f32; 2]>| f.iter().map(|p| p[1]).fold(f32::MAX, f32::min);
-        assert!(top(&flames[2]) < top(&flames[0]) && top(&flames[2]) < top(&flames[1]));
+    fn the_accent_of_each_look_is_the_gold_of_the_program() {
+        use eh3d_dock::about::Phoenix;
+        use eh3d_dock::palette::readable;
+        let gold = Phoenix::Printer3d.accent();
+        assert_eq!(Palette::phoenix().accent, gold);
+        // on the light look, the nearest gold that reads on every ground of it
+        let light = Palette::daylight();
+        let wanted = [light.background, light.panel, light.bar]
+            .into_iter()
+            .fold(gold, readable);
+        assert!(
+            light
+                .accent
+                .iter()
+                .zip(wanted)
+                .all(|(a, b)| a.abs_diff(b) <= 2),
+            "{wanted:?}"
+        );
     }
 
     #[test]
