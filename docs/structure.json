@@ -4,6 +4,7 @@
   "svg": "en",
   "exempt": [
     "build.bat",
+    "build.rs",
     "build.sh",
     "run.bat",
     "run.sh",
@@ -789,14 +790,14 @@
         {
           "name": "images/",
           "desc": {
-            "en": "banner, the two diagrams and the drawings of the workspaces of the README",
-            "es": "banner, los dos diagramas y los dibujos de los espacios de trabajo del README",
-            "de": "Banner, die zwei Diagramme und die Zeichnungen der Arbeitsbereiche des README",
-            "fr": "bannière, les deux schémas et les dessins des espaces de travail du README",
-            "it": "banner, i due diagrammi e i disegni degli spazi di lavoro del README",
-            "ja": "バナー、2 枚の図、README のワークスペースの図",
-            "zh": "横幅图、两张示意图和 README 的工作区示意图",
-            "pt": "banner, os dois diagramas e os desenhos dos espaços de trabalho do README"
+            "en": "icon and logos, banner, the two diagrams and the drawings of the workspaces",
+            "es": "icono y logotipos, banner, los dos diagramas y los dibujos de los espacios de trabajo",
+            "de": "Symbol und Logos, Banner, die zwei Diagramme und die Zeichnungen der Arbeitsbereiche",
+            "fr": "icône et logos, bannière, les deux schémas et les dessins des espaces de travail",
+            "it": "icona e loghi, banner, i due diagrammi e i disegni degli spazi di lavoro",
+            "ja": "アイコンとロゴ、バナー、2 枚の図、ワークスペースの図",
+            "zh": "图标和徽标、横幅图、两张示意图和工作区示意图",
+            "pt": "ícone e logótipos, banner, os dois diagramas e os desenhos dos espaços de trabalho"
           }
         },
         {

@@ -2,7 +2,7 @@
   <img src="images/EH3D_PHOENIX_3DP_BANNER.svg" alt="EH3D-PHOENIX-3DP banner" width="100%">
 </p>
 
-# EH3D-PHOENIX-3DP
+# <img src="images/brand/icon-64.png" alt="" width="40" height="40" align="absmiddle"> EH3D-PHOENIX-3DP
 <p align="center">🇺🇸 <b>English</b> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 中文</a> | <a href="README_jpn.md">🇯🇵 日本語</a> | <a href="README_por.md">🇵🇹 Português</a></p>
 
 ### Prepare and send 3D prints: models, printer profiles, safe G-code and the link to your printers and to the EH3D server
@@ -258,7 +258,7 @@ EH3D-PHOENIX-3DP/
 │   ├── architecture.json                        data of the Architecture picture
 │   └── structure.json                           data of the Repository Structure picture
 ├── tools/                                       CI check, README check and the picture tools
-├── images/                                      banner, the two diagrams and the drawings of the workspaces of the README
+├── images/                                      icon and logos, banner, the two diagrams and the drawings of the workspaces
 ├── .github/                                     CI and release workflows, issue and pull-request templates
 ├── eh3d.project.json                            manifest: version, role, maturity and build command
 ├── Cargo.toml                                   the workspace and its crates

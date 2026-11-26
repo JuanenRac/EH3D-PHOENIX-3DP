@@ -45,7 +45,7 @@ path = "tools/workspace_pictures.rs"
 [features]
 default = []
 # the window (egui): `cargo run --release --features gui`
-gui = ["dep:eframe", "eh3d-view/gui", "eh3d-dock/gui"]
+gui = ["dep:eframe", "dep:png", "eh3d-view/gui", "eh3d-dock/gui"]
 
 [dependencies]
 p3dp-core = { path = "crates/p3dp-core" }
@@ -73,9 +73,16 @@ eh3d-printers = { version = ">=0.0.1", path = "../EH3D-COMMON/crates/printers" }
 # the window
 eframe = { version = "0.37.0", default-features = false, features = ["glow", "default_fonts"], optional = true }
 
+# the icon of the window: the picture of the program is decoded for the title bar and the task bar
+png = { version = "0.17", optional = true }
+
 # the window of Linux needs a windowing system chosen at build time (X11 and Wayland); Windows and macOS have their own
 [target.'cfg(target_os = "linux")'.dependencies]
 eframe = { version = "0.37.0", default-features = false, features = ["glow", "default_fonts", "x11", "wayland"], optional = true }
+
+# the icon and the version information of the Windows executable (build.rs; nothing on other systems)
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1.34"
 
 [profile.release]
 opt-level = 3

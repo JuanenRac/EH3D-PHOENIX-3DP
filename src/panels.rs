@@ -853,5 +853,7 @@ mod about_tests {
         assert_eq!(png.get(1..4), Some(&b"PNG"[..]));
         // the width and the height in the header of the picture
         assert_eq!(png.get(16..24), Some(&[0, 0, 1, 0, 0, 0, 1, 0][..]));
+        // eight bits a channel with alpha, which is what the icon of the title bar is read from
+        assert_eq!(png.get(24..26), Some(&[8, 6][..]));
     }
 }
