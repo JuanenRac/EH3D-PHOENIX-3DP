@@ -91,6 +91,24 @@ How the parts of this repository fit together: who uses it, what it holds and wh
 
 ## 🖼️ Screenshots
 
+Photographs of the window, taken by the program itself with its picture mode (`--shot --demo`: a model and a server made in memory, so nothing reaches a printer):
+
+<p align="center">
+  <img src="images/screenshots/prepare.png" alt="Prepare: the print settings with the starting process, your own start and end G-code and what was held, the model on the bed and the objects" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/preview.png" alt="Preview: the sliced model, the legend of the G-code, the print settings and the time, filament, cost and layers" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/device.png" alt="Device: the machines of the server, the state of the simulated machine and the queue" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/project.png" alt="Project: save, open and export, the settings of the window and the keyboard shortcuts" width="100%">
+</p>
+
 <p align="center">
   <img src="images/layouts/prepare.svg" alt="Prepare workspace: the menu bar on top; the print settings and the materials as tabs on the left, the 3D view in the middle above the console and the G-code tabs, and the objects and the printer as tabs on the right." width="100%">
 </p>
@@ -111,7 +129,7 @@ How the parts of this repository fit together: who uses it, what it holds and wh
   <img src="images/layouts/compact.svg" alt="Compact workspace: one group of tabs, the 3D view and the print settings." width="100%">
 </p>
 
-Drawings of the factory arrangement of each workspace, made from the model of the window (`cargo run --example workspace_pictures`): the menu bar and the groups of panels with their tabs. They are not photographs of the window; the photographs are taken with the picture mode of the program (`--shot --demo`, a model and a server made in memory, so nothing reaches a printer) by the workflow `Window pictures`.
+Drawings of the factory arrangement of each workspace, made from the model of the window (`cargo run --example workspace_pictures`): the menu bar and the groups of panels with their tabs. The photographs and the drawings are renewed by the workflow `Window pictures`.
 
 ## ✨ Features
 
@@ -263,7 +281,7 @@ EH3D-PHOENIX-3DP/
 │   ├── architecture.json                        data of the Architecture picture
 │   └── structure.json                           data of the Repository Structure picture
 ├── tools/                                       CI check, README check and the picture tools
-├── images/                                      icon and logos, banner, the two diagrams and the drawings of the workspaces
+├── images/                                      icon and logos, banner, the two diagrams and the pictures of the workspaces
 ├── .github/                                     CI and release workflows, issue and pull-request templates
 ├── eh3d.project.json                            manifest: version, role, maturity and build command
 ├── Cargo.toml                                   the workspace and its crates

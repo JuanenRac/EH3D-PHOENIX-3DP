@@ -91,6 +91,24 @@ Come si incastrano le parti di questo repository: chi lo usa, cosa contiene e da
 
 ## 🖼️ Schermate
 
+Fotografie della finestra, scattate dal programma stesso con la sua modalità immagine (`--shot --demo`: un modello e un server creati in memoria, quindi nulla raggiunge una stampante):
+
+<p align="center">
+  <img src="images/screenshots/prepare.png" alt="Prepara: le impostazioni di stampa con il processo di partenza, il proprio G-code iniziale e finale e ciò che è stato limitato, il modello sul piatto e gli oggetti" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/preview.png" alt="Anteprima: il modello affettato, la legenda del G-code, le impostazioni di stampa e il tempo, il filamento, il costo e gli strati" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/device.png" alt="Dispositivo: le macchine del server, lo stato della macchina simulata e la coda" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/project.png" alt="Progetto: salvare, aprire ed esportare, le impostazioni della finestra e le scorciatoie da tastiera" width="100%">
+</p>
+
 <p align="center">
   <img src="images/layouts/prepare.svg" alt="Spazio Prepara: la barra dei menu in alto; le impostazioni di stampa e i materiali come schede a sinistra, la vista 3D al centro sopra la console e il G-code, e gli oggetti e la stampante come schede a destra." width="100%">
 </p>
@@ -111,7 +129,7 @@ Come si incastrano le parti di questo repository: chi lo usa, cosa contiene e da
   <img src="images/layouts/compact.svg" alt="Spazio Compatto: un solo gruppo di schede, la vista 3D e le impostazioni di stampa." width="100%">
 </p>
 
-Disegni della disposizione di fabbrica di ogni spazio di lavoro, fatti dal modello della finestra (`cargo run --example workspace_pictures`): la barra dei menu e i gruppi di pannelli con le loro schede. Non sono fotografie della finestra; le fotografie si ottengono con la modalità immagine del programma (`--shot --demo`, un modello e un server creati in memoria, quindi nulla raggiunge una stampante) con il workflow `Window pictures`.
+Disegni della disposizione di fabbrica di ogni spazio di lavoro, fatti dal modello della finestra (`cargo run --example workspace_pictures`): la barra dei menu e i gruppi di pannelli con le loro schede. Le fotografie e i disegni sono rinnovati dal workflow `Window pictures`.
 
 ## ✨ Funzionalità
 
@@ -263,7 +281,7 @@ EH3D-PHOENIX-3DP/
 │   ├── architecture.json                        dati dell'immagine di Architettura
 │   └── structure.json                           dati dell'immagine di Struttura
 ├── tools/                                       controllo della CI e del README e strumenti per le immagini
-├── images/                                      icona e loghi, banner, i due diagrammi e i disegni degli spazi di lavoro
+├── images/                                      icona e loghi, banner, i due diagrammi e le immagini degli spazi di lavoro
 ├── .github/                                     workflow di CI e di rilascio, modelli di issue e pull request
 ├── eh3d.project.json                            manifesto: versione, ruolo, maturità e comando di build
 ├── Cargo.toml                                   il workspace e i suoi crate

@@ -91,6 +91,24 @@ EH3D-PHOENIX-3DP 是 EH3D Fabrication Suite 中 PHOENIX 家族的 3D 打印程�
 
 ## 🖼️ 屏幕截图
 
+窗口的照片，由程序自身的截图模式拍摄（`--shot --demo`：模型和服务器都在内存中生成，因此不会连到打印机）：
+
+<p align="center">
+  <img src="images/screenshots/prepare.png" alt="准备：包含起始工艺、自定义开始和结束 G-code 以及受限内容的打印设置，热床上的模型和对象列表" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/preview.png" alt="预览：切片后的模型、G-code 图例、打印设置，以及时间、耗材、成本和层数" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/device.png" alt="设备：服务器上的机器、模拟机器的状态和队列" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/project.png" alt="项目：保存、打开和导出，窗口设置和键盘快捷键" width="100%">
+</p>
+
 <p align="center">
   <img src="images/layouts/prepare.svg" alt="“准备”工作区：顶部是菜单栏；左侧以标签页放置打印设置和材料，中间是位于控制台和G-code上方的3D视图，右侧以标签页放置对象和打印机。" width="100%">
 </p>
@@ -111,7 +129,7 @@ EH3D-PHOENIX-3DP 是 EH3D Fabrication Suite 中 PHOENIX 家族的 3D 打印程�
   <img src="images/layouts/compact.svg" alt="“紧凑”工作区：只有一组标签页，即3D视图和打印设置。" width="100%">
 </p>
 
-各工作区出厂布局的示意图，由窗口的模型绘制（`cargo run --example workspace_pictures`）：菜单栏以及带标签页的面板组。它们不是窗口的照片；照片由程序的截图模式（`--shot --demo`，模型和服务器都在内存中生成，因此不会连到打印机）通过工作流 `Window pictures` 拍摄。
+各工作区出厂布局的示意图，由窗口的模型绘制（`cargo run --example workspace_pictures`）：菜单栏以及带标签页的面板组。照片和示意图由工作流 `Window pictures` 更新。
 
 ## ✨ 功能
 
@@ -263,7 +281,7 @@ EH3D-PHOENIX-3DP/
 │   ├── architecture.json                        架构图数据
 │   └── structure.json                           结构图数据
 ├── tools/                                       CI 检查、README 检查和图片工具
-├── images/                                      图标和徽标、横幅图、两张示意图和工作区示意图
+├── images/                                      图标和徽标、横幅图、两张示意图和工作区图片
 ├── .github/                                     CI 与发布工作流、议题和拉取请求模板
 ├── eh3d.project.json                            清单：版本、角色、成熟度和构建命令
 ├── Cargo.toml                                   工作区及其 crate

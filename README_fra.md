@@ -91,6 +91,24 @@ Comment les parties de ce dépôt s'articulent : qui l'utilise, ce qu'il contien
 
 ## 🖼️ Captures d'écran
 
+Photographies de la fenêtre, prises par le programme lui-même avec son mode image (`--shot --demo` : un modèle et un serveur créés en mémoire, donc rien n'atteint une imprimante) :
+
+<p align="center">
+  <img src="images/screenshots/prepare.png" alt="Préparer : les réglages d'impression avec le processus de départ, votre G-code de début et de fin et ce qui a été limité, le modèle sur le plateau et les objets" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/preview.png" alt="Aperçu : le modèle tranché, la légende du G-code, les réglages d'impression et le temps, le filament, le coût et les couches" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/device.png" alt="Appareil : les machines du serveur, l'état de la machine simulée et la file d'attente" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/project.png" alt="Projet : enregistrer, ouvrir et exporter, les réglages de la fenêtre et les raccourcis clavier" width="100%">
+</p>
+
 <p align="center">
   <img src="images/layouts/prepare.svg" alt="Espace Préparer : la barre de menus en haut ; les réglages d'impression et les matériaux en onglets à gauche, la vue 3D au centre au-dessus de la console et du G-code, et les objets et l'imprimante en onglets à droite." width="100%">
 </p>
@@ -111,7 +129,7 @@ Comment les parties de ce dépôt s'articulent : qui l'utilise, ce qu'il contien
   <img src="images/layouts/compact.svg" alt="Espace Compact : un seul groupe d'onglets, la vue 3D et les réglages d'impression." width="100%">
 </p>
 
-Schémas de la disposition d'usine de chaque espace de travail, faits à partir du modèle de la fenêtre (`cargo run --example workspace_pictures`) : la barre de menus et les groupes de panneaux avec leurs onglets. Ce ne sont pas des photographies de la fenêtre ; elles sont prises avec le mode image du programme (`--shot --demo`, un modèle et un serveur créés en mémoire, donc rien n'atteint une imprimante) par le workflow `Window pictures`.
+Schémas de la disposition d'usine de chaque espace de travail, faits à partir du modèle de la fenêtre (`cargo run --example workspace_pictures`) : la barre de menus et les groupes de panneaux avec leurs onglets. Les photographies et les schémas sont renouvelés par le workflow `Window pictures`.
 
 ## ✨ Fonctionnalités
 
@@ -263,7 +281,7 @@ EH3D-PHOENIX-3DP/
 │   ├── architecture.json                        données de l'image d'Architecture
 │   └── structure.json                           données de l'image de Structure
 ├── tools/                                       vérification de la CI et du README et outils d'images
-├── images/                                      icône et logos, bannière, les deux schémas et les dessins des espaces de travail
+├── images/                                      icône et logos, bannière, les deux schémas et les images des espaces de travail
 ├── .github/                                     workflows de CI et de publication, modèles de tickets et de pull requests
 ├── eh3d.project.json                            manifeste : version, rôle, maturité et commande de compilation
 ├── Cargo.toml                                   l'espace de travail et ses crates

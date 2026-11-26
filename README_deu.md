@@ -91,6 +91,24 @@ Wie die Teile dieses Repositorys zusammenpassen: wer es nutzt, was es enthält u
 
 ## 🖼️ Screenshots
 
+Fotos des Fensters, vom Programm selbst mit seinem Bildmodus aufgenommen (`--shot --demo`: ein Modell und ein Server aus dem Speicher, sodass nichts einen Drucker erreicht):
+
+<p align="center">
+  <img src="images/screenshots/prepare.png" alt="Vorbereiten: die Druckeinstellungen mit dem Ausgangsprozess, eigenem Start- und End-G-Code und dem, was begrenzt wurde, das Modell auf dem Bett und die Objekte" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/preview.png" alt="Vorschau: das geslicte Modell, die Legende des G-Codes, die Druckeinstellungen sowie Zeit, Filament, Kosten und Schichten" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/device.png" alt="Gerät: die Maschinen des Servers, der Zustand der simulierten Maschine und die Warteschlange" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/project.png" alt="Projekt: Speichern, Öffnen und Exportieren, die Einstellungen des Fensters und die Tastenkürzel" width="100%">
+</p>
+
 <p align="center">
   <img src="images/layouts/prepare.svg" alt="Arbeitsbereich Vorbereiten: oben die Menüleiste; links Druckeinstellungen und Materialien als Reiter, in der Mitte die 3D-Ansicht über der Konsole und dem G-Code, rechts Objekte und Drucker als Reiter." width="100%">
 </p>
@@ -111,7 +129,7 @@ Wie die Teile dieses Repositorys zusammenpassen: wer es nutzt, was es enthält u
   <img src="images/layouts/compact.svg" alt="Arbeitsbereich Kompakt: eine einzige Reitergruppe mit der 3D-Ansicht und den Druckeinstellungen." width="100%">
 </p>
 
-Zeichnungen der Werksanordnung jedes Arbeitsbereichs, aus dem Modell des Fensters erzeugt (`cargo run --example workspace_pictures`): die Menüleiste und die Gruppen der Panels mit ihren Reitern. Es sind keine Fotos des Fensters; die Fotos entstehen mit dem Bildmodus des Programms (`--shot --demo`, ein Modell und ein Server aus dem Speicher, sodass nichts einen Drucker erreicht) durch den Workflow `Window pictures`.
+Zeichnungen der Werksanordnung jedes Arbeitsbereichs, aus dem Modell des Fensters erzeugt (`cargo run --example workspace_pictures`): die Menüleiste und die Gruppen der Panels mit ihren Reitern. Fotos und Zeichnungen werden vom Workflow `Window pictures` erneuert.
 
 ## ✨ Funktionen
 
@@ -263,7 +281,7 @@ EH3D-PHOENIX-3DP/
 │   ├── architecture.json                        Daten des Architektur-Bildes
 │   └── structure.json                           Daten des Struktur-Bildes
 ├── tools/                                       CI-Prüfung, README-Prüfung und die Bildwerkzeuge
-├── images/                                      Symbol und Logos, Banner, die zwei Diagramme und die Zeichnungen der Arbeitsbereiche
+├── images/                                      Symbol und Logos, Banner, die zwei Diagramme und die Bilder der Arbeitsbereiche
 ├── .github/                                     CI- und Release-Workflows, Vorlagen für Issues und Pull Requests
 ├── eh3d.project.json                            Manifest: Version, Rolle, Reifegrad und Build-Befehl
 ├── Cargo.toml                                   der Workspace und seine Crates

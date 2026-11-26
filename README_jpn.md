@@ -91,6 +91,24 @@ EH3D-PHOENIX-3DP は EH3D Fabrication Suite の PHOENIX ファミリーに属す
 
 ## 🖼️ スクリーンショット
 
+プログラム自身の画像モードで撮影したウィンドウの写真です（`--shot --demo`、モデルとサーバーはメモリ上で作られるためプリンターには届きません）。
+
+<p align="center">
+  <img src="images/screenshots/prepare.png" alt="準備：開始プロセス、独自の開始・終了 G-code、制限された内容を含む印刷設定と、ベッド上のモデルとオブジェクト" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/preview.png" alt="プレビュー：スライスしたモデル、G-code の凡例、印刷設定、時間・フィラメント・費用・層数" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/device.png" alt="デバイス：サーバーの機械、シミュレートされた機械の状態、キュー" width="100%">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/project.png" alt="プロジェクト：保存、開く、書き出し、ウィンドウの設定、キーボードショートカット" width="100%">
+</p>
+
 <p align="center">
   <img src="images/layouts/prepare.svg" alt="「準備」ワークスペース：上にメニューバー。左に印刷設定と材料をタブで、中央にコンソールとG-codeの上の3Dビュー、右にオブジェクトとプリンターをタブで配置。" width="100%">
 </p>
@@ -111,7 +129,7 @@ EH3D-PHOENIX-3DP は EH3D Fabrication Suite の PHOENIX ファミリーに属す
   <img src="images/layouts/compact.svg" alt="「コンパクト」ワークスペース：3Dビューと印刷設定を1つのタブグループにまとめた配置。" width="100%">
 </p>
 
-各ワークスペースの初期配置を、ウィンドウのモデルから描いた図です（`cargo run --example workspace_pictures`）。メニューバーと、タブ付きのパネルのグループを示します。ウィンドウの写真ではありません。写真はプログラムの画像モード（`--shot --demo`、モデルとサーバーはメモリ上で作られるためプリンターには届きません）を使うワークフロー `Window pictures` で撮影します。
+各ワークスペースの初期配置を、ウィンドウのモデルから描いた図です（`cargo run --example workspace_pictures`）。メニューバーと、タブ付きのパネルのグループを示します。写真と図はワークフロー `Window pictures` で更新します。
 
 ## ✨ 機能
 
@@ -263,7 +281,7 @@ EH3D-PHOENIX-3DP/
 │   ├── architecture.json                        アーキテクチャ図のデータ
 │   └── structure.json                           構成図のデータ
 ├── tools/                                       CI チェック、README チェック、図のツール
-├── images/                                      アイコンとロゴ、バナー、2 枚の図、ワークスペースの図
+├── images/                                      アイコンとロゴ、バナー、2 枚の図、ワークスペースの画像
 ├── .github/                                     CI とリリースのワークフロー、Issue と PR のテンプレート
 ├── eh3d.project.json                            マニフェスト：バージョン、役割、成熟度、ビルド コマンド
 ├── Cargo.toml                                   ワークスペースとそのクレート
