@@ -4,6 +4,26 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The package of a Bambu printer (`.gcode.3mf`):** `slice --out part.gcode.3mf` writes a 3MF package with the G-code of one plate, its MD5 checksum, a picture of the plate drawn from the layers and the time, weight and length of filament. The container follows the 3MF and Open Packaging standards; the maker does not publish its whole layout, nothing of another program was copied and **no printer has been given one**, which the program says when it writes it.
+- **`project` checks a package:** it says whether the checksum of the G-code agrees (the exit code is 1 when it does not, and nothing is taken out), and `--extract-gcode FILE` takes the G-code of the plate out.
+- Fix `project --thumbnail` on a 3MF package: it was ignored without a word; the largest picture is now written, or the package is said to have none.
+- **`check-profile --gcode` takes a `.gcode.3mf` package** and checks the G-code inside it against the limits of the printer.
+- Fix `slice --out` with a `.3mf` name: plain G-code was written into a file that nothing opens as 3MF; only a name ending in `.gcode.3mf` writes a package, only for a printer of the Bambu family, and the rest are refused.
+- A loose `.gcode` file written for a Bambu printer now says that the printer takes the package.
+- **`slice` and `fit` turn and size the part:** `--turn DEG` about the vertical and `--scale PERCENT`.
+- **`slice --copies N`** lays several of the part in rows on the bed, with room for the skirt, brim or raft; when they do not all fit nothing is sliced and none is left out.
+- **`slice` and `fit` take `--set "key=value;key=value"`** to change single settings over the process and the settings file.
+- **`slice --save-settings FILE`** writes the settings the slice used, ready to be given back with `--settings`.
+- **`fit` checks your start and end G-code** (`--start-gcode`, `--end-gcode`) line by line without slicing.
+- Fix `slice --force`: an output that named the start or end G-code, the settings or the configuration file wrote over it; no file the job reads is written over now.
+- The lines about the filament and about a part thinner than the perimeters are told in the eight languages.
+- **The window chooses a starting process** (draft, standard, fine or strong) for the printer and the nozzle; its figures are put over the settings, where they can still be changed.
+- **The window takes your own start and end G-code**, named by file, checked line by line when slicing.
+- **The window shows what was held and why:** what came from the filament, the flow and the acceleration held to the maker of the filament or of the printer, the figures nobody has checked, and every speed that made the printer refuse the slice.
+- **The window writes the `.gcode.3mf` package** when the name asks for it, and the file is written whole or not at all.
+- Fix the export and the queue of the window: the G-code was made again from the plan; the one that was sliced, with its start and end G-code, is now written and sent to the queue.
+- Fix the window: after another printer, filament, nozzle or setting was chosen the old plan did not say it was out of date.
+- Fix the window: a setting changed while a slice ran was put back when the slice ended.
 - **The slice keeps to the machine:** the highest speed, acceleration and flow that the maker of a printer states (from the catalog of the suite) are applied by `slice` and the window: a speed over it refuses the slice and names every setting, the flow slows a line without thinning it and the acceleration of the time estimate is held, and the program says so. A printer with no published figure is not checked against one.
 - **A new command `fit`:** without slicing, it tells whether the part with its skirt, brim or raft fits the build volume (also turned by a right angle), whether it is higher than the height the maker uses by default, which speeds are over the limit, whether the nozzle and the filament diameter are the printer's and which figures of the printer are still to be checked on the maker's page, in the eight languages; the exit code is 1 when it does not keep to the machine.
 - **`slice --process draft|standard|fine|strong`** starts from that process for the nozzle; the keys of `--settings` win over it.

@@ -2,7 +2,7 @@
 
 This register is the single source of the state of each capability: `STATUS.md` and the README files cite it and never state a state that it does not. A state is one of `planned`, `prototype`, `implemented` and `validated`. `validated` means that a person has run the capability on a real machine and the evidence of the manifest says `bench` or `field`; nothing here is validated, because nothing of this program has run on a real printer, a real server or a screen: the printers are simulators (in memory and on a socket of the same computer), the server is a double, and every profile of the catalog says `verified = false`.
 
-The register has 125 requirements: 111 implemented, 8 prototype, 6 planned and 0 validated. By progress: 111 done, 8 partial, 2 pending and 4 blocked. High coverage is not proof of correctness, so each row says how it is checked: the test that names it, and what it shows.
+The register has 135 requirements: 121 implemented, 8 prototype, 6 planned and 0 validated. By progress: 121 done, 8 partial, 2 pending and 4 blocked. High coverage is not proof of correctness, so each row says how it is checked: the test that names it, and what it shows.
 
 ## How to read the register
 
@@ -189,3 +189,18 @@ The check is `tests/reqs.rs`: it reads this table, finds each test and fails whe
 | P3DP-123 | A start or end block with a command that is not known, a temperature over the limit or a move outside the volume is refused whole. | implemented | done | host-test | `crates/p3dp-gcode/src/template::a_line_that_leaves_the_machine_or_is_not_known_refuses_the_whole_block` | - |
 | P3DP-124 | An end block never homes Z nor brings the head below the height of the print. | implemented | done | host-test | `crates/p3dp-gcode/src/template::the_end_block_never_brings_the_head_down_into_the_print` | - |
 | P3DP-125 | The highest speed, acceleration and flow and the default height come from the catalog of the suite, and a printer it does not have has none. | implemented | done | host-test | `crates/p3dp-profiles/src/machines::the_figures_of_motion_come_from_the_suite_and_an_unknown_printer_has_none` | - |
+
+## Printer packages and the slice of the window
+
+| ID | Requirement | State | Progress | Evidence | Test | Limits |
+|---|---|---|---|---|---|---|
+| P3DP-126 | A sliced plan of a printer of the Bambu family is written as a `.gcode.3mf` package with the G-code, its checksum, a picture and the figures of the print. | implemented | done | host-test | `src/package::a_sliced_cube_goes_into_a_package_with_its_picture_and_its_figures` | No printer has been given one; the maker does not publish the whole layout of these files. |
+| P3DP-127 | The G-code of a package is read back, and a checksum that differs or is missing is told. | implemented | done | host-test | `crates/p3dp-formats/src/gcode3mf::a_checksum_that_differs_or_is_missing_is_told` | - |
+| P3DP-128 | A package for a printer that does not take one, and a `.3mf` name that is not a package, are refused. | implemented | done | host-test | `src/package::each_name_writes_its_kind_and_the_wrong_ones_are_refused` | - |
+| P3DP-129 | A part can be turned, sized and copied on the bed before it is sliced; copies that do not all fit refuse the slice. | implemented | done | host-test | `src/cli::slice_turns_scales_copies_and_saves_the_settings_it_used` | The copies are laid in rows; no print has been made. |
+| P3DP-130 | The start and end G-code are checked without slicing and the lines about the filament follow the language. | implemented | done | host-test | `src/cli::fit_checks_your_blocks_without_slicing_and_the_filament_lines_follow_the_language` | - |
+| P3DP-131 | What a slice holds to the printer is named with its figure and who states it, and a speed over the printer is refused. | implemented | done | host-test | `src/held::what_is_held_names_its_figure_and_an_unknown_printer_says_it_is_not_checked` | The panel of the window that shows it has not been looked at on a screen. |
+| P3DP-132 | The window keeps the G-code as it was sliced, with the blocks of the person, and writes it or its package. | implemented | done | host-test | `src/preview::a_slice_keeps_what_was_held_the_gcode_and_gives_the_package_of_a_bambu_printer` | Tried without a screen. |
+| P3DP-133 | A change of the printer, the filament, a setting or a block marks the plan as out of date. | implemented | done | host-test | `src/held::a_change_of_the_printer_the_filament_a_setting_or_a_block_makes_another_recipe` | - |
+| P3DP-134 | A starting process is put over the settings whole or not at all. | implemented | done | host-test | `src/machine_view::a_starting_process_is_put_over_the_settings_whole_or_not_at_all` | - |
+| P3DP-135 | The start and end G-code of the person are read from their files, and a file that cannot be read is named. | implemented | done | host-test | `src/held::the_blocks_of_the_person_are_read_or_the_file_that_cannot_be_read_is_named` | - |

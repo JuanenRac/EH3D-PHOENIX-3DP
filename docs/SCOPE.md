@@ -10,6 +10,7 @@ The 3D-printing program of the PHOENIX family: it reads and converts STL, OBJ an
 
 * Reads STL (ASCII and binary), OBJ and 3MF models within limits, checks the mesh (open, inverted, degenerate) and converts between the formats; reads the metadata of binary G-code, plain G-code and the projects of other programs without writing them back.
 * Shows the catalog of printers of the suite, each figure with the page of its maker, and brings the settings of a 3MF project or of a JSON or INI profile of the person, telling every key it applied, did not apply, did not use or did not read. It sends nothing to a printer.
+* Writes a slice for a printer of the Bambu family as a `.gcode.3mf` package and checks such a package; no printer has been given one.
 * Holds a catalog of 120 printer models of both technologies with the limits their makers publish (none verified), and the filaments and resins of the database of printing materials, checking a printer, a nozzle and a material against each other and listing the reasons instead of lowering a temperature.
 * Slices a closed model into layers with perimeters, rectilinear, grid or gyroid infill, solid skins, bridges, plain supports, seams, a skirt, a brim or a raft, a vase mode, slower short layers, retraction that follows the travel, and an estimate of the time with acceleration.
 * Writes G-code for four dialects and checks any program against the limits of the printer; what the writer refuses the checker also finds.

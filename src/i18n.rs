@@ -317,10 +317,35 @@ pub enum Msg {
     FitFilamentDiameter,
     FitNoFigures,
     FitUnchecked,
+    NoteFilament,
+    NoteFilamentFlow,
+    HeldMachineFlow,
+    HeldOwnGcode,
+    WarnThin,
+    OutNotBambu,
+    OutOther3mf,
+    PackageNotTried,
+    PackageLoose,
+    PackageSumOk,
+    PackageSumBad,
+    PackageSumMissing,
+    CopiesNoRoom,
+    BlockAllowed,
+    HeldTitle,
+    HeldNothing,
+    LblProcess,
+    ProcessAsTyped,
+    ProcessDraft,
+    ProcessStandard,
+    ProcessFine,
+    ProcessStrong,
+    LblStartGcode,
+    LblEndGcode,
+    ExportKinds,
 }
 
 impl Msg {
-    pub const ALL: [Msg; 243] = [
+    pub const ALL: [Msg; 268] = [
         Msg::TabPrepare,
         Msg::TabPreview,
         Msg::TabDevice,
@@ -564,6 +589,31 @@ impl Msg {
         Msg::FitFilamentDiameter,
         Msg::FitNoFigures,
         Msg::FitUnchecked,
+        Msg::NoteFilament,
+        Msg::NoteFilamentFlow,
+        Msg::HeldMachineFlow,
+        Msg::HeldOwnGcode,
+        Msg::WarnThin,
+        Msg::OutNotBambu,
+        Msg::OutOther3mf,
+        Msg::PackageNotTried,
+        Msg::PackageLoose,
+        Msg::PackageSumOk,
+        Msg::PackageSumBad,
+        Msg::PackageSumMissing,
+        Msg::CopiesNoRoom,
+        Msg::BlockAllowed,
+        Msg::HeldTitle,
+        Msg::HeldNothing,
+        Msg::LblProcess,
+        Msg::ProcessAsTyped,
+        Msg::ProcessDraft,
+        Msg::ProcessStandard,
+        Msg::ProcessFine,
+        Msg::ProcessStrong,
+        Msg::LblStartGcode,
+        Msg::LblEndGcode,
+        Msg::ExportKinds,
     ];
 
     /// The texts in the order English, Spanish, German, French, Italian, Japanese, Chinese, Portuguese (Portugal).
@@ -821,6 +871,31 @@ impl Msg {
             Msg::FitFilamentDiameter => ["The printer takes {} mm filament and the settings say {} mm", "La impresora usa filamento de {} mm y los ajustes dicen {} mm", "Der Drucker nimmt {}-mm-Filament, die Einstellungen sagen {} mm", "L'imprimante prend du filament de {} mm et les réglages indiquent {} mm", "La stampante usa filamento da {} mm e le impostazioni dicono {} mm", "プリンターは {} mm フィラメントですが、設定は {} mm です", "打印机使用 {} mm 耗材，而设置为 {} mm", "A impressora usa filamento de {} mm e as definições indicam {} mm"],
             Msg::FitNoFigures => ["The highest speed and flow of this printer are not known here, so they are not checked", "Aquí no se conocen la velocidad ni el caudal máximos de esta impresora, así que no se comprueban", "Höchstgeschwindigkeit und maximaler Durchfluss dieses Druckers sind hier nicht bekannt und werden nicht geprüft", "La vitesse et le débit maximaux de cette imprimante ne sont pas connus ici, ils ne sont donc pas vérifiés", "Qui non si conoscono velocità e portata massime di questa stampante, quindi non vengono controllate", "このプリンターの最大速度と最大流量は不明のため、確認しません", "此处不知道该打印机的最大速度和流量，因此不检查", "Aqui não se conhecem a velocidade nem o caudal máximos desta impressora, por isso não são verificados"],
             Msg::FitUnchecked => ["Still to be checked on the maker's page: {}", "Falta comprobar en la página del fabricante: {}", "Auf der Seite des Herstellers noch zu prüfen: {}", "Reste à vérifier sur la page du fabricant : {}", "Da controllare ancora sulla pagina del produttore: {}", "メーカーのページで未確認: {}", "仍需在厂商页面核实：{}", "Falta confirmar na página do fabricante: {}"],
+            Msg::NoteFilament => ["filament {}: nozzle {} C, bed {} C, fan {} %", "filamento {}: boquilla {} C, cama {} C, ventilador {} %", "Filament {}: Düse {} C, Bett {} C, Lüfter {} %", "filament {} : buse {} C, plateau {} C, ventilateur {} %", "filamento {}: ugello {} C, piano {} C, ventola {} %", "フィラメント {}：ノズル {} C、ベッド {} C、ファン {} %", "耗材 {}：喷嘴 {} C，热床 {} C，风扇 {} %", "filamento {}: bico {} C, mesa {} C, ventoinha {} %"],
+            Msg::NoteFilamentFlow => ["flow: held to {} mm3/s, what the maker gives for the filament", "caudal: limitado a {} mm3/s, lo que indica el fabricante del filamento", "Durchfluss: auf {} mm3/s begrenzt, so gibt es der Hersteller des Filaments an", "débit : limité à {} mm3/s, la valeur du fabricant du filament", "portata: limitata a {} mm3/s, quanto indica il produttore del filamento", "流量：フィラメントメーカーの値 {} mm3/s に制限", "流量：限制为 {} mm3/s，即耗材厂商给出的数值", "caudal: limitado a {} mm3/s, o que o fabricante do filamento indica"],
+            Msg::HeldMachineFlow => ["flow: held to {} mm3/s, the most the maker states for the printer", "caudal: limitado a {} mm3/s, el máximo que declara el fabricante de la impresora", "Durchfluss: auf {} mm3/s begrenzt, das Höchste laut Hersteller des Druckers", "débit : limité à {} mm3/s, le maximum annoncé par le fabricant de l'imprimante", "portata: limitata a {} mm3/s, il massimo dichiarato dal produttore della stampante", "流量：プリンターメーカー公称の上限 {} mm3/s に制限", "流量：限制为 {} mm3/s，即打印机厂商标称的上限", "caudal: limitado a {} mm3/s, o máximo declarado pelo fabricante da impressora"],
+            Msg::HeldOwnGcode => ["your own start or end G-code is in the file, checked line by line", "su G-code de inicio o de fin está en el archivo, comprobado línea por línea", "Ihr eigener Start- oder End-G-Code steht in der Datei, Zeile für Zeile geprüft", "votre G-code de début ou de fin est dans le fichier, vérifié ligne par ligne", "il suo G-code iniziale o finale è nel file, controllato riga per riga", "独自の開始・終了 G-code を 1 行ずつ確認してファイルに入れました", "您自己的起始或结束 G-code 已逐行检查并写入文件", "o seu G-code de início ou de fim está no ficheiro, verificado linha a linha"],
+            Msg::WarnThin => ["warning: layer {} has a part thinner than the perimeters; it has fewer of them or none", "aviso: la capa {} tiene una parte más fina que los perímetros; lleva menos o ninguno", "Warnung: Schicht {} hat eine Stelle, die dünner als die Wände ist; dort sind es weniger oder keine", "attention : la couche {} a une partie plus fine que les parois ; elle en a moins ou aucune", "avviso: lo strato {} ha una parte più sottile delle pareti; ne ha meno o nessuna", "警告：レイヤー {} に外周より薄い部分があります。外周は少なくなるか、なくなります", "警告：第 {} 层有比外墙更薄的部分，该处外墙减少或没有", "aviso: a camada {} tem uma parte mais fina do que os perímetros; fica com menos ou nenhum"],
+            Msg::OutNotBambu => ["The .gcode.3mf package is only for printers of the Bambu family: write a .gcode file for this one", "El paquete .gcode.3mf es solo para impresoras de la familia Bambu: para esta escriba un archivo .gcode", "Das Paket .gcode.3mf ist nur für Drucker der Bambu-Familie: für diesen eine .gcode-Datei schreiben", "Le paquet .gcode.3mf ne vaut que pour les imprimantes de la famille Bambu : pour celle-ci, écrivez un fichier .gcode", "Il pacchetto .gcode.3mf è solo per le stampanti della famiglia Bambu: per questa scriva un file .gcode", ".gcode.3mf パッケージは Bambu 系プリンター専用です。このプリンターには .gcode を書き出してください", ".gcode.3mf 打包文件仅用于 Bambu 系列打印机：本打印机请写出 .gcode 文件", "O pacote .gcode.3mf é só para impressoras da família Bambu: para esta, escreva um ficheiro .gcode"],
+            Msg::OutOther3mf => ["A .3mf name here must end in .gcode.3mf: G-code is not written into another .3mf file", "Un nombre .3mf aquí debe terminar en .gcode.3mf: no se escribe G-code en otro archivo .3mf", "Ein .3mf-Name muss hier auf .gcode.3mf enden: G-Code wird in keine andere .3mf-Datei geschrieben", "Ici, un nom .3mf doit finir par .gcode.3mf : aucun G-code n'est écrit dans un autre fichier .3mf", "Qui un nome .3mf deve finire in .gcode.3mf: il G-code non viene scritto in un altro file .3mf", "ここで .3mf を使う場合は .gcode.3mf で終わる必要があります。他の .3mf には G-code を書きません", "此处的 .3mf 名称必须以 .gcode.3mf 结尾：不会把 G-code 写入其他 .3mf 文件", "Aqui, um nome .3mf tem de terminar em .gcode.3mf: não se escreve G-code noutro ficheiro .3mf"],
+            Msg::PackageNotTried => ["Package written. The maker does not publish its whole layout and no printer has been given one: try it with a person at the printer", "Paquete escrito. El fabricante no publica todo su formato y ninguna impresora ha recibido uno: pruébelo con una persona junto a la impresora", "Paket geschrieben. Der Hersteller veröffentlicht den Aufbau nicht vollständig und kein Drucker hat bisher eines erhalten: nur mit einer Person am Drucker testen", "Paquet écrit. Le fabricant n'en publie pas toute la structure et aucune imprimante n'en a reçu : essayez-le avec une personne près de l'imprimante", "Pacchetto scritto. Il produttore non ne pubblica tutta la struttura e nessuna stampante ne ha ricevuto uno: lo provi con una persona alla stampante", "パッケージを書き出しました。メーカーは構成をすべては公開しておらず、実機に渡したことはありません。プリンターのそばで試してください", "已写出打包文件。厂商未公开其完整结构，也尚未交给任何打印机：请有人在打印机旁时再试", "Pacote escrito. O fabricante não publica toda a sua estrutura e nenhuma impressora recebeu um: experimente com uma pessoa junto da impressora"],
+            Msg::PackageLoose => ["This printer takes the package: use a name ending in .gcode.3mf", "Esta impresora usa el paquete: use un nombre terminado en .gcode.3mf", "Dieser Drucker nimmt das Paket: einen Namen mit der Endung .gcode.3mf verwenden", "Cette imprimante prend le paquet : utilisez un nom finissant par .gcode.3mf", "Questa stampante usa il pacchetto: usi un nome che finisce in .gcode.3mf", "このプリンターはパッケージを使います。.gcode.3mf で終わる名前にしてください", "本打印机使用打包文件：请使用以 .gcode.3mf 结尾的名称", "Esta impressora usa o pacote: use um nome terminado em .gcode.3mf"],
+            Msg::PackageSumOk => ["the checksum of {} agrees", "la suma de comprobación de {} coincide", "die Prüfsumme von {} stimmt", "la somme de contrôle de {} concorde", "il checksum di {} coincide", "{} のチェックサムは一致します", "{} 的校验和一致", "a soma de verificação de {} coincide"],
+            Msg::PackageSumBad => ["the checksum of {} does NOT agree: the file is damaged or was changed", "la suma de comprobación de {} NO coincide: el archivo está dañado o se ha cambiado", "die Prüfsumme von {} stimmt NICHT: die Datei ist beschädigt oder wurde geändert", "la somme de contrôle de {} NE concorde PAS : le fichier est abîmé ou a été modifié", "il checksum di {} NON coincide: il file è danneggiato o è stato modificato", "{} のチェックサムが一致しません。ファイルが壊れているか変更されています", "{} 的校验和不一致：文件已损坏或被改动", "a soma de verificação de {} NÃO coincide: o ficheiro está danificado ou foi alterado"],
+            Msg::PackageSumMissing => ["{} has no checksum file beside it", "{} no tiene al lado el archivo de suma de comprobación", "neben {} liegt keine Prüfsummendatei", "{} n'a pas de fichier de somme de contrôle à côté", "{} non ha accanto il file del checksum", "{} にはチェックサムファイルがありません", "{} 旁边没有校验和文件", "{} não tem ao lado o ficheiro da soma de verificação"],
+            Msg::CopiesNoRoom => ["{} of the {} copies do not fit on the bed: nothing is sliced", "{} de las {} copias no caben en la cama: no se lamina nada", "{} von {} Kopien passen nicht auf das Bett: nichts wird geschnitten", "{} des {} copies ne tiennent pas sur le plateau : rien n'est découpé", "{} delle {} copie non stanno sul piano: non viene sezionato nulla", "{} 個（全 {} 個中）がベッドに収まりません。スライスしません", "有 {} 个副本（共 {} 个）放不下热床：不进行切片", "{} das {} cópias não cabem na mesa: nada é fatiado"],
+            Msg::BlockAllowed => ["{}: every line is allowed on this printer", "{}: todas las líneas están permitidas en esta impresora", "{}: jede Zeile ist auf diesem Drucker erlaubt", "{} : chaque ligne est permise sur cette imprimante", "{}: ogni riga è consentita su questa stampante", "{}：すべての行がこのプリンターで許可されます", "{}：每一行都可在本打印机上使用", "{}: todas as linhas são permitidas nesta impressora"],
+            Msg::HeldTitle => ["What was held, and why", "Qué se ha limitado, y por qué", "Was begrenzt wurde und warum", "Ce qui a été limité, et pourquoi", "Cosa è stato limitato, e perché", "制限した内容とその理由", "限制了什么，以及原因", "O que foi limitado, e porquê"],
+            Msg::HeldNothing => ["Slice to see what is held to the printer and to the filament", "Lamine para ver qué se limita según la impresora y el filamento", "Schneiden Sie, um zu sehen, was nach Drucker und Filament begrenzt wird", "Découpez pour voir ce qui est limité selon l'imprimante et le filament", "Esegua lo slicing per vedere cosa viene limitato da stampante e filamento", "スライスすると、プリンターとフィラメントによる制限が表示されます", "切片后即可查看按打印机和耗材限制的内容", "Fatie para ver o que é limitado pela impressora e pelo filamento"],
+            Msg::LblProcess => ["Starting process", "Proceso de partida", "Ausgangsprozess", "Procédé de départ", "Processo di partenza", "開始プロセス", "起始工艺", "Processo inicial"],
+            Msg::ProcessAsTyped => ["As typed", "Como está escrito", "Wie eingegeben", "Tel que saisi", "Come digitato", "入力どおり", "按输入值", "Como está escrito"],
+            Msg::ProcessDraft => ["Draft", "Borrador", "Entwurf", "Brouillon", "Bozza", "下書き", "草稿", "Rascunho"],
+            Msg::ProcessStandard => ["Standard", "Estándar", "Normal", "Normal", "Normale", "標準", "标准", "Normal"],
+            Msg::ProcessFine => ["Fine", "Fino", "Fein", "Fin", "Fine", "高精細", "精细", "Fino"],
+            Msg::ProcessStrong => ["Strong", "Resistente", "Stabil", "Solide", "Robusto", "強度重視", "高强度", "Resistente"],
+            Msg::LblStartGcode => ["Your start G-code (file)", "Su G-code de inicio (archivo)", "Ihr Start-G-Code (Datei)", "Votre G-code de début (fichier)", "Il suo G-code iniziale (file)", "独自の開始 G-code（ファイル）", "您的起始 G-code（文件）", "O seu G-code de início (ficheiro)"],
+            Msg::LblEndGcode => ["Your end G-code (file)", "Su G-code de fin (archivo)", "Ihr End-G-Code (Datei)", "Votre G-code de fin (fichier)", "Il suo G-code finale (file)", "独自の終了 G-code（ファイル）", "您的结束 G-code（文件）", "O seu G-code de fim (ficheiro)"],
+            Msg::ExportKinds => ["A name ending in .gcode.3mf writes the package of a Bambu printer", "Un nombre terminado en .gcode.3mf escribe el paquete de una impresora Bambu", "Ein Name auf .gcode.3mf schreibt das Paket eines Bambu-Druckers", "Un nom finissant par .gcode.3mf écrit le paquet d'une imprimante Bambu", "Un nome che finisce in .gcode.3mf scrive il pacchetto di una stampante Bambu", ".gcode.3mf で終わる名前は Bambu プリンター用のパッケージを書き出します", "以 .gcode.3mf 结尾的名称会写出 Bambu 打印机的打包文件", "Um nome terminado em .gcode.3mf escreve o pacote de uma impressora Bambu"],
         }
     }
 
@@ -1041,7 +1116,7 @@ mod tests {
         seen.sort_by_key(|m| format!("{m:?}"));
         seen.dedup();
         assert_eq!(seen.len(), Msg::ALL.len());
-        assert_eq!(Msg::ALL.len(), 243);
+        assert_eq!(Msg::ALL.len(), 268);
     }
 
     #[test]
