@@ -3,6 +3,8 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+
+- **A new window «About»:** the picture of the program inside a ring of its colour (violet), the name in large letters, one sentence about the program in the eight languages, the version, the author and the e-mail, links to the page of the author and to the repository and the licence. It is the window of the docking frame of the suite (`eh3d-dock`), so the workflows build against `EH3D-COMMON` at `main` until a release of it carries the window.
 - Fix the offset of a loop inwards: past the middle of a shape (a pin thinner than the perimeters, a square inset by more than half its side) the corners crossed over and a loop came out the same way round, a shape that is not there, so a perimeter was laid where there is no room; such a loop is now dropped.
 - Fix the profiles of printers, filaments and resins (security): a vendor, model or name with a line break or another control character could begin another line of the profile file it is written to (a key of its own, even `verified`), and one with ` #` was cut short when read back; both are now refused when the profile is checked.
 - Fix the figures of a print: a value written with a blank before it (` 0.2`) was dropped instead of read.

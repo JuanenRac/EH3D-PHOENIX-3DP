@@ -5,6 +5,7 @@
 use crate::app_state::Tab;
 use crate::i18n::{Lang, Msg};
 use crate::keys::{Action, Scheme};
+use eh3d_dock::about::{AboutBrand, Phoenix};
 use eh3d_dock::core::PanelDef;
 use eh3d_dock::menu::{Entry, Item, Label, Menu, MenuBar, StdAction};
 use eh3d_dock::model::{Layout, Node};
@@ -15,6 +16,14 @@ use eh3d_dock::stdmenus::{
 };
 use eh3d_dock::texts::Text8;
 use eh3d_dock::workspaces::Workspace;
+
+/// The look of the window «About»: which program of the family this is and its own picture, drawn in a ring of its colour.
+pub fn about_brand() -> AboutBrand {
+    AboutBrand {
+        program: Phoenix::Printer3d,
+        logo_png: include_bytes!("../images/brand/icon-256.png"),
+    }
+}
 
 /// The names of the panels (what the settings file stores, so they never change).
 pub mod id {
@@ -824,5 +833,25 @@ mod tests {
             assert_eq!(left, [0.0, 0.0, 100.0, 100.0], "{w}");
             assert_eq!(strip[2] - strip[0], 0.0, "{w}");
         }
+    }
+}
+
+#[cfg(test)]
+mod about_tests {
+    use super::*;
+
+    #[test]
+    fn the_window_about_has_the_name_the_repository_and_the_picture_of_this_program() {
+        let brand = about_brand();
+        assert_eq!(brand.program, Phoenix::Printer3d);
+        assert_eq!(brand.program.name(), "EH3D-PHOENIX-3DP");
+        assert_eq!(
+            brand.program.repository(),
+            "https://github.com/JuanenRac/EH3D-PHOENIX-3DP"
+        );
+        let png = brand.logo_png;
+        assert_eq!(png.get(1..4), Some(&b"PNG"[..]));
+        // the width and the height in the header of the picture
+        assert_eq!(png.get(16..24), Some(&[0, 0, 1, 0, 0, 0, 1, 0][..]));
     }
 }
