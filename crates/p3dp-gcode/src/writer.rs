@@ -116,6 +116,19 @@ impl Writer {
         &self.lines
     }
 
+    pub(crate) fn limits(&self) -> TempLimits {
+        self.limits
+    }
+
+    pub(crate) fn volume_mm(&self) -> [f64; 3] {
+        self.volume_mm
+    }
+
+    /// A line that was already checked (a block of the person).
+    pub(crate) fn raw_line(&mut self, line: String) {
+        self.lines.push(line);
+    }
+
     fn push(&mut self, s: impl Into<String>) {
         self.lines.push(s.into());
     }

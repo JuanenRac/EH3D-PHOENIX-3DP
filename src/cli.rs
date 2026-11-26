@@ -7,15 +7,19 @@ use crate::i18n::{fill, Lang, Msg};
 use crate::import::{self, Word as ImportWord};
 use crate::machine_view;
 use crate::report;
-use eh3d_printers::Level;
+use eh3d_printers::{Level, Processes};
 use p3dp_formats::picture::PictureFormat;
 use p3dp_formats::project3mf::read_project;
 use p3dp_formats::{bgcode, gcode_meta, resin, resin_control};
 use p3dp_formats::{write_mesh, Format};
 use p3dp_gcode::check_program;
 use p3dp_profiles::filament::{FilamentCatalog, Nozzle};
-use p3dp_profiles::{suite_machines, PrinterProfile, ResinCatalog, ResinKind, Technology};
-use p3dp_slicer::{Machine, SliceConfig};
+use p3dp_profiles::{
+    motion_limits, suite_machines, MotionLimits, PrinterProfile, ResinCatalog, ResinKind,
+    Technology,
+};
+use p3dp_slicer::machine_check::{self, Held};
+use p3dp_slicer::{Machine, SliceConfig, UserGcode};
 use std::collections::HashMap;
 
 /// What a run produced.
@@ -66,7 +70,8 @@ pub const USAGE: &str = "phoenix-3dp: prepare and send 3D prints (simulators onl
   phoenix-3dp convert IN OUT [--printer ID] [--force]
   phoenix-3dp filaments [--printer ID] [--nozzle MM] [--hardened]
   phoenix-3dp resins [--kind KIND] [--printer ID] [--part-ml ML]
-  phoenix-3dp slice MODEL --printer ID [--settings FILE] [--filament ID] [--nozzle MM] [--hardened] [--report] [--out FILE.gcode] [--force]
+  phoenix-3dp fit MODEL --printer ID [--process draft|standard|fine|strong] [--settings FILE] [--filament ID] [--nozzle MM] [--hardened]
+  phoenix-3dp slice MODEL --printer ID [--process LEVEL] [--settings FILE] [--filament ID] [--nozzle MM] [--hardened] [--start-gcode FILE] [--end-gcode FILE] [--report] [--out FILE.gcode] [--force]
   phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.gcode|FILE.sl1 [--thumbnail FILE] [--force] [--bottom-layers N] [--lift MM] [--light-power MW]
   phoenix-3dp version
 
@@ -76,7 +81,9 @@ The models are STL, OBJ and 3MF; OUT is chosen by its extension (.stl, .obj, .3m
 a settings file for `slice`. `import` brings the settings of a 3MF project or of a JSON or INI profile of yours, tells every key it applied, did not apply, did not use
 or did not read, and with --out writes the applied ones as a settings file. Nothing is sent to a printer.
 `slice` makes the layers and the G-code of a closed model for a printer of the catalog and refuses, never cuts down, what does not fit or goes past a limit;
-without --out it only reports; with --report it also tells the material, its cost, the time and the layers. `resins` lists the resins and, with --part-ml, what a part of that
+without --out it only reports; with --process it starts from that process for the nozzle (the keys of --settings win over it); the highest speed, acceleration and flow
+the maker states are kept to. --start-gcode and --end-gcode add your own lines to the ones of the program, checked line by line against the limits and the volume. `fit` tells,
+without slicing, whether the job fits and keeps to the machine. With --report it also tells the material, its cost, the time and the layers. `resins` lists the resins and, with --part-ml, what a part of that
 volume takes. `check-profile --set` edits a copy of a profile (a limit past the figure of the maker is allowed and told) and --save writes it as a profile file. `project` reads the
 objects, plates and settings of a 3MF project saved by another program, the header and thumbnails of a binary G-code file, the figures and thumbnails in the comments of a plain
 G-code file, or the header of an open package of resin layers (.sl1) with an estimate of its time; all of it read only, and the closed formats of resin printers are refused with the reason.";
@@ -153,6 +160,7 @@ pub fn run(args: &[String], env_lang: Option<&str>) -> Outcome {
         "convert" => convert(rest, env_lang),
         "filaments" => filaments(rest, env_lang),
         "resins" => resins(rest, env_lang),
+        "fit" => fit_job(rest, env_lang),
         "slice" => slice(rest, env_lang),
         "project" => project(rest, env_lang),
         other => Outcome::usage(&format!("{other:?} is not a command")),
@@ -817,11 +825,242 @@ fn read_limited(path: &str, max: u64) -> Result<Vec<u8>, String> {
     std::fs::read(path).map_err(|e| format!("{path}: {e}"))
 }
 
+/// The settings of a job and what was told while they were put together.
+struct Job {
+    config: SliceConfig,
+    notes: String,
+    density: f64,
+}
+
+fn read_text(path: &str) -> Result<String, String> {
+    read_limited(path, p3dp_core::kv::MAX_BYTES as u64)
+        .and_then(|b| String::from_utf8(b).map_err(|_| format!("{path}: not UTF-8")))
+}
+
+/// The settings of a job: the ones of the program, over them the process asked for, over that the settings file and over that the filament.
+fn job_config(p: &Parsed, profile: &PrinterProfile) -> Result<Job, Outcome> {
+    let mut config = SliceConfig::default();
+    let nozzle = nozzle_of(p, profile).map_err(|e| Outcome::usage(&e))?;
+    if let Some(name) = p.flags.get("process") {
+        let Some(level) = Level::from_name(name) else {
+            return Err(Outcome::usage(
+                "--process is draft, standard, fine or strong",
+            ));
+        };
+        let process = Processes::embedded()
+            .and_then(|r| r.for_nozzle(level, nozzle.diameter_mm))
+            .map_err(|e| Outcome::fail(e.to_string()))?;
+        let filament_mm = suite_machines()
+            .map_err(|e| Outcome::fail(e.to_string()))?
+            .find(&profile.id)
+            .and_then(|m| m.filament_diameter_mm);
+        for (key, value) in machine_view::settings_of(&process, filament_mm) {
+            config
+                .set(key, &value)
+                .map_err(|e| Outcome::fail(e.to_string()))?;
+        }
+    }
+    if let Some(path) = p.flags.get("settings") {
+        let text = read_text(path).map_err(Outcome::fail)?;
+        let entries =
+            p3dp_core::kv::parse(&text).map_err(|e| Outcome::fail(format!("{path}: {e}")))?;
+        for e in entries {
+            config
+                .set(&e.key, &e.value)
+                .map_err(|err| Outcome::fail(format!("{path}: line {}: {err}", e.line)))?;
+        }
+    }
+    config.check().map_err(|e| Outcome::fail(e.to_string()))?;
+    let mut notes = String::new();
+    let mut density = report::DEFAULT_DENSITY_G_CM3;
+    if let Some(fid) = p.flags.get("filament") {
+        let filaments = FilamentCatalog::builtin().map_err(|e| Outcome::fail(e.to_string()))?;
+        let Some(f) = filaments.find(fid) else {
+            return Err(Outcome::fail(format!(
+                "{fid}: no such filament (see `phoenix-3dp filaments`)"
+            )));
+        };
+        density = f.density_g_cm3;
+        let compat = config
+            .apply_filament(f, profile, nozzle)
+            .map_err(|e| Outcome::fail(e.to_string()))?;
+        notes.push_str(&format!(
+            "filament {}: nozzle {} C, bed {} C, fan {} %\n",
+            f.name, config.nozzle_c, config.bed_c, config.fan_percent
+        ));
+        for a in compat.advice {
+            notes.push_str(&format!("note: {}\n", a.text()));
+        }
+        if let Some(r) = crate::preflight::record(&f.id) {
+            if let Some(limit) = crate::preflight::hold_flow(r, &mut config) {
+                notes.push_str(&format!(
+                    "flow: held to {limit} mm3/s, what the maker gives for the filament\n"
+                ));
+            }
+        }
+    }
+    Ok(Job {
+        config,
+        notes,
+        density,
+    })
+}
+
+fn held_text(held: Held, lang: Lang) -> String {
+    match held {
+        Held::Acceleration(a) => fill(Msg::FitAccel.tr(lang), &[&a.to_string()]),
+        Held::Flow(q) => fill(Msg::FitFlow.tr(lang), &[&q.to_string()]),
+    }
+}
+
+/// Tells, without slicing, whether a model with its settings fits a printer and keeps to what its maker states. The exit code is 1 when it does not.
+fn fit_job(args: &[String], env_lang: Option<&str>) -> Outcome {
+    let p = match parse(
+        args,
+        &[
+            "printer", "settings", "config", "lang", "filament", "nozzle", "process",
+        ],
+        &["hardened"],
+    ) {
+        Ok(p) => p,
+        Err(e) => return Outcome::usage(&e),
+    };
+    let [model] = p.positional.as_slice() else {
+        return Outcome::usage("fit takes one model file");
+    };
+    let Some(id) = p.flags.get("printer") else {
+        return Outcome::usage("fit needs --printer ID (see `phoenix-3dp printers`)");
+    };
+    let mut state = match state_of(&p, env_lang) {
+        Ok(s) => s,
+        Err(e) => return Outcome::fail(e),
+    };
+    if !state.select_printer(id) {
+        return Outcome::fail(state.status.text(state.lang));
+    }
+    let Some(profile) = state.printer().cloned() else {
+        return Outcome::fail(format!("{id}: no such printer in the catalog"));
+    };
+    if let Err(e) = Machine::from_profile(&profile) {
+        return Outcome::fail(e.to_string());
+    }
+    let job = match job_config(&p, &profile) {
+        Ok(j) => j,
+        Err(e) => return e,
+    };
+    if !state.load_model_file(model) {
+        return Outcome::fail(state.status.text(state.lang));
+    }
+    let Some(size) = state.model.as_ref().and_then(|m| m.size_mm()) else {
+        return Outcome::fail("no model".to_string());
+    };
+    let suite = match suite_machines() {
+        Ok(s) => s,
+        Err(e) => return Outcome::fail(e.to_string()),
+    };
+    let record = suite.find(&profile.id);
+    let limits = record.map(MotionLimits::of).unwrap_or_default();
+    let lang = state.lang;
+    let mut config = job.config;
+    let n = |v: f64| format!("{}", (v * 10.0).round() / 10.0);
+    let found = machine_check::fit(size, profile.volume_mm, &config, limits.default_height_mm);
+    let v = profile.volume_mm;
+    let mut lines = vec![
+        format!("{model} - {}", profile.title()),
+        fill(
+            Msg::FitSize.tr(lang),
+            &[
+                &n(found.needs_mm[0]),
+                &n(found.needs_mm[1]),
+                &n(found.needs_mm[2]),
+                &n(v[0]),
+                &n(v[1]),
+                &n(v[2]),
+            ],
+        ),
+    ];
+    let mut good = found.fits();
+    if good {
+        lines.push(Msg::FitYes.tr(lang).to_string());
+    }
+    for (axis, over) in ["x", "y", "z"].iter().zip(found.over_mm) {
+        if over > 0.0 {
+            lines.push(fill(Msg::FitNo.tr(lang), &[&n(over), axis]));
+        }
+    }
+    if found.fits_turned {
+        lines.push(Msg::FitTurned.tr(lang).to_string());
+    }
+    if let Some(h) = found.above_default_height_mm {
+        lines.push(fill(
+            Msg::FitDefaultHeight.tr(lang),
+            &[&n(found.needs_mm[2]), &n(h)],
+        ));
+    }
+    for t in machine_check::too_fast(&config, &limits) {
+        good = false;
+        lines.push(fill(
+            Msg::FitSpeed.tr(lang),
+            &[t.key, &n(t.set_mm_s), &n(t.max_mm_s)],
+        ));
+    }
+    for h in machine_check::hold(&mut config, &limits) {
+        lines.push(held_text(h, lang));
+    }
+    if !profile
+        .nozzles_mm
+        .iter()
+        .any(|x| (x - config.nozzle_diameter_mm).abs() < 1e-9)
+    {
+        good = false;
+        lines.push(fill(
+            Msg::FitNozzle.tr(lang),
+            &[&config.nozzle_diameter_mm.to_string()],
+        ));
+    }
+    if let Some(d) = record.and_then(|r| r.filament_diameter_mm) {
+        if (d - config.filament_diameter_mm).abs() > 1e-9 {
+            good = false;
+            lines.push(fill(
+                Msg::FitFilamentDiameter.tr(lang),
+                &[&d.to_string(), &config.filament_diameter_mm.to_string()],
+            ));
+        }
+    }
+    if limits.max_speed_mm_s.is_none() && limits.max_flow_mm3_s.is_none() {
+        lines.push(Msg::FitNoFigures.tr(lang).to_string());
+    }
+    if let Some(r) = record {
+        let unchecked = r.unconfirmed();
+        if !unchecked.is_empty() {
+            lines.push(fill(Msg::FitUnchecked.tr(lang), &[&unchecked.join(", ")]));
+        }
+    }
+    let mut out = lines.join("\n");
+    out.push('\n');
+    out.push_str(&job.notes);
+    out.push_str(&format!("{}\n", Msg::SimulatorOnly.tr(lang)));
+    Outcome {
+        code: i32::from(!good),
+        out,
+        err: String::new(),
+    }
+}
+
 fn slice(args: &[String], env_lang: Option<&str>) -> Outcome {
     let p = match parse(
         args,
         &[
-            "printer", "settings", "out", "config", "lang", "filament", "nozzle",
+            "printer",
+            "settings",
+            "out",
+            "config",
+            "lang",
+            "filament",
+            "nozzle",
+            "process",
+            "start-gcode",
+            "end-gcode",
         ],
         &["force", "hardened", "report"],
     ) {
@@ -848,51 +1087,37 @@ fn slice(args: &[String], env_lang: Option<&str>) -> Outcome {
         Ok(m) => m,
         Err(e) => return Outcome::fail(e.to_string()),
     };
-    let mut config = match p.flags.get("settings") {
-        None => SliceConfig::default(),
-        Some(path) => match read_limited(path, p3dp_core::kv::MAX_BYTES as u64)
-            .and_then(|b| String::from_utf8(b).map_err(|_| format!("{path}: not UTF-8")))
-            .and_then(|t| SliceConfig::from_text(&t).map_err(|e| format!("{path}: {e}")))
-        {
-            Ok(c) => c,
-            Err(e) => return Outcome::fail(e),
-        },
+    let job = match job_config(&p, &profile) {
+        Ok(j) => j,
+        Err(e) => return e,
     };
-    let mut notes = String::new();
-    let mut density = report::DEFAULT_DENSITY_G_CM3;
-    if let Some(fid) = p.flags.get("filament") {
-        let nozzle = match nozzle_of(&p, &profile) {
-            Ok(n) => n,
-            Err(e) => return Outcome::usage(&e),
-        };
-        let filaments = match FilamentCatalog::builtin() {
-            Ok(c) => c,
-            Err(e) => return Outcome::fail(e.to_string()),
-        };
-        let Some(f) = filaments.find(fid) else {
-            return Outcome::fail(format!(
-                "{fid}: no such filament (see `phoenix-3dp filaments`)"
-            ));
-        };
-        density = f.density_g_cm3;
-        match config.apply_filament(f, &profile, nozzle) {
-            Ok(compat) => {
-                notes.push_str(&format!(
-                    "filament {}: nozzle {} C, bed {} C, fan {} %\n",
-                    f.name, config.nozzle_c, config.bed_c, config.fan_percent
-                ));
-                for a in compat.advice {
-                    notes.push_str(&format!("note: {}\n", a.text()));
-                }
-                if let Some(r) = crate::preflight::record(&f.id) {
-                    if let Some(limit) = crate::preflight::hold_flow(r, &mut config) {
-                        notes.push_str(&format!(
-                            "flow: held to {limit} mm3/s, what the maker gives for the filament\n"
-                        ));
-                    }
-                }
+    let Job {
+        mut config,
+        mut notes,
+        density,
+    } = job;
+    let limits = match motion_limits(&profile.id) {
+        Ok(l) => l,
+        Err(e) => return Outcome::fail(e.to_string()),
+    };
+    match machine_check::apply(&mut config, &limits) {
+        Ok(held) => {
+            for h in held {
+                notes.push_str(&format!("{}\n", held_text(h, state.lang)));
             }
-            Err(e) => return Outcome::fail(e.to_string()),
+        }
+        Err(e) => return Outcome::fail(e.to_string()),
+    }
+    let mut user = UserGcode::default();
+    for (flag, slot) in [
+        ("start-gcode", &mut user.start),
+        ("end-gcode", &mut user.end),
+    ] {
+        if let Some(path) = p.flags.get(flag) {
+            match read_text(path) {
+                Ok(text) => *slot = Some(text),
+                Err(e) => return Outcome::fail(e),
+            }
         }
     }
     if let Some(out) = p.flags.get("out") {
@@ -915,7 +1140,11 @@ fn slice(args: &[String], env_lang: Option<&str>) -> Outcome {
     let Some(mesh) = state.model.as_ref() else {
         return Outcome::fail("no model".to_string());
     };
-    let (plan, gcode) = match p3dp_slicer::slice(mesh, &machine, &config) {
+    let sliced = p3dp_slicer::plan(mesh, &machine, &config).and_then(|plan| {
+        let gcode = plan.gcode_with(p3dp_slicer::VERSION, &user)?;
+        Ok((plan, gcode))
+    });
+    let (plan, gcode) = match sliced {
         Ok(r) => r,
         Err(e) => return Outcome::fail(format!("{model}: {e}")),
     };
@@ -2425,5 +2654,91 @@ mod tests {
             0
         );
         let _ = std::fs::remove_file(&file);
+    }
+
+    #[test]
+    fn fit_tells_whether_a_job_keeps_to_the_machine_in_the_language_asked() {
+        let model = format!("{}/examples/cube-20mm.stl", env!("CARGO_MANIFEST_DIR"));
+        let args = |extra: &[&str]| {
+            let mut v = vec!["fit".to_string(), model.clone()];
+            v.extend(extra.iter().map(|s| s.to_string()));
+            v
+        };
+        let ok = run(
+            &args(&["--printer", "bambu-lab-a1", "--process", "fine"]),
+            None,
+        );
+        assert_eq!(ok.code, 0, "{}{}", ok.out, ok.err);
+        assert!(
+            ok.out.contains("It fits") && ok.out.contains("28 mm3/s"),
+            "{}",
+            ok.out
+        );
+        let es = run(&args(&["--printer", "bambu-lab-p1s", "--lang", "es"]), None);
+        assert!(
+            es.out.contains("Cabe") && es.out.contains("filament_diameter_mm"),
+            "{}",
+            es.out
+        );
+        let unknown = run(&args(&["--printer", "prusa-mk4s"]), None);
+        assert_eq!(unknown.code, 0, "{}", unknown.err);
+        assert!(unknown.out.contains("are not checked"), "{}", unknown.out);
+        assert_eq!(run(&args(&[]), None).code, 2);
+        assert_eq!(
+            run(
+                &args(&["--printer", "bambu-lab-a1", "--process", "best"]),
+                None
+            )
+            .code,
+            2
+        );
+    }
+
+    #[test]
+    fn slice_takes_a_process_and_your_own_start_and_end_or_refuses_them_whole() {
+        let dir = std::env::temp_dir().join(format!("p3dp-user-gcode-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let model = format!("{}/examples/cube-20mm.stl", env!("CARGO_MANIFEST_DIR"));
+        let start = format!(
+            "{}/examples/start-prime-line.gcode",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        let end = format!("{}/examples/end-park.gcode", env!("CARGO_MANIFEST_DIR"));
+        let out = dir.join("cube.gcode").to_string_lossy().into_owned();
+        let run_with = |start: &str, printer: &str| {
+            let v = [
+                "slice",
+                model.as_str(),
+                "--printer",
+                printer,
+                "--process",
+                "draft",
+                "--start-gcode",
+                start,
+                "--end-gcode",
+                end.as_str(),
+                "--out",
+                out.as_str(),
+                "--force",
+            ];
+            run(&v.map(String::from), None)
+        };
+        for printer in ["bambu-lab-a1", "creality-ender-3-v3-se", "creality-k1c"] {
+            let r = run_with(&start, printer);
+            assert_eq!(r.code, 0, "{printer}: {}", r.err);
+            let text = std::fs::read_to_string(&out).unwrap();
+            let at = |s: &str| text.find(s).unwrap_or_else(|| panic!("{printer}: {s}"));
+            assert!(at("; your start G-code") < at("TYPE:"));
+            assert!(at("TYPE:") < at("; your end G-code"));
+            assert!(text.contains("layers: ") && text.contains("of 0.24 mm"));
+        }
+        let bad = dir.join("bad.gcode");
+        std::fs::write(&bad, "G28\nM104 S999\n").unwrap();
+        let _ = std::fs::remove_file(&out);
+        let r = run_with(&bad.to_string_lossy(), "bambu-lab-a1");
+        assert_eq!(r.code, 1);
+        assert!(r.err.contains("start G-code, line 2"), "{}", r.err);
+        assert!(!std::path::Path::new(&out).exists(), "nothing is written");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

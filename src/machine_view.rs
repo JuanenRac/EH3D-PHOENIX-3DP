@@ -113,6 +113,22 @@ pub fn show_lines(printer: &Printer, nozzle_mm: f64, lang: Lang) -> Result<Vec<S
         row(Label::NozzleMax, format!("{} C", printer.nozzle_max_c)),
         row(Label::BedMax, format!("{} C", printer.bed_max_c)),
     ];
+    let motion = [
+        (Label::MaxSpeed, printer.max_speed_mm_s, "mm/s"),
+        (
+            Label::MaxAcceleration,
+            printer.max_acceleration_mm_s2,
+            "mm/s2",
+        ),
+        (Label::MaxFlow, printer.max_flow_mm3_s, "mm3/s"),
+        (Label::DefaultHeight, printer.default_height_mm, "mm"),
+    ];
+    for (label, value, unit) in motion {
+        out.push(row(
+            label,
+            value.map_or_else(|| unknown.to_string(), |v| format!("{v} {unit}")),
+        ));
+    }
     let m = &printer.multicolor;
     let mut multicolor = m.status.title_in(l).to_string();
     if matches!(
@@ -152,6 +168,10 @@ pub fn show_lines(printer: &Printer, nozzle_mm: f64, lang: Lang) -> Result<Vec<S
     out.push(format!("{}:", Label::Sources.title_in(l)));
     for s in &printer.sources {
         out.push(format!("  {}  ({})", s.url, s.covers.join(", ")));
+    }
+    let unchecked = printer.unconfirmed();
+    if !unchecked.is_empty() {
+        out.push(row(Label::ToCheck, unchecked.join(", ")));
     }
     let database = Database::embedded().map_err(|errors| {
         errors
@@ -196,7 +216,10 @@ pub fn show_lines(printer: &Printer, nozzle_mm: f64, lang: Lang) -> Result<Vec<S
     Ok(out)
 }
 
-fn settings_of(p: &Process, filament_diameter_mm: Option<f64>) -> Vec<(&'static str, String)> {
+pub(crate) fn settings_of(
+    p: &Process,
+    filament_diameter_mm: Option<f64>,
+) -> Vec<(&'static str, String)> {
     let mut out = vec![
         ("nozzle_diameter_mm", p.nozzle_mm.to_string()),
         ("layer_height_mm", p.layer_mm.to_string()),

@@ -16,6 +16,7 @@ pub mod emit;
 pub mod error;
 pub mod geom;
 pub mod infill;
+pub mod machine_check;
 pub mod multi;
 pub mod plan;
 pub mod report;
@@ -23,7 +24,7 @@ pub mod support;
 pub mod timing;
 
 pub use config::{Adhesion, InfillPattern, Placement, Seam, SliceConfig, Supports, ThinRegions};
-pub use emit::{LayerSummary, Move, TimeCheck};
+pub use emit::{LayerSummary, Move, TimeCheck, UserGcode};
 pub use error::SliceError;
 pub use multi::{MultiConfig, MultiJob, MultiReport, Tool, ToolChange};
 pub use plan::{plan, Kind, Layer, Machine, Path, Plan, Warning};
