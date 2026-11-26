@@ -49,7 +49,7 @@ def take(binary: Path, window: str, lang: str, size: str, out: Path) -> None:
         work = Path(tmp)
         exe = work / binary.name
         shutil.copy2(binary, exe)
-        env = {k: v for k, v in os.environ.items() if k.upper() in ("PATH", "SYSTEMROOT", "WINDIR", "COMSPEC", "DISPLAY", "WAYLAND_DISPLAY", "XDG_RUNTIME_DIR")}
+        env = {k: v for k, v in os.environ.items() if k.upper() in ("PATH", "SYSTEMROOT", "WINDIR", "COMSPEC", "DISPLAY", "XAUTHORITY", "WAYLAND_DISPLAY", "XDG_RUNTIME_DIR")}
         for name in ("APPDATA", "LOCALAPPDATA", "USERPROFILE", "HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME"):
             env[name] = str(work)
         args = [str(exe), "gui", "--shot", "raw.png", "--window", window, "--demo", "--lang", lang,

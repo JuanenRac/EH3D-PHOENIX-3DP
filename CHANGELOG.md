@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The shared repository is taken at its tag v0.3.5:** the workflows build against it, and the workflow Window pictures takes the photographs of the window with the libraries and the screen it needs.
 - **The package of a Bambu printer (`.gcode.3mf`):** `slice --out part.gcode.3mf` writes a 3MF package with the G-code of one plate, its MD5 checksum, a picture of the plate drawn from the layers and the time, weight and length of filament. The container follows the 3MF and Open Packaging standards; the maker does not publish its whole layout, nothing of another program was copied and **no printer has been given one**, which the program says when it writes it.
 - **`project` checks a package:** it says whether the checksum of the G-code agrees (the exit code is 1 when it does not, and nothing is taken out), and `--extract-gcode FILE` takes the G-code of the plate out.
 - Fix `project --thumbnail` on a 3MF package: it was ignored without a word; the largest picture is now written, or the package is said to have none.

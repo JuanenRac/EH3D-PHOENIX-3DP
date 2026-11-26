@@ -6,6 +6,8 @@ name: Window pictures
 
 on:
   workflow_dispatch:
+  push:
+    branches: [release-ready]
 
 permissions:
   contents: read
@@ -16,7 +18,7 @@ concurrency:
 
 env:
   # The tag of the sibling repository the window is built against.
-  COMMON_REF: "main"
+  COMMON_REF: "v0.3.5"
 
 jobs:
   pictures:
@@ -35,7 +37,7 @@ jobs:
         shell: bash
         run: git -c advice.detachedHead=false clone --quiet --depth 1 --branch "${COMMON_REF}" "https://github.com/${GITHUB_REPOSITORY_OWNER}/EH3D-COMMON.git" EH3D-COMMON
       - name: Libraries of the window and a virtual screen
-        run: sudo apt-get update && sudo apt-get install -y libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev libxrandr-dev libxi-dev libgl1-mesa-dev libgl1-mesa-dri xvfb
+        run: sudo apt-get update && sudo apt-get install -y libxkbcommon-dev libxkbcommon-x11-0 libwayland-dev libx11-dev libxcursor-dev libxrandr-dev libxi-dev libgl1-mesa-dev libgl1-mesa-dri xvfb fonts-noto-cjk
       - name: Rust toolchain
         working-directory: EH3D-PHOENIX-3DP
         run: rustup toolchain install "$(sed -n 's/^channel = "\(.*\)"/\1/p' rust-toolchain.toml)" --profile minimal
@@ -46,10 +48,12 @@ jobs:
         run: cargo build --release --features gui
       - name: Take the pictures
         working-directory: EH3D-PHOENIX-3DP
-        run: xvfb-run -a python -I tools/make_screenshots.py target/release/phoenix-3dp --out window-pictures
+        run: |
+          xvfb-run -a -s "-screen 0 1920x1080x24" python -I tools/make_screenshots.py target/release/phoenix-3dp --out window-pictures
+          cargo run --release --example workspace_pictures -- --out window-pictures/layouts
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: window-pictures
-          path: EH3D-PHOENIX-3DP/window-pictures/*.png
+          path: EH3D-PHOENIX-3DP/window-pictures/**
           if-no-files-found: error
           retention-days: 14
