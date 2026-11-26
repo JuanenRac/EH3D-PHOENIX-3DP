@@ -3,7 +3,9 @@
 #![forbid(unsafe_code)]
 
 pub mod check;
+pub mod template;
 pub mod writer;
 
 pub use check::{check_program, Violation};
+pub use template::{check_block, BlockJob, Place};
 pub use writer::{required_macros, requires_package, GcodeError, JobParams, Writer};

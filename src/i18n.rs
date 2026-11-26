@@ -305,10 +305,22 @@ pub enum Msg {
     NozzleHardened,
     ReportTimeByKind,
     KindOther,
+    FitSize,
+    FitYes,
+    FitNo,
+    FitTurned,
+    FitDefaultHeight,
+    FitSpeed,
+    FitAccel,
+    FitFlow,
+    FitNozzle,
+    FitFilamentDiameter,
+    FitNoFigures,
+    FitUnchecked,
 }
 
 impl Msg {
-    pub const ALL: [Msg; 231] = [
+    pub const ALL: [Msg; 243] = [
         Msg::TabPrepare,
         Msg::TabPreview,
         Msg::TabDevice,
@@ -540,6 +552,18 @@ impl Msg {
         Msg::NozzleHardened,
         Msg::ReportTimeByKind,
         Msg::KindOther,
+        Msg::FitSize,
+        Msg::FitYes,
+        Msg::FitNo,
+        Msg::FitTurned,
+        Msg::FitDefaultHeight,
+        Msg::FitSpeed,
+        Msg::FitAccel,
+        Msg::FitFlow,
+        Msg::FitNozzle,
+        Msg::FitFilamentDiameter,
+        Msg::FitNoFigures,
+        Msg::FitUnchecked,
     ];
 
     /// The texts in the order English, Spanish, German, French, Italian, Japanese, Chinese, Portuguese (Portugal).
@@ -785,6 +809,18 @@ impl Msg {
             Msg::NozzleHardened => ["Hardened nozzle", "Boquilla endurecida", "Gehärtete Düse", "Buse durcie", "Ugello temprato", "硬化ノズル", "硬化喷嘴", "Bico endurecido"],
             Msg::ReportTimeByKind => ["Where the time goes: {}", "Adónde va el tiempo: {}", "Wohin die Zeit geht: {}", "Où va le temps : {}", "Dove va il tempo: {}", "時間の内訳: {}", "时间花在哪里：{}", "Para onde vai o tempo: {}"],
             Msg::KindOther => ["Travel and the rest", "Desplazamientos y el resto", "Leerfahrten und der Rest", "Déplacements et le reste", "Spostamenti e il resto", "移動とその他", "空走及其他", "Deslocações e o resto"],
+            Msg::FitSize => ["The job takes {} x {} x {} mm and the printer has {} x {} x {} mm", "El trabajo ocupa {} x {} x {} mm y la impresora tiene {} x {} x {} mm", "Der Auftrag braucht {} x {} x {} mm und der Drucker hat {} x {} x {} mm", "La pièce demande {} x {} x {} mm et l'imprimante offre {} x {} x {} mm", "Il lavoro occupa {} x {} x {} mm e la stampante ha {} x {} x {} mm", "必要な大きさは {} x {} x {} mm、プリンターは {} x {} x {} mm です", "任务需要 {} x {} x {} mm，打印机为 {} x {} x {} mm", "O trabalho ocupa {} x {} x {} mm e a impressora tem {} x {} x {} mm"],
+            Msg::FitYes => ["It fits", "Cabe", "Es passt", "La pièce tient", "Ci sta", "収まります", "放得下", "Cabe"],
+            Msg::FitNo => ["It does not fit: {} mm too much along {}", "No cabe: sobran {} mm en {}", "Es passt nicht: {} mm zu viel entlang {}", "La pièce ne tient pas : {} mm de trop selon {}", "Non ci sta: {} mm di troppo lungo {}", "収まりません。{} mm 超過（{} 方向）", "放不下：超出 {} mm（{} 方向）", "Não cabe: {} mm a mais em {}"],
+            Msg::FitTurned => ["It fits if it is turned by 90 degrees about the vertical", "Cabe si se gira 90 grados sobre el eje vertical", "Es passt, wenn es um 90 Grad um die Senkrechte gedreht wird", "La pièce tient si on la tourne de 90 degrés autour de la verticale", "Ci sta se ruotato di 90 gradi attorno alla verticale", "垂直軸まわりに 90 度回せば収まります", "绕竖直轴旋转 90 度即可放下", "Cabe se for rodado 90 graus em torno da vertical"],
+            Msg::FitDefaultHeight => ["It is {} mm high, over the {} mm the maker uses by default: check the machine before printing the last part", "Mide {} mm de alto, más que los {} mm que el fabricante usa por defecto: revise la máquina antes de imprimir la parte final", "Es ist {} mm hoch, mehr als die {} mm, die der Hersteller standardmäßig nutzt: prüfen Sie die Maschine, bevor Sie den letzten Teil drucken", "La hauteur est de {} mm, au-delà des {} mm utilisés par défaut par le fabricant : vérifiez la machine avant d'imprimer la dernière partie", "È alto {} mm, oltre i {} mm che il produttore usa di default: controllare la macchina prima di stampare l'ultima parte", "高さ {} mm は、メーカーが標準で使う {} mm を超えています。最後の部分を印刷する前に機体を確認してください", "高度 {} mm 超过厂商默认使用的 {} mm：打印最后部分前请检查机器", "Tem {} mm de altura, acima dos {} mm que o fabricante usa por predefinição: verifique a máquina antes de imprimir a parte final"],
+            Msg::FitSpeed => ["{} is {} mm/s, over the {} mm/s the maker states", "{} es {} mm/s, más que los {} mm/s que declara el fabricante", "{} ist {} mm/s, mehr als die {} mm/s des Herstellers", "{} vaut {} mm/s, au-delà des {} mm/s annoncés par le fabricant", "{} è {} mm/s, oltre i {} mm/s dichiarati dal produttore", "{} は {} mm/s で、メーカー公称の {} mm/s を超えています", "{} 为 {} mm/s，超过厂商标称的 {} mm/s", "{} é {} mm/s, acima dos {} mm/s declarados pelo fabricante"],
+            Msg::FitAccel => ["The time is worked out with {} mm/s2, the most the maker states", "El tiempo se calcula con {} mm/s2, lo máximo que declara el fabricante", "Die Zeit wird mit {} mm/s2 berechnet, dem Höchstwert des Herstellers", "La durée est calculée avec {} mm/s2, le maximum annoncé par le fabricant", "Il tempo è calcolato con {} mm/s2, il massimo dichiarato dal produttore", "時間はメーカー公称の上限 {} mm/s2 で計算します", "时间按厂商标称上限 {} mm/s2 计算", "O tempo é calculado com {} mm/s2, o máximo declarado pelo fabricante"],
+            Msg::FitFlow => ["The flow is held to {} mm3/s: a faster line is slowed down, never thinned", "El caudal se limita a {} mm3/s: una línea más rápida se frena, nunca se adelgaza", "Der Durchfluss wird auf {} mm3/s begrenzt: eine schnellere Bahn wird verlangsamt, nie dünner", "Le débit est limité à {} mm3/s : une ligne trop rapide est ralentie, jamais amincie", "La portata è limitata a {} mm3/s: una linea più veloce viene rallentata, mai assottigliata", "流量は {} mm3/s に抑えます。速すぎる線は遅くし、細くはしません", "流量限制为 {} mm3/s：过快的线条会减速，不会变细", "O caudal é limitado a {} mm3/s: uma linha mais rápida é abrandada, nunca afinada"],
+            Msg::FitNozzle => ["The printer does not name a {} mm nozzle", "La impresora no incluye una boquilla de {} mm", "Der Drucker nennt keine Düse von {} mm", "L'imprimante ne propose pas de buse de {} mm", "La stampante non prevede un ugello da {} mm", "このプリンターには {} mm ノズルの記載がありません", "该打印机未列出 {} mm 喷嘴", "A impressora não indica um bico de {} mm"],
+            Msg::FitFilamentDiameter => ["The printer takes {} mm filament and the settings say {} mm", "La impresora usa filamento de {} mm y los ajustes dicen {} mm", "Der Drucker nimmt {}-mm-Filament, die Einstellungen sagen {} mm", "L'imprimante prend du filament de {} mm et les réglages indiquent {} mm", "La stampante usa filamento da {} mm e le impostazioni dicono {} mm", "プリンターは {} mm フィラメントですが、設定は {} mm です", "打印机使用 {} mm 耗材，而设置为 {} mm", "A impressora usa filamento de {} mm e as definições indicam {} mm"],
+            Msg::FitNoFigures => ["The highest speed and flow of this printer are not known here, so they are not checked", "Aquí no se conocen la velocidad ni el caudal máximos de esta impresora, así que no se comprueban", "Höchstgeschwindigkeit und maximaler Durchfluss dieses Druckers sind hier nicht bekannt und werden nicht geprüft", "La vitesse et le débit maximaux de cette imprimante ne sont pas connus ici, ils ne sont donc pas vérifiés", "Qui non si conoscono velocità e portata massime di questa stampante, quindi non vengono controllate", "このプリンターの最大速度と最大流量は不明のため、確認しません", "此处不知道该打印机的最大速度和流量，因此不检查", "Aqui não se conhecem a velocidade nem o caudal máximos desta impressora, por isso não são verificados"],
+            Msg::FitUnchecked => ["Still to be checked on the maker's page: {}", "Falta comprobar en la página del fabricante: {}", "Auf der Seite des Herstellers noch zu prüfen: {}", "Reste à vérifier sur la page du fabricant : {}", "Da controllare ancora sulla pagina del produttore: {}", "メーカーのページで未確認: {}", "仍需在厂商页面核实：{}", "Falta confirmar na página do fabricante: {}"],
         }
     }
 

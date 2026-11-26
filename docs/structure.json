@@ -632,6 +632,32 @@
             "zh": "有两行超过上限的程序",
             "pt": "um programa que os ultrapassa em duas linhas"
           }
+        },
+        {
+          "name": "start-prime-line.gcode",
+          "desc": {
+            "en": "an example of your own start lines",
+            "es": "un ejemplo de tus propias líneas de inicio",
+            "de": "ein Beispiel für eigene Startzeilen",
+            "fr": "un exemple de vos lignes de début",
+            "it": "un esempio delle tue righe di inizio",
+            "ja": "自分の開始行の例",
+            "zh": "自定义起始行示例",
+            "pt": "um exemplo das suas linhas de início"
+          }
+        },
+        {
+          "name": "end-park.gcode",
+          "desc": {
+            "en": "an example of your own end lines",
+            "es": "un ejemplo de tus propias líneas de fin",
+            "de": "ein Beispiel für eigene Endzeilen",
+            "fr": "un exemple de vos lignes de fin",
+            "it": "un esempio delle tue righe di fine",
+            "ja": "自分の終了行の例",
+            "zh": "自定义结束行示例",
+            "pt": "um exemplo das suas linhas de fim"
+          }
         }
       ]
     },

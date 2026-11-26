@@ -24,6 +24,36 @@ pub struct Overlay {
     pub differences: Vec<Difference>,
 }
 
+/// What the maker states about how fast a printer moves and how much it melts, and the height it uses by default. A figure the maker does not state is `None` and nothing is
+/// checked against it.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct MotionLimits {
+    pub max_speed_mm_s: Option<f64>,
+    pub max_acceleration_mm_s2: Option<f64>,
+    pub max_flow_mm3_s: Option<f64>,
+    pub default_height_mm: Option<f64>,
+}
+
+impl MotionLimits {
+    /// The figures of a record of the catalog of the suite.
+    pub fn of(p: &Printer) -> MotionLimits {
+        MotionLimits {
+            max_speed_mm_s: p.max_speed_mm_s,
+            max_acceleration_mm_s2: p.max_acceleration_mm_s2,
+            max_flow_mm3_s: p.max_flow_mm3_s,
+            default_height_mm: p.default_height_mm,
+        }
+    }
+}
+
+/// The figures of the printer with this id; nothing for a printer that the catalog of the suite does not have.
+pub fn motion_limits(id: &str) -> Result<MotionLimits, ProfileError> {
+    Ok(suite_machines()?
+        .find(id)
+        .map(MotionLimits::of)
+        .unwrap_or_default())
+}
+
 /// The catalog of printers of the suite.
 pub fn suite_machines() -> Result<eh3d_printers::Catalog, ProfileError> {
     eh3d_printers::Catalog::embedded().map_err(|errors| {
@@ -211,6 +241,26 @@ mod tests {
         let p = over.catalog.find("creality-k1c").unwrap();
         assert!(p.nozzles_mm.contains(&0.4) && p.nozzles_mm.contains(&0.6));
         assert_eq!(p.limits.unwrap().nozzle_c, 290.0);
+    }
+
+    #[test]
+    fn the_figures_of_motion_come_from_the_suite_and_an_unknown_printer_has_none() {
+        let a1 = motion_limits("bambu-lab-a1").unwrap();
+        assert_eq!(a1.max_speed_mm_s, Some(500.0));
+        assert_eq!(a1.max_flow_mm3_s, Some(28.0));
+        let p1s = motion_limits("bambu-lab-p1s").unwrap();
+        assert_eq!(p1s.default_height_mm, Some(250.0));
+        assert_eq!(
+            motion_limits("creality-ender-3-v3-se")
+                .unwrap()
+                .max_speed_mm_s,
+            Some(250.0)
+        );
+        assert_eq!(
+            motion_limits("prusa-mk4s").unwrap(),
+            MotionLimits::default()
+        );
+        assert_eq!(motion_limits("").unwrap(), MotionLimits::default());
     }
 
     #[test]

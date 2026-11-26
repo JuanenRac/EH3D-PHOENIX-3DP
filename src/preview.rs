@@ -201,6 +201,15 @@ impl PreviewState {
                 }
             }
         }
+        let held = p3dp_profiles::motion_limits(&printer.id)
+            .map_err(|e| e.to_string())
+            .and_then(|l| {
+                p3dp_slicer::machine_check::apply(&mut config, &l).map_err(|e| e.to_string())
+            });
+        if let Err(e) = held {
+            self.error = Some(e);
+            return false;
+        }
         match p3dp_slicer::plan(mesh, &machine, &config) {
             Ok(plan) => {
                 let top = plan.layer_count().saturating_sub(1);

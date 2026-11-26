@@ -5,7 +5,7 @@ use crate::error::SliceError;
 use crate::geom::{dist, P};
 use crate::plan::{Kind, Layer, Plan};
 use crate::timing::{self, Block};
-use p3dp_gcode::{JobParams, Writer};
+use p3dp_gcode::{BlockJob, JobParams, Place, Writer};
 
 /// What the head does.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -25,6 +25,13 @@ pub enum Move {
         length_mm: f64,
         width_mm: f64,
     },
+}
+
+/// The start and end G-code of the person, added to the ones of the program and checked against the machine (see `p3dp_gcode::template`).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct UserGcode {
+    pub start: Option<String>,
+    pub end: Option<String>,
 }
 
 /// What a layer comes to.
@@ -331,6 +338,11 @@ impl Plan {
 
     /// The G-code of the plan, in the dialect of the machine. `version` is the version of the program, for the header.
     pub fn gcode(&self, version: &str) -> Result<String, SliceError> {
+        self.gcode_with(version, &UserGcode::default())
+    }
+
+    /// The G-code of the plan with the start and end G-code of the person. A line of theirs that is not allowed refuses the whole file.
+    pub fn gcode_with(&self, version: &str, user: &UserGcode) -> Result<String, SliceError> {
         let c = &self.config;
         let m = &self.machine;
         let mut w = Writer::new(m.dialect, m.limits, m.volume_mm)?;
@@ -367,6 +379,19 @@ impl Plan {
             fan_pct: c.fan_percent,
             estimated_minutes: Some(minutes),
         })?;
+        let job = BlockJob {
+            nozzle_c: c.nozzle_c,
+            bed_c: c.bed_c,
+            chamber_c: c.chamber_c,
+            top_z_mm: self.layers.last().map_or(0.0, |l| coord(l.z_mm)),
+        };
+        if let Some(start) = &user.start {
+            w.user_block(start, Place::Start, &job)?;
+            // whatever the block set, the print starts hot and with the fan off
+            w.set_bed(c.bed_c, true)?;
+            w.set_nozzle(c.nozzle_c, true)?;
+            w.set_fan(0.0)?;
+        }
         if c.pressure_advance > 0.0 {
             w.comment(&format!("pressure advance {}", c.pressure_advance))?;
             w.set_pressure_advance(c.pressure_advance)?;
@@ -487,6 +512,9 @@ impl Plan {
                     Some(c.z_speed_mm_s * 60.0),
                 )?;
             }
+        }
+        if let Some(end) = &user.end {
+            w.user_block(end, Place::End, &job)?;
         }
         w.end_safe()?;
         Ok(w.finish()?)
