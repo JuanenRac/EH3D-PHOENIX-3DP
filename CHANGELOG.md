@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.1.0] - Suite project with attachments, safer G-code for each firmware and more print quality settings (not printed on a machine)
+
 - **The G-code of a project is drawn by layers:** *Show its layers* in the Project panel draws one layer at a time from above (the lines that lay plastic, the travels faint, what leaves the bed in the colour of a danger), with a slider, in the eight languages. It is only a picture: nothing is loaded into the plan and nothing is sent.
 - **Moves are checked against the build volume:** `project open`, `import`, `take` and `check-profile --gcode`, and the Project panel, tell every line that leaves the volume of the printer (exit code 1), with arcs followed through their bulge, a new origin (`G92`) taken into account and the moves that could not be followed counted instead of guessed. A macro with a name of its own is not followed. Host-tested only.
 - **Commands that act on the machine itself are listed** in the same places: software end stops or cold extrusion guard turned off, a heater limit raised, a new position or origin of an axis, steps, tuning or saved settings changed, a firmware restart or write.
