@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The notes of the project manifest say what the program does today** (`eh3d.project.json`); no code changes.
+
 - **Third-party notices in every package (`docs/THIRD_PARTY_NOTICES`):** the packages of the releases now carry the copyright notices and licence texts of the Rust crates and of the data the program is built with, and the CI fails when a new dependency or licence is not in the file.
 
 ## [0.1.0] - Suite project with attachments, safer G-code for each firmware and more print quality settings (not printed on a machine)
