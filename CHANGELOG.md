@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The READMEs say how the window has been seen:** the program photographs its own window on a virtual screen; no person has used it on a real screen. No code changes.
 - **The notes of the project manifest say what the program does today** (`eh3d.project.json`); no code changes.
 
 - **Third-party notices in every package (`docs/THIRD_PARTY_NOTICES`):** the packages of the releases now carry the copyright notices and licence texts of the Rust crates and of the data the program is built with, and the CI fails when a new dependency or licence is not in the file.
