@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Third-party notices in every package (`docs/THIRD_PARTY_NOTICES`):** the packages of the releases now carry the copyright notices and licence texts of the Rust crates and of the data the program is built with, and the CI fails when a new dependency or licence is not in the file.
+
 ## [0.1.0] - Suite project with attachments, safer G-code for each firmware and more print quality settings (not printed on a machine)
 
 - **The G-code of a project is drawn by layers:** *Show its layers* in the Project panel draws one layer at a time from above (the lines that lay plastic, the travels faint, what leaves the bed in the colour of a danger), with a slider, in the eight languages. It is only a picture: nothing is loaded into the plan and nothing is sent.

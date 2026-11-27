@@ -89,6 +89,17 @@ jobs:
         run: cargo test --all-targets --features gui
         working-directory: EH3D-PHOENIX-3DP
 
+      - name: Every dependency is in the third-party notices
+        if: runner.os == 'Linux'
+        shell: bash
+        working-directory: EH3D-PHOENIX-3DP
+        # the tool is EH3D-COMMON's, fetched by commit so that it does not depend on the sibling tag this build uses
+        run: |
+          git init -q "$RUNNER_TEMP/notices"
+          git -C "$RUNNER_TEMP/notices" fetch -q --depth 1 https://github.com/JuanenRac/EH3D-COMMON.git acc8b30150a8e96c20378812dbf63f177dc0dcc1
+          git -C "$RUNNER_TEMP/notices" checkout -q FETCH_HEAD
+          python3 -I "$RUNNER_TEMP/notices/tools/third_party_notices.py" --output docs/THIRD_PARTY_NOTICES --check
+
   main-against-main:
     name: Siblings at main
     # Builds this repository against the main branch of every sibling to see a break coming before the siblings are tagged; it does not hold a merge back.
