@@ -101,8 +101,8 @@ fn classic(code: &str, limits: &TempLimits) -> Vec<TempError> {
         // the tuning of a heater heats it: E-1 is the bed and E-2 the chamber
         ('M', 303) => {
             let zone = match values(&words, 'E').next() {
-                Some(Ok(e)) if e == -1.0 => Zone::Bed,
-                Some(Ok(e)) if e == -2.0 => Zone::Chamber,
+                Some(Ok(-1.0)) => Zone::Bed,
+                Some(Ok(-2.0)) => Zone::Chamber,
                 _ => Zone::Nozzle,
             };
             (zone, &['S'])
