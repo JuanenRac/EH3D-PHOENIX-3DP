@@ -470,14 +470,14 @@ impl App {
             self.state.printer().map_or("", |p| p.id.as_str()),
             self.filament_id.as_deref().map(|id| (id, nozzle)),
             &self.preview.config,
-            &self.start_text,
-            &self.end_text,
+            &self.recipe_block(&self.start_text, self.suite.blocks.start.is_some()),
+            &self.recipe_block(&self.end_text, self.suite.blocks.end.is_some()),
         )
     }
 
     /// Reads the start and end G-code of the person into the state of the slice; `false` with the reason when a file cannot be read.
     fn take_user_gcode(&mut self) -> bool {
-        match held::read_user_gcode(&self.start_text, &self.end_text) {
+        match self.slice_blocks() {
             Ok(user) => {
                 self.preview.user = user;
                 true
@@ -1419,6 +1419,7 @@ impl App {
                     .desired_width(panels::path_field_width(ui.available_width(), 0.0)),
             );
         }
+        self.project_blocks_section(ui);
         if let Some(e) = &self.preview.error {
             ui.label(
                 egui::RichText::new(fill(Msg::Problem.tr(lang), &[e])).color(col(self.look.danger)),
@@ -2468,6 +2469,7 @@ impl App {
         let lang = self.lang();
         // each path has the width of the panel (less its button), so a long one is read whole
         let reserved = 96.0;
+        self.project_program_section(ui);
         ui.label(Msg::SaveToLabel.tr(lang));
         ui.horizontal(|ui| {
             ui.add(
@@ -2997,6 +2999,14 @@ pub fn run(config: AppConfig, lang: Lang, args: &WindowArgs) -> Result<(), Strin
                     .borrow_mut()
                     .pending_dock
                     .push(DockAction::ShowPanel(pid::ATTACHMENTS.to_string()));
+            }
+            // a panel asked for by name comes after, so it is the one in front
+            if let Some(panel) = &start.panel {
+                shell
+                    .app
+                    .borrow_mut()
+                    .pending_dock
+                    .push(DockAction::ShowPanel(panel.clone()));
             }
             // the list of recent projects lives in the folder of the user; a picture reads and writes none
             if start.shot.is_none() {

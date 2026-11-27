@@ -3,12 +3,14 @@
 //!
 //! The work is done by the functions of the command `project` (`eh3dfile`); here it is decided what the window holds, what goes into the branch and what the person has to agree to
 //! first. Only the branch `3dp` is written. A project that was not opened here, a branch that changed since it was read and a signature that a write removes are asked about before
-//! anything is written. The G-code of a project is kept in it and not loaded into the window, and nothing here sends anything to a printer.
+//! anything is written. The G-code of a project is shown (its name, its lines and its temperatures against the chosen printer) and is not loaded into the plan; the start and end
+//! G-code it carries are used only when the person ticks them; nothing here sends anything to a printer.
 
 use super::*;
-use crate::eh3dfile::{self, Contents, Held, Identity, Opened, Part, BRANCH};
+use crate::eh3dfile::{self, Contents, Heat, Held, Identity, Opened, Part, Review, BRANCH};
 use crate::suitecore::{self, name_of, ProjectView};
 use crate::suitetext::{Said, S};
+use p3dp_slicer::UserGcode;
 
 /// Something that writes a project.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -74,6 +76,14 @@ pub(super) struct SuiteState {
     pub extract_branch: String,
     list: Option<SuiteList>,
     was_focused: bool,
+    /// The G-code program the project holds, as its name and its bytes.
+    program: Option<(String, Vec<u8>)>,
+    /// What there is to say about that program with the printer that was chosen when it was looked at.
+    review: Option<(String, Review)>,
+    /// The start and end G-code the project holds.
+    pub blocks: UserGcode,
+    /// The person ticked them for the next slice.
+    pub use_blocks: bool,
 }
 
 /// Leaves out what did not change since the branch was read or written, so a part taken from another branch stays with its reference and the G-code of the project stays with the work.
@@ -90,7 +100,16 @@ fn drop_untouched(contents: &mut Contents, loaded: &Contents) {
     if contents.filament == loaded.filament {
         contents.filament = None;
     }
+    if contents.start_gcode == loaded.start_gcode {
+        contents.start_gcode = None;
+    }
+    if contents.end_gcode == loaded.end_gcode {
+        contents.end_gcode = None;
+    }
 }
+
+/// The most lines past the limits that the panel lists one by one.
+const LISTED: usize = 5;
 
 impl App {
     fn suite_code(&self) -> &'static str {
@@ -179,9 +198,21 @@ impl App {
             .collect()
     }
 
-    /// The work of the window without its G-code.
+    /// The start and end G-code the project is to hold: the ones of the files the person named and, where none is named, the ones it already holds.
+    fn suite_blocks(&self) -> Result<UserGcode, String> {
+        let typed = held::read_user_gcode(&self.start_text, &self.end_text)?;
+        Ok(UserGcode {
+            start: typed.start.or_else(|| self.suite.blocks.start.clone()),
+            end: typed.end.or_else(|| self.suite.blocks.end.clone()),
+        })
+    }
+
+    /// The work of the window without its G-code. A named file that cannot be read leaves the start and end G-code of the project alone.
     fn suite_work(&self) -> Contents {
+        let blocks = self.suite_blocks().ok();
         Contents {
+            start_gcode: blocks.as_ref().map(|b| b.start.clone().unwrap_or_default()),
+            end_gcode: blocks.map(|b| b.end.unwrap_or_default()),
             parts: Some(self.suite_parts()),
             settings: Some(self.preview.config.clone()),
             printer: (!self.state.printer_id.is_empty()).then(|| self.state.printer_id.clone()),
@@ -255,6 +286,11 @@ impl App {
             .unwrap_or_default();
         self.suite.own_notes = Vec::new();
         self.suite_load(&held);
+        if held.blocks.start.is_some() || held.blocks.end.is_some() {
+            self.suite
+                .own_notes
+                .push(Msg::ProjectBlocksNote.tr(self.lang()).to_string());
+        }
         self.suite.extra = held
             .warnings
             .iter()
@@ -265,7 +301,12 @@ impl App {
         self.suite.seen = found.own_hash.clone();
         self.suite.view = Some(found);
         self.suite.file = Some(path.to_path_buf());
-        self.suite.loaded = has_branch.then(|| self.suite_work());
+        self.suite.loaded = has_branch.then(|| Contents {
+            // a file the person had named is a change of this project, to be saved into it
+            start_gcode: Some(held.blocks.start.clone().unwrap_or_default()),
+            end_gcode: Some(held.blocks.end.clone().unwrap_or_default()),
+            ..self.suite_work()
+        });
         self.recent_added.push(path.display().to_string());
         self.state.tab = Tab::Prepare;
         self.state.status = Status::Loaded(name_of(path));
@@ -286,6 +327,8 @@ impl App {
         self.saved_path = None;
         self.exported_path = None;
         self.sliced_with = None;
+        self.suite_hold(held);
+        self.suite.use_blocks = false;
         if let Some(id) = &held.printer {
             if self.state.catalog.find(id).is_some() {
                 self.state.select_printer(id);
@@ -339,6 +382,125 @@ impl App {
                 .own_notes
                 .push(Msg::SuiteSliceAgain.tr(lang).to_string());
         }
+    }
+
+    /// Keeps what the window shows of a branch: its G-code program and its start and end G-code.
+    fn suite_hold(&mut self, held: &Opened) {
+        self.suite.program = held
+            .program_file()
+            .map(|(name, bytes)| (name.to_string(), bytes.to_vec()));
+        self.suite.review = None;
+        self.suite.blocks = held.blocks.clone();
+    }
+
+    /// The start and end G-code of the next slice: the files that are named and, when the person ticked them, the ones of the project where no file is named.
+    pub(super) fn slice_blocks(&self) -> Result<UserGcode, String> {
+        let mut user = held::read_user_gcode(&self.start_text, &self.end_text)?;
+        if self.suite.use_blocks {
+            user.start = user.start.or_else(|| self.suite.blocks.start.clone());
+            user.end = user.end.or_else(|| self.suite.blocks.end.clone());
+        }
+        Ok(user)
+    }
+
+    /// What names a block in the recipe of a slice: the file that is named or, for a ticked block of the project, a word of its own.
+    pub(super) fn recipe_block(&self, typed: &str, of_project: bool) -> String {
+        if typed.trim().is_empty() && self.suite.use_blocks && of_project {
+            "(project)".to_string()
+        } else {
+            typed.to_string()
+        }
+    }
+
+    /// The start and end G-code the project carries: the tick that uses them, what they hold and the button that takes them out at the next save.
+    pub(super) fn project_blocks_section(&mut self, ui: &mut egui::Ui) {
+        let lang = self.lang();
+        let blocks = self.suite.blocks.clone();
+        if blocks.start.is_none() && blocks.end.is_none() {
+            return;
+        }
+        ui.checkbox(&mut self.suite.use_blocks, Msg::ProjectBlocksUse.tr(lang));
+        let lines = |b: &Option<String>| b.as_ref().map_or(0, |t| t.lines().count()).to_string();
+        let counted = fill(
+            Msg::ProjectBlocksLines.tr(lang),
+            &[&lines(&blocks.start), &lines(&blocks.end)],
+        );
+        egui::CollapsingHeader::new(counted)
+            .id_salt("project_blocks")
+            .show(ui, |ui| {
+                for text in [&blocks.start, &blocks.end].into_iter().flatten() {
+                    ui.label(egui::RichText::new(text.as_str()).monospace().small());
+                    ui.separator();
+                }
+            });
+        if ui.button(Msg::ProjectBlocksRemove.tr(lang)).clicked() {
+            self.suite.blocks = UserGcode::default();
+            self.suite.use_blocks = false;
+        }
+    }
+
+    /// The G-code program of the project, only to be looked at: its name, its lines and its temperatures against the chosen printer.
+    pub(super) fn project_program_section(&mut self, ui: &mut egui::Ui) {
+        let lang = self.lang();
+        let Some((name, bytes)) = &self.suite.program else {
+            return;
+        };
+        let printer = self.state.printer();
+        let id = printer.map_or_else(String::new, |p| p.id.clone());
+        if self.suite.review.as_ref().is_none_or(|(of, _)| *of != id) {
+            self.suite.review = Some((id, eh3dfile::review(name, bytes, printer)));
+        }
+        let Some((_, review)) = &self.suite.review else {
+            return;
+        };
+        let (good, danger, dim) = (
+            col(self.look.good),
+            col(self.look.danger),
+            col(self.look.dim),
+        );
+        ui.label(egui::RichText::new(Msg::ProjectProgramTitle.tr(lang)).strong());
+        ui.label(fill(
+            Msg::ProjectProgramLines.tr(lang),
+            &[&review.name, &review.lines.to_string()],
+        ));
+        match &review.heat {
+            Heat::NotText => {
+                ui.label(egui::RichText::new(Msg::ProjectProgramNotText.tr(lang)).color(danger));
+            }
+            Heat::NoPrinter => {
+                ui.label(Msg::ProjectProgramNoPrinter.tr(lang));
+            }
+            Heat::Checked {
+                printer,
+                violations,
+            } if violations.is_empty() => {
+                let said = fill(Msg::ProjectProgramHeatOk.tr(lang), &[printer]);
+                ui.label(egui::RichText::new(said).color(good));
+            }
+            Heat::Checked {
+                printer,
+                violations,
+            } => {
+                let said = fill(
+                    Msg::ProjectProgramHeatBad.tr(lang),
+                    &[&violations.len().to_string(), printer],
+                );
+                ui.label(egui::RichText::new(said).color(danger));
+                for v in violations.iter().take(LISTED) {
+                    let line = fill(
+                        Msg::ProjectProgramLine.tr(lang),
+                        &[&v.line.to_string(), &v.error.to_string()],
+                    );
+                    ui.label(egui::RichText::new(line).small().color(danger));
+                }
+            }
+        }
+        ui.label(
+            egui::RichText::new(Msg::ProjectProgramReadOnly.tr(lang))
+                .small()
+                .color(dim),
+        );
+        ui.separator();
     }
 
     /// The name offered for a project that is saved for the first time or under another name.
@@ -509,6 +671,10 @@ impl App {
         if !suitecore::is_project(target) {
             return self.suite_refuse(S::NeedExtension);
         }
+        // a named start or end G-code that cannot be read is told, not left out in silence
+        if let Err(e) = self.suite_blocks() {
+            return self.suite_fail(e);
+        }
         let (mut contents, notes) = self.suite_contents(target);
         let current = self.suite.file.clone();
         let same = current
@@ -589,6 +755,10 @@ impl App {
         self.suite.notes.extend(words);
         self.suite.own_notes = Vec::new();
         self.suite.extra = other;
+        // what the window shows of the project is what the file holds now
+        if let Ok(held) = eh3dfile::held(target, &self.state.config.limits) {
+            self.suite_hold(&held);
+        }
         self.suite.loaded = Some(self.suite_work());
         self.recent_added.push(target.display().to_string());
         self.state.status = Status::Saved(name_of(target));
@@ -1026,6 +1196,103 @@ mod tests {
             .suite_banner()
             .iter()
             .any(|(l, _)| l.contains("not put in the project")));
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn the_start_and_end_g_code_of_a_project_are_used_only_when_ticked_and_can_be_taken_out() {
+        let d = folder("blocks");
+        let mut a = with_part(&d, "part.stl");
+        assert!(a.state.select_printer("bambu-lab-p1s"));
+        let start = d.join("start.gcode");
+        fs::write(&start, "G92 E0\nG1 E5\n").unwrap();
+        a.start_text = start.display().to_string();
+        let project = d.join("job.eh3d");
+        assert_eq!(a.suite_save_as(&project), Step::Done);
+        let limits = a.state.config.limits.clone();
+        let held = eh3dfile::held(&project, &limits).unwrap();
+        assert_eq!(held.blocks.start.as_deref(), Some("G92 E0\nG1 E5\n"));
+
+        let mut b = window();
+        assert!(b.suite_open(&project));
+        assert!(!b.suite.use_blocks);
+        assert!(b.suite_banner().iter().any(|(l, _)| l.contains("G-code")));
+        assert_eq!(b.slice_blocks().unwrap(), UserGcode::default());
+        let off = b.recipe();
+        b.suite.use_blocks = true;
+        assert_eq!(b.slice_blocks().unwrap().start, held.blocks.start);
+        assert!(off != b.recipe());
+        b.slice_blocking();
+        assert!(
+            b.preview
+                .gcode
+                .as_ref()
+                .unwrap()
+                .contains("; your start G-code"),
+            "{:?}",
+            b.preview.error
+        );
+        // taken out, and the next save writes that
+        b.suite.blocks = UserGcode::default();
+        b.suite.use_blocks = false;
+        b.studio.stale = true;
+        assert_eq!(b.suite_save(), Step::Done);
+        assert!(eh3dfile::held(&project, &limits)
+            .unwrap()
+            .blocks
+            .start
+            .is_none());
+        // a named file that is not there stops the save and nothing is written
+        let before = fs::read(&project).unwrap();
+        b.start_text = d.join("gone.gcode").display().to_string();
+        assert_eq!(b.suite_save(), Step::Refused);
+        assert_eq!(fs::read(&project).unwrap(), before);
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn the_g_code_of_a_project_is_shown_with_its_temperatures_and_fits_a_narrow_panel() {
+        let d = folder("shown");
+        let project = d.join("job.eh3d");
+        let hot = d.join("a-program-with-a-rather-long-name-of-its-own.gcode");
+        fs::write(&hot, "G28\nM104 S999\nM140 S60\n").unwrap();
+        let mut a = with_part(&d, "part.stl");
+        assert!(a.state.select_printer("bambu-lab-p1s"));
+        let start = d.join("start.gcode");
+        fs::write(&start, "G92 E0\n").unwrap();
+        a.start_text = start.display().to_string();
+        assert_eq!(a.suite_save_as(&project), Step::Done);
+        assert_eq!(a.suite_import(&hot), Step::Done, "{:?}", a.state.status);
+        assert!(a.suite.program.is_some());
+        let ctx = egui::Context::default();
+        for lang in Lang::ALL {
+            a.state.lang = lang;
+            let mut width = 0.0f32;
+            let input = egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(900.0, 900.0),
+                )),
+                ..egui::RawInput::default()
+            };
+            let mut out = ctx.run_ui(input, |ui| {
+                ui.allocate_ui(egui::vec2(300.0, 800.0), |ui| {
+                    ui.set_max_width(300.0);
+                    a.project_program_section(ui);
+                    a.project_blocks_section(ui);
+                    width = ui.min_rect().width();
+                });
+            });
+            out.textures_delta.clear();
+            assert!(width > 0.0 && width <= 301.0, "{}: {width}", lang.code());
+        }
+        let Some((_, review)) = &a.suite.review else {
+            panic!("the program was not looked at");
+        };
+        assert!(
+            matches!(&review.heat, Heat::Checked { violations, .. } if violations.len() == 1),
+            "{review:?}"
+        );
         let _ = fs::remove_dir_all(&d);
     }
 

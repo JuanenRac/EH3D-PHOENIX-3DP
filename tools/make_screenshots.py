@@ -4,7 +4,7 @@
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
-"""Takes the pictures of the window for the READMEs with the picture mode of the program, one for each tab and one of the attachments of a project of the suite.
+"""Takes the pictures of the window for the READMEs with the picture mode of the program, one for each tab and two of a project of the suite (its attachments and its G-code).
 
     py -3.14 -I tools/make_screenshots.py PATH/TO/phoenix-3dp[.exe] [--out window-pictures] [--lang en] [--size 1360x860] [--suite-tool PATH/TO/eh3d-project]
     py -3.14 -I tools/make_screenshots.py --check [--out window-pictures]
@@ -26,7 +26,7 @@ from pathlib import Path
 
 MAX_BYTES = 250 * 1024
 WINDOWS = ("prepare", "preview", "device", "project")
-PICTURES = WINDOWS + ("attachments",)
+PICTURES = WINDOWS + ("attachments", "program")
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 
 
@@ -51,8 +51,9 @@ def made_up_project(exe: Path, tool: Path, work: Path, env: dict) -> None:
     shutil.copy2(Path(__file__).resolve().parent.parent / "examples" / "cube-20mm.stl", work / "cube-20mm.stl")
     (work / "assembly-guide.md").write_text("# Assembly guide\n\n1. Print the cube with three walls.\n2. Measure it with a calliper.\n", encoding="utf-8")
     (work / "label-maker.docm").write_bytes(b"made-up bytes for a picture")
+    (work / "job.gcode").write_text("G28\nM140 S60\nM104 S210\nG1 X10 Y10 Z0.2 F3000\nM104 S0\n", encoding="utf-8")
     commands = [
-        [str(exe), "project", "save", "demo.eh3d", "--model", "cube-20mm.stl", "--printer", "bambu-lab-p1s"],
+        [str(exe), "project", "save", "demo.eh3d", "--model", "cube-20mm.stl", "--printer", "bambu-lab-p1s", "--gcode", "job.gcode"],
         [str(tool), "attach", "demo.eh3d", "assembly-guide.md", "--title", "Assembly guide", "--ref", "PART1"],
         [str(tool), "attach", "demo.eh3d", "label-maker.docm", "--title", "Label maker"],
     ]
@@ -73,11 +74,14 @@ def take(binary: Path, window: str, lang: str, size: str, out: Path, tool: Path 
             env[name] = str(work)
         args = [str(exe), "gui", "--shot", "raw.png", "--window", window, "--demo", "--lang", lang,
                 "--size", size, "--wait", "12"]
-        if window == "attachments" and tool is not None:
+        if window in ("attachments", "program") and tool is not None:
             made_up_project(exe, tool, work, env)
             # the project is read on a thread of its own, so the picture waits longer
             args = [str(exe), "gui", "--shot", "raw.png", "--window", "project", "--open", "demo.eh3d", "--lang", lang,
                     "--size", size, "--wait", "90"]
+            if window == "program":
+                # the panel Project is the one that shows the G-code of the project
+                args += ["--panel", "project"]
         if window == "preview":
             # look inside, so the picture shows the walls and the infill and not only the top skin
             args += ["--slice", "--peek"]

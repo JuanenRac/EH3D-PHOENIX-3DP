@@ -6,16 +6,18 @@ use std::path::{Path, PathBuf};
 use eh3d_project::appbranch::read_bounded;
 use p3dp_core::Limits;
 use p3dp_profiles::filament::FilamentCatalog;
-use p3dp_profiles::suite_overlay;
+use p3dp_profiles::{suite_overlay, PrinterProfile};
 use p3dp_slicer::SliceConfig;
 
-use crate::eh3dfile::{self, Contents, Held, Identity, Part, BRANCH};
+use crate::eh3dfile::{self, Contents, Heat, Held, Identity, Part, BRANCH};
 
 /// The words that make `project` work on a project of the suite and not read a file of another program.
 pub const WORDS: [&str; 6] = ["list", "save", "import", "open", "take", "extract"];
 
 /// The largest settings file that is read.
 const MAX_SETTINGS_BYTES: u64 = 1 << 20;
+/// The most lines past the limits that are listed one by one.
+const MAX_LISTED: usize = 20;
 
 /// What the words gave: what goes to the standard output and error, and the exit code (0 clean, 1 something to read, 2 error).
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -57,6 +59,65 @@ fn notes(done: &mut Done, list: &[String]) {
     }
 }
 
+fn printer_of(id: &str) -> Result<PrinterProfile, String> {
+    let catalog = suite_overlay().map_err(|e| e.to_string())?.catalog;
+    catalog
+        .find(id)
+        .cloned()
+        .ok_or_else(|| format!("{id}: no such printer"))
+}
+
+/// Compares the temperatures of the G-code of the work with the limits of the printer that is asked for or, without one, of the printer of the project. A line past them is
+/// something to read: the exit code is 1. Nothing is changed.
+fn check_program_of(
+    done: &mut Done,
+    file: &str,
+    asked: Option<&PrinterProfile>,
+    limits: &Limits,
+) -> Result<(), String> {
+    let opened = eh3dfile::held(Path::new(file), limits)?;
+    let Some((name, bytes)) = opened.program_file() else {
+        return Ok(());
+    };
+    let own = opened.printer.as_deref().and_then(|id| printer_of(id).ok());
+    let review = eh3dfile::review(name, bytes, asked.or(own.as_ref()));
+    done.out
+        .push_str(&format!("program {name}: {} line(s)\n", review.lines));
+    match review.heat {
+        Heat::NotText => done
+            .out
+            .push_str("temperatures not checked: the program is not a text file\n"),
+        Heat::NoPrinter => done.out.push_str(
+            "temperatures not checked: no printer with temperature limits is known (use --printer ID)\n",
+        ),
+        Heat::Checked {
+            printer,
+            violations,
+        } if violations.is_empty() => done.out.push_str(&format!(
+            "no temperature command goes past the limits of {printer}\n"
+        )),
+        Heat::Checked {
+            printer,
+            violations,
+        } => {
+            for v in violations.iter().take(MAX_LISTED) {
+                done.out
+                    .push_str(&format!("line {}: {} ({})\n", v.line, v.error, v.command));
+            }
+            if violations.len() > MAX_LISTED {
+                done.out
+                    .push_str(&format!("and {} more\n", violations.len() - MAX_LISTED));
+            }
+            done.err.push_str(&format!(
+                "{} line(s) of the program go past the limits of {printer}\n",
+                violations.len()
+            ));
+            done.code = 1;
+        }
+    }
+    Ok(())
+}
+
 /// What `save` puts into the branch, every file read and checked before anything is written.
 fn contents_of(args: &mut Vec<String>, limits: &Limits) -> Result<Contents, String> {
     let model = flag(args, "--model")?;
@@ -64,6 +125,8 @@ fn contents_of(args: &mut Vec<String>, limits: &Limits) -> Result<Contents, Stri
     let printer = flag(args, "--printer")?;
     let filament = flag(args, "--filament")?;
     let program = flag(args, "--gcode")?;
+    let start = flag(args, "--start-gcode")?;
+    let end = flag(args, "--end-gcode")?;
     let read =
         |file: &str, limit: u64| read_bounded(Path::new(file), limit).map_err(|e| e.to_string());
     let name_of =
@@ -86,11 +149,7 @@ fn contents_of(args: &mut Vec<String>, limits: &Limits) -> Result<Contents, Stri
             Some(SliceConfig::from_text(&text).map_err(|e| format!("{file}: {e}"))?);
     }
     if let Some(id) = printer {
-        let catalog = suite_overlay().map_err(|e| e.to_string())?.catalog;
-        let found = catalog
-            .find(&id)
-            .ok_or_else(|| format!("{id}: no such printer"))?;
-        contents.printer = Some(found.id.clone());
+        contents.printer = Some(printer_of(&id)?.id);
     }
     if let Some(id) = filament {
         let catalog = FilamentCatalog::builtin().map_err(|e| e.to_string())?;
@@ -108,6 +167,15 @@ fn contents_of(args: &mut Vec<String>, limits: &Limits) -> Result<Contents, Stri
             name,
             bytes: read(file, limits.max_file_bytes)?,
         });
+    }
+    for (file, slot) in [
+        (&start, &mut contents.start_gcode),
+        (&end, &mut contents.end_gcode),
+    ] {
+        if let Some(file) = file {
+            let bytes = read(file, eh3dfile::MAX_BLOCK_BYTES as u64)?;
+            *slot = Some(String::from_utf8(bytes).map_err(|_| format!("{file}: it is not text"))?);
+        }
     }
     Ok(contents)
 }
@@ -178,6 +246,9 @@ fn job(mut args: Vec<String>, limits: &Limits) -> Result<Done, String> {
         }
         "import" => {
             let who = identity(&mut args)?;
+            let asked = flag(&mut args, "--printer")?
+                .map(|id| printer_of(&id))
+                .transpose()?;
             let [file, source] = words::<2>(&args, "import needs FILE.eh3d and a file")?;
             let (report, said) =
                 eh3dfile::import_file(Path::new(&file), Path::new(&source), &who, limits)?;
@@ -205,9 +276,15 @@ fn job(mut args: Vec<String>, limits: &Limits) -> Result<Done, String> {
                 report.source.name
             ));
             done.code = i32::from(!report.not_read.is_empty());
+            if eh3dfile::is_program(&report.source.name) {
+                check_program_of(&mut done, &file, asked.as_ref(), limits)?;
+            }
         }
         "open" => {
             let into = flag(&mut args, "--into")?.map(PathBuf::from);
+            let asked = flag(&mut args, "--printer")?
+                .map(|id| printer_of(&id))
+                .transpose()?;
             let [file] = words::<1>(&args, "open needs FILE.eh3d")?;
             let opened = eh3dfile::open(Path::new(&file), into.as_deref(), limits)?;
             done.out
@@ -235,6 +312,12 @@ fn job(mut args: Vec<String>, limits: &Limits) -> Result<Done, String> {
                     "none"
                 }
             ));
+            for (what, block) in [("start", &opened.blocks.start), ("end", &opened.blocks.end)] {
+                done.out.push_str(&match block {
+                    Some(text) => format!("{what} G-code {} line(s)\n", text.lines().count()),
+                    None => format!("{what} G-code none\n"),
+                });
+            }
             if let Some(report) = &opened.report {
                 done.out.push_str(&format!(
                     "imported {} ({}), {} item(s) not read\n",
@@ -249,13 +332,20 @@ fn job(mut args: Vec<String>, limits: &Limits) -> Result<Done, String> {
             }
             notes(&mut done, &opened.warnings);
             done.code = i32::from(!opened.warnings.is_empty());
+            check_program_of(&mut done, &file, asked.as_ref(), limits)?;
         }
         "take" => {
+            let asked = flag(&mut args, "--printer")?
+                .map(|id| printer_of(&id))
+                .transpose()?;
             let [file, branch, name] =
                 words::<3>(&args, "take needs FILE.eh3d, a branch and a file of it")?;
             let (target, said) = eh3dfile::take(Path::new(&file), &branch, &name, limits)?;
             notes(&mut done, &said);
             done.out = format!("{branch}/{name} was taken into {BRANCH}/{target}\n");
+            if eh3dfile::is_program(&name) {
+                check_program_of(&mut done, &file, asked.as_ref(), limits)?;
+            }
         }
         "extract" => {
             let [file, branch, dir] =

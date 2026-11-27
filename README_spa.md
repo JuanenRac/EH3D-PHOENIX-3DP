@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.9-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-1236-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-1248-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Comprobación de honestidad - lo que funciona hoy de verdad:** un espacio de trabajo Rust con ocho bibliotecas y un programa de línea de comandos (`phoenix-3dp`) con 1236 pruebas que se ejecutan en un ordenador. Lee y comprueba modelos STL, OBJ y 3MF, tiene un catálogo de 120 perfiles de impresora hechos con datos públicos (ninguno probado en una máquina), escribe G-code para los dialectos Marlin, Klipper, RepRapFirmware y Bambu con límites de temperatura que rechazan un valor en vez de recortarlo, y maneja impresoras Moonraker y OctoPrint y el servidor EH3D, pero solo contra simuladores (en memoria y en un socket de este ordenador). Lamina un modelo cerrado en capas planas con perímetros, relleno rectilíneo y pieles sólidas (un laminador pequeño con relleno en rejilla y giroide, puentes, soportes sencillos, costuras, ancho variable, elevación al desplazarse, falda, borde o balsa, modo jarrón, capas cortas más lentas, retracción que sigue al desplazamiento y una estimación del tiempo con aceleración; varios materiales por altura con torre de purga, alisado de la cara superior, avance de presión, capas cuya altura sigue la forma, una primera capa recortada contra el pie de elefante y un límite del caudal, pero aún sin pintura de colores); la ventana, el marco acoplable de la suite con cinco espacios de trabajo (se compila con `--features gui`), no la ha visto una persona en una pantalla; nada se ha ejecutado en una impresora real.
+**Comprobación de honestidad - lo que funciona hoy de verdad:** un espacio de trabajo Rust con ocho bibliotecas y un programa de línea de comandos (`phoenix-3dp`) con 1248 pruebas que se ejecutan en un ordenador. Lee y comprueba modelos STL, OBJ y 3MF, tiene un catálogo de 120 perfiles de impresora hechos con datos públicos (ninguno probado en una máquina), escribe G-code para los dialectos Marlin, Klipper, RepRapFirmware y Bambu con límites de temperatura que rechazan un valor en vez de recortarlo, y maneja impresoras Moonraker y OctoPrint y el servidor EH3D, pero solo contra simuladores (en memoria y en un socket de este ordenador). Lamina un modelo cerrado en capas planas con perímetros, relleno rectilíneo y pieles sólidas (un laminador pequeño con relleno en rejilla y giroide, puentes, soportes sencillos, costuras, ancho variable, elevación al desplazarse, falda, borde o balsa, modo jarrón, capas cortas más lentas, retracción que sigue al desplazamiento y una estimación del tiempo con aceleración; varios materiales por altura con torre de purga, alisado de la cara superior, avance de presión, capas cuya altura sigue la forma, una primera capa recortada contra el pie de elefante y un límite del caudal, pero aún sin pintura de colores); la ventana, el marco acoplable de la suite con cinco espacios de trabajo (se compila con `--features gui`), no la ha visto una persona en una pantalla; nada se ha ejecutado en una impresora real.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Versión | `0.0.9` |
 | Madurez | Funcional |
-| Pruebas | 1236 |
+| Pruebas | 1248 |
 | Pila tecnológica | Rust |
 | En hardware real | Sin probar: nada de esto se ha ejecutado en una impresora, ni siquiera en una Bambu Lab A1 o una P1S. |
 
@@ -55,7 +55,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 | Enlace con el servidor | 🟠 | los ajustes del enlace y un cliente del complemento de impresoras del servidor sobre el cliente común de la suite (inicio de sesión, renovación, reintentos, errores en ocho idiomas), probado contra un servidor en memoria; nunca contra el servidor real. |
 | Laminador | 🟡 | capas planas de una malla cerrada, perímetros, relleno rectilíneo, en rejilla o giroide, pieles sólidas, puentes, soportes sencillos, costuras, ancho variable, G-code por dialecto, una vista previa por capas como datos y una estimación del tiempo con aceleración; comprobado con propiedades sobre formas de semilla fija (el plástico depositado es el volumen de la pieza, nada sale de la cama, ninguna temperatura supera un límite); ninguna impresión ha salido de él en una impresora. |
 | Línea de comandos | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) ejecuta las funciones de las bibliotecas e imprime el resultado; cada error vuelve como mensaje y un código de salida distinto de cero. |
-| Pruebas | 🟡 | 1236 pruebas pasan (`cargo test --workspace`), con casos normales, casos límite, entradas dañadas y una semilla fija donde hay azar. |
+| Pruebas | 🟡 | 1248 pruebas pasan (`cargo test --workspace`), con casos normales, casos límite, entradas dañadas y una semilla fija donde hay azar. |
 | Seguridad | 🟡 | Rust seguro y simple (`forbid(unsafe_code)`): un límite es un rechazo y nunca un recorte; el token nunca se imprime; nada entra en pánico con los ficheros que recibe; sin revisión independiente. |
 | Ventana | 🟠 | Escrita con `--features gui` como el marco acoplable de la suite, con cinco espacios de trabajo (Preparar, Revisar, Ejecutar, Configurar y Compacto) cuyos paneles se pueden quitar, poner, mover, agrupar en pestañas, flotar y plegar, y una barra de menús: listas de impresoras y filamentos con filtros, el plan por capas con un deslizador, la cola del servidor con un inicio que pide confirmación, una parada de emergencia, atajos configurables, un modo de imagen (`--shot`), una vista 3D de la cama con las piezas como sólidos sombreados, un panel de piezas con orientar solo y organizar, laminado en segundo plano con estimaciones, límites de temperatura editables y un aspecto oscuro y uno claro; la disposición se guarda en el fichero de ajustes; la lógica se prueba sin pantalla y el README muestra dibujos de los espacios de trabajo hechos desde el modelo, pero los paneles nunca se han dibujado en una pantalla y ninguna persona los ha visto. |
 | Hardware real | 🔴 | Sin probar: nada de esto se ha ejecutado en una impresora, ni siquiera en una Bambu Lab A1 o una P1S. |
@@ -114,6 +114,10 @@ Fotografías de la ventana, hechas por el propio programa con su modo de imagen 
 </p>
 
 <p align="center">
+  <img src="images/screenshots/program.png" alt="Proyecto de la suite: su G-code, con las líneas contadas y las temperaturas comparadas con los límites de la impresora, sobre los controles del panel Proyecto" width="100%">
+</p>
+
+<p align="center">
   <img src="images/layouts/prepare.svg" alt="Espacio Preparar: la barra de menús arriba; los ajustes de impresión y los materiales como pestañas a la izquierda, la vista 3D en el centro sobre la consola y el G-code, y los objetos y la impresora como pestañas a la derecha." width="100%">
 </p>
 
@@ -146,7 +150,7 @@ Dibujos de la disposición de fábrica de cada espacio de trabajo, hechos desde 
 * **Ocho idiomas:** los textos del programa y la documentación existen en inglés, español, alemán, francés, italiano, japonés, chino y portugués de Portugal.
 * **Sin código `unsafe`:** `#![forbid(unsafe_code)]` en cada crate.
 * **Del modelo al archivo de la impresora:** la pieza se puede girar, escalar y copiar en la cama, cambiar ajustes sueltos, elegir un proceso de partida y añadir su propio G-code de inicio y de fin; lo que se limita por la impresora se dice con su motivo. Para una impresora Bambu un nombre terminado en `.gcode.3mf` escribe el paquete (G-code, suma de comprobación, imagen, cifras), que `project` comprueba y abre. Ninguna impresora ha recibido uno: el fabricante no publica todo su formato.
-* **Proyecto de la suite (`.eh3d`) con adjuntos:** un solo fichero con una rama por cada programa de la suite, del que este programa escribe solo `3dp/`: las piezas con su colocación, los ajustes del laminado, la impresora, el filamento y el G-code del laminado. Está en Archivo > Proyecto de la suite y en la orden `project`: abrir, guardar, guardar como, importar un modelo o un programa conservando el original con un informe, tomar un modelo de otra rama con una referencia que avisa cuando cambia su origen y extraer una rama; antes de una escritura que quitaría una firma o cambiaría algo no leído aquí se pregunta, y no se escribe encima de un proyecto que otro programa haya guardado entretanto. El panel «Adjuntos» guarda dentro del fichero hojas de datos, manuales, documentos y otros proyectos y los muestra (páginas PDF con la biblioteca PDFium del paquete, imágenes, texto y el texto de documentos de ofimática); los programas, guiones, ficheros con macros, archivos comprimidos y tipos desconocidos preguntan antes de salir del proyecto, nada se ejecuta y nada se descarga. El G-code de un proyecto no se carga en la ventana y nada se envía a una impresora. No probado en pantalla por una persona.
+* **Proyecto de la suite (`.eh3d`) con adjuntos:** un solo fichero con una rama por cada programa de la suite, del que este programa escribe solo `3dp/`: las piezas con su colocación, los ajustes del laminado, la impresora, el filamento y el G-code del laminado. Está en Archivo > Proyecto de la suite y en la orden `project`: abrir, guardar, guardar como, importar un modelo o un programa conservando el original con un informe, tomar un modelo de otra rama con una referencia que avisa cuando cambia su origen y extraer una rama; antes de una escritura que quitaría una firma o cambiaría algo no leído aquí se pregunta, y no se escribe encima de un proyecto que otro programa haya guardado entretanto. El panel «Adjuntos» guarda dentro del fichero hojas de datos, manuales, documentos y otros proyectos y los muestra (páginas PDF con la biblioteca PDFium del paquete, imágenes, texto y el texto de documentos de ofimática); los programas, guiones, ficheros con macros, archivos comprimidos y tipos desconocidos preguntan antes de salir del proyecto, nada se ejecuta y nada se descarga. El proyecto guarda además su G-code de inicio y de fin, que la ventana solo usa si usted lo marca. El G-code de un proyecto se muestra, con sus temperaturas comparadas con los límites de la impresora (la orden `project open` hace lo mismo), y no se carga en el plan; nada se envía a una impresora. No probado en pantalla por una persona.
 
 ## 🔒 Seguridad y protección
 
@@ -184,9 +188,9 @@ phoenix-3dp fit MODEL --printer ID [--process LEVEL] [--settings FILE] [--set "k
 phoenix-3dp slice MODEL --printer ID [--process LEVEL] [--settings FILE] [--set "key=value;key=value"] [--filament ID] [--nozzle MM] [--hardened] [--turn DEG] [--scale PERCENT] [--copies N] [--start-gcode FILE] [--end-gcode FILE] [--report] [--out FILE.gcode|FILE.gcode.3mf] [--save-settings FILE] [--force]
 phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.gcode|FILE.sl1 [--thumbnail FILE] [--extract-gcode FILE] [--force] [--bottom-layers N] [--lift MM] [--light-power MW]
 phoenix-3dp project list FILE.eh3d [--json]
-phoenix-3dp project save FILE.eh3d [--model MODEL] [--settings FILE] [--printer ID] [--filament ID] [--gcode FILE.gcode] [--name NAME] [--id ID]
-phoenix-3dp project import FILE.eh3d MODEL|FILE.gcode [--name NAME] [--id ID]
-phoenix-3dp project open FILE.eh3d [--into DIR] | take FILE.eh3d BRANCH NAME | extract FILE.eh3d BRANCH DIR
+phoenix-3dp project save FILE.eh3d [--model MODEL] [--settings FILE] [--printer ID] [--filament ID] [--gcode FILE.gcode] [--start-gcode FILE] [--end-gcode FILE] [--name NAME] [--id ID]
+phoenix-3dp project import FILE.eh3d MODEL|FILE.gcode [--printer ID] [--name NAME] [--id ID]
+phoenix-3dp project open FILE.eh3d [--into DIR] [--printer ID] | take FILE.eh3d BRANCH NAME [--printer ID] | extract FILE.eh3d BRANCH DIR
 phoenix-3dp version
 phoenix-3dp gui [SETTINGS] [--open MODEL] [--printer ID] [--shot FILE.png [--window TAB] [--size WxH] [--slice] [--demo] [--peek]]  the window (a build with --features gui)
 ```
@@ -211,7 +215,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Pruebas
 
-La suite tiene 1236 pruebas (`cargo test --workspace`, ejecutadas en Windows y Linux en la CI), con semilla fija donde hay azar. Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros cortados, basura y cabeceras hostiles nunca entran en pánico, y ninguna temperatura de ninguna impresora del catálogo supera su límite. La CI también ejecuta `cargo fmt --all --check`, `cargo clippy` con advertencias como errores y `python -I tools/ci_validate.py`.
+La suite tiene 1248 pruebas (`cargo test --workspace`, ejecutadas en Windows y Linux en la CI), con semilla fija donde hay azar. Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros cortados, basura y cabeceras hostiles nunca entran en pánico, y ninguna temperatura de ninguna impresora del catálogo supera su límite. La CI también ejecuta `cargo fmt --all --check`, `cargo clippy` con advertencias como errores y `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilación y publicación
 

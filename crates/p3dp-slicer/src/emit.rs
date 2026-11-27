@@ -5,6 +5,7 @@ use crate::error::SliceError;
 use crate::geom::{dist, P};
 use crate::plan::{Kind, Layer, Plan};
 use crate::timing::{self, Block};
+use p3dp_core::Dialect;
 use p3dp_gcode::{BlockJob, JobParams, Place, Writer};
 
 /// What the head does.
@@ -398,7 +399,12 @@ impl Plan {
         }
         if let Some(tool) = self.first_tool {
             w.comment(&format!("starts with tool {tool}"))?;
-            w.select_tool(tool)?;
+            // RepRapFirmware keeps a temperature for each tool, so the first one needs its own
+            if m.dialect == Dialect::Rrf {
+                w.change_tool(tool, c.nozzle_c)?;
+            } else {
+                w.select_tool(tool)?;
+            }
         }
         let area_filament = c.filament_area_mm2();
         let mut carry = 0.0f64;
@@ -416,8 +422,7 @@ impl Plan {
                     e.tool, e.purge_mm3
                 ))?;
                 // the new tool is brought to its temperature, and waited for, before the purge
-                w.set_nozzle(e.nozzle_c, true)?;
-                w.select_tool(e.tool)?;
+                w.change_tool(e.tool, e.nozzle_c)?;
             }
             let layer_fan = self.fan_for_layer(l.index);
             if (layer_fan - fan_now).abs() > 1e-9 {
