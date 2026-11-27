@@ -88,8 +88,8 @@ pub(super) struct SuiteState {
     pub use_blocks: bool,
     /// The movements of that program, read once for the printer named when the person asks to see the layers.
     motion: Option<(String, Motion)>,
-    /// The person asked to see the layers of the program.
-    show_layers: bool,
+    /// The person asked to see the layers of the program (the picture mode asks for the picture of that panel).
+    pub show_layers: bool,
     /// The layer on view, counted from 0.
     program_layer: usize,
     /// The printer profile as it was before the one of a project lowered it, to be put back.

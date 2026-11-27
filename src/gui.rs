@@ -3083,6 +3083,10 @@ pub fn run(config: AppConfig, lang: Lang, args: &WindowArgs) -> Result<(), Strin
             if start.slice {
                 app.slice_blocking();
             }
+            // the picture of the Project panel shows the layers of the G-code of the project too
+            if start.shot.is_some() && start.panel.as_deref() == Some(pid::PROJECT) {
+                app.suite.show_layers = true;
+            }
             if let Some(tab) = start.window {
                 app.state.tab = tab;
             }
