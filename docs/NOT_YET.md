@@ -63,3 +63,7 @@ It has a window in the docking frame of the suite, with the four old tabs as wor
 The rules for putting a job in the queue (no repeated name, a longest line) are kept by this program before it sends anything and are set in the settings file; the server keeps its own rules, and a job that this program lets through can still be refused there.
 
 The client speaks the routes of the `printer3d` plugin of the server through the common client of the suite, but has only met a double of them in memory: it has never talked to a running `eh3d-server`. The name `phoenix-3dp` is not among the applications the server knows by default, so a login needs it in `auth_extra_apps` (or a token of a program).
+
+## The project of the suite
+
+The branch `3dp/` of a `.eh3d` project keeps meshes, placements, settings and G-code. It does not keep the profiles of printers and filaments of the person, the limits typed for a printer, nor the start and end G-code files; resin work is not kept apart; STEP files taken from another branch are kept but not read; the G-code of a project is not loaded into the window. Nothing of the window of the project or of the panel of the attachments has been tried on a screen by a person.

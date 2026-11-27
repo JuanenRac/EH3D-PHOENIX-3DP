@@ -342,10 +342,16 @@ pub enum Msg {
     LblStartGcode,
     LblEndGcode,
     ExportKinds,
+    SuiteSliceAgain,
+    SuiteFilePath,
+    SuiteFolderPath,
+    SuitePrinterUnknown,
+    SuiteFilamentUnknown,
+    SuiteSaveFirst,
 }
 
 impl Msg {
-    pub const ALL: [Msg; 268] = [
+    pub const ALL: [Msg; 274] = [
         Msg::TabPrepare,
         Msg::TabPreview,
         Msg::TabDevice,
@@ -614,6 +620,12 @@ impl Msg {
         Msg::LblStartGcode,
         Msg::LblEndGcode,
         Msg::ExportKinds,
+        Msg::SuiteSliceAgain,
+        Msg::SuiteFilePath,
+        Msg::SuiteFolderPath,
+        Msg::SuitePrinterUnknown,
+        Msg::SuiteFilamentUnknown,
+        Msg::SuiteSaveFirst,
     ];
 
     /// The texts in the order English, Spanish, German, French, Italian, Japanese, Chinese, Portuguese (Portugal).
@@ -896,6 +908,12 @@ impl Msg {
             Msg::LblStartGcode => ["Your start G-code (file)", "Su G-code de inicio (archivo)", "Ihr Start-G-Code (Datei)", "Votre G-code de début (fichier)", "Il suo G-code iniziale (file)", "独自の開始 G-code（ファイル）", "您的起始 G-code（文件）", "O seu G-code de início (ficheiro)"],
             Msg::LblEndGcode => ["Your end G-code (file)", "Su G-code de fin (archivo)", "Ihr End-G-Code (Datei)", "Votre G-code de fin (fichier)", "Il suo G-code finale (file)", "独自の終了 G-code（ファイル）", "您的结束 G-code（文件）", "O seu G-code de fim (ficheiro)"],
             Msg::ExportKinds => ["A name ending in .gcode.3mf writes the package of a Bambu printer", "Un nombre terminado en .gcode.3mf escribe el paquete de una impresora Bambu", "Ein Name auf .gcode.3mf schreibt das Paket eines Bambu-Druckers", "Un nom finissant par .gcode.3mf écrit le paquet d'une imprimante Bambu", "Un nome che finisce in .gcode.3mf scrive il pacchetto di una stampante Bambu", ".gcode.3mf で終わる名前は Bambu プリンター用のパッケージを書き出します", "以 .gcode.3mf 结尾的名称会写出 Bambu 打印机的打包文件", "Um nome terminado em .gcode.3mf escreve o pacote de uma impressora Bambu"],
+            Msg::SuiteSliceAgain => ["The G-code of the project stays in it and is not loaded into the window: slice again to see and export it", "El G-code del proyecto se queda en él y no se carga en la ventana: vuelva a laminar para verlo y exportarlo", "Der G-Code des Projekts bleibt darin und wird nicht ins Fenster geladen: zum Ansehen und Exportieren erneut slicen", "Le G-code du projet y reste et n'est pas chargé dans la fenêtre : découpez de nouveau pour le voir et l'exporter", "Il G-code del progetto resta in esso e non viene caricato nella finestra: elabori di nuovo per vederlo ed esportarlo", "プロジェクトの G コードはプロジェクト内に残り、ウィンドウには読み込まれません。表示と書き出しには再スライスしてください", "项目中的 G 代码保留在项目内,不会载入窗口:请重新切片以查看和导出", "O G-code do projeto fica nele e não é carregado na janela: volte a fatiar para o ver e exportar"],
+            Msg::SuiteFilePath => ["Path of the file", "Ruta del fichero", "Pfad der Datei", "Chemin du fichier", "Percorso del file", "ファイルのパス", "文件路径", "Caminho do ficheiro"],
+            Msg::SuiteFolderPath => ["Path of the folder", "Ruta de la carpeta", "Pfad des Ordners", "Chemin du dossier", "Percorso della cartella", "フォルダーのパス", "文件夹路径", "Caminho da pasta"],
+            Msg::SuitePrinterUnknown => ["The printer of the project, {}, is not in the catalog: the chosen one stays", "La impresora del proyecto, {}, no está en el catálogo: se mantiene la elegida", "Der Drucker des Projekts, {}, ist nicht im Katalog: der gewählte bleibt", "L'imprimante du projet, {}, n'est pas au catalogue : celle qui est choisie reste", "La stampante del progetto, {}, non è nel catalogo: resta quella scelta", "プロジェクトのプリンター {} はカタログにありません。選択中のプリンターのままです", "项目的打印机 {} 不在目录中:保留当前所选", "A impressora do projeto, {}, não está no catálogo: mantém-se a escolhida"],
+            Msg::SuiteFilamentUnknown => ["The filament of the project, {}, is not in the database: none is chosen", "El filamento del proyecto, {}, no está en la base de datos: no se elige ninguno", "Das Filament des Projekts, {}, ist nicht in der Datenbank: keines ist gewählt", "Le filament du projet, {}, n'est pas dans la base : aucun n'est choisi", "Il filamento del progetto, {}, non è nella base dati: nessuno è scelto", "プロジェクトのフィラメント {} はデータベースにありません。何も選択されていません", "项目的耗材 {} 不在数据库中:未选择任何耗材", "O filamento do projeto, {}, não está na base de dados: nenhum fica escolhido"],
+            Msg::SuiteSaveFirst => ["The bed has changes that are not in the project: save it first", "La cama tiene cambios que no están en el proyecto: guarde antes", "Das Druckbett hat Änderungen, die nicht im Projekt sind: zuerst speichern", "Le plateau a des changements qui ne sont pas dans le projet : enregistrez d'abord", "Il piano ha modifiche che non sono nel progetto: salvi prima", "ベッドにプロジェクトへ未保存の変更があります。先に保存してください", "打印床上有尚未存入项目的更改:请先保存", "A mesa tem alterações que não estão no projeto: guarde primeiro"],
         }
     }
 
@@ -1116,7 +1134,7 @@ mod tests {
         seen.sort_by_key(|m| format!("{m:?}"));
         seen.dedup();
         assert_eq!(seen.len(), Msg::ALL.len());
-        assert_eq!(Msg::ALL.len(), 268);
+        assert_eq!(Msg::ALL.len(), 274);
     }
 
     #[test]

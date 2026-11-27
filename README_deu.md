@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.9-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-1216-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-1233-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** ein Rust-Workspace mit acht Bibliotheken und einem Kommandozeilenprogramm (`phoenix-3dp`) mit 1216 Tests, die auf einem Computer laufen. Es liest und prüft STL-, OBJ- und 3MF-Modelle, enthält einen Katalog von 120 Druckerprofilen aus öffentlichen Daten (keines an einer Maschine getestet), schreibt G-Code für die Dialekte Marlin, Klipper, RepRapFirmware und Bambu mit Temperaturgrenzen, die einen Wert ablehnen, statt ihn zu kappen, und steuert Moonraker- und OctoPrint-Drucker sowie den EH3D-Server, aber nur gegen Simulatoren (im Speicher und an einem Socket dieses Computers). Es zerlegt ein geschlossenes Modell in ebene Schichten mit Perimetern, geradliniger Füllung und massiven Außenhäuten (ein kleiner Slicer mit Gitter- und Gyroid-Füllung, Brücken, einfachen Stützen, Nähten, variabler Breite, Anheben beim Verfahren, Skirt, Brim oder Raft, einem Vasenmodus, langsameren kurzen Schichten, einem Rückzug nach der Länge der Fahrt und einer Zeitschätzung mit Beschleunigung; mehrere Materialien nach Höhe mit Reinigungsturm, Glätten der Oberseite, Pressure Advance, Schichten, deren Höhe der Form folgt, eine nach innen versetzte erste Schicht gegen den Elefantenfuß und eine Begrenzung des Durchflusses, aber noch kein Bemalen von Farben); das Fenster, der andockbare Rahmen der Suite mit fünf Arbeitsbereichen (mit `--features gui` gebaut), wurde von keiner Person auf einem Bildschirm angesehen; nichts lief an einem echten Drucker.
+**Ehrlichkeitscheck - was heute wirklich läuft:** ein Rust-Workspace mit acht Bibliotheken und einem Kommandozeilenprogramm (`phoenix-3dp`) mit 1233 Tests, die auf einem Computer laufen. Es liest und prüft STL-, OBJ- und 3MF-Modelle, enthält einen Katalog von 120 Druckerprofilen aus öffentlichen Daten (keines an einer Maschine getestet), schreibt G-Code für die Dialekte Marlin, Klipper, RepRapFirmware und Bambu mit Temperaturgrenzen, die einen Wert ablehnen, statt ihn zu kappen, und steuert Moonraker- und OctoPrint-Drucker sowie den EH3D-Server, aber nur gegen Simulatoren (im Speicher und an einem Socket dieses Computers). Es zerlegt ein geschlossenes Modell in ebene Schichten mit Perimetern, geradliniger Füllung und massiven Außenhäuten (ein kleiner Slicer mit Gitter- und Gyroid-Füllung, Brücken, einfachen Stützen, Nähten, variabler Breite, Anheben beim Verfahren, Skirt, Brim oder Raft, einem Vasenmodus, langsameren kurzen Schichten, einem Rückzug nach der Länge der Fahrt und einer Zeitschätzung mit Beschleunigung; mehrere Materialien nach Höhe mit Reinigungsturm, Glätten der Oberseite, Pressure Advance, Schichten, deren Höhe der Form folgt, eine nach innen versetzte erste Schicht gegen den Elefantenfuß und eine Begrenzung des Durchflusses, aber noch kein Bemalen von Farben); das Fenster, der andockbare Rahmen der Suite mit fünf Arbeitsbereichen (mit `--features gui` gebaut), wurde von keiner Person auf einem Bildschirm angesehen; nichts lief an einem echten Drucker.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Version | `0.0.9` |
 | Reifegrad | Funktionsfähig |
-| Tests | 1216 |
+| Tests | 1233 |
 | Technologie-Stack | Rust |
 | Auf echter Hardware | Nicht getestet: nichts davon lief an einem Drucker, nicht einmal an einem Bambu Lab A1 oder P1S. |
 
@@ -55,7 +55,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 | Serververbindung | 🟠 | die Einstellungen der Verbindung und ein Client des Druckerplugins des Servers über den gemeinsamen Client der Suite (Anmeldung, Erneuerung, Wiederholungen, Fehler in acht Sprachen), gegen einen Server im Speicher getestet; nie gegen den echten Server. |
 | Slicer | 🟡 | ebene Schichten eines geschlossenen Netzes, Perimeter, geradlinige, Gitter- oder Gyroid-Füllung, massive Außenhäute, Brücken, einfache Stützen, Nähte, variable Breite, G-Code je Dialekt, eine Vorschau nach Schichten als Daten und eine Zeitschätzung mit Beschleunigung; mit Eigenschaftstests an Formen aus festem Seed geprüft (das abgelegte Material entspricht dem Volumen des Teils, nichts verlässt das Bett, keine Temperatur überschreitet eine Grenze); noch kein Druck daraus auf einem Drucker. |
 | Kommandozeile | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) führt die Funktionen der Bibliotheken aus und gibt das Ergebnis aus; jeder Fehler kommt als Meldung und mit einem Exit-Code ungleich null zurück. |
-| Tests | 🟡 | 1216 Tests bestehen (`cargo test --workspace`), mit Normalfällen, Grenzfällen, beschädigten Eingaben und festem Seed, wo Zufall im Spiel ist. |
+| Tests | 🟡 | 1233 Tests bestehen (`cargo test --workspace`), mit Normalfällen, Grenzfällen, beschädigten Eingaben und festem Seed, wo Zufall im Spiel ist. |
 | Sicherheit | 🟡 | Schlichtes sicheres Rust (`forbid(unsafe_code)`): eine Grenze ist eine Ablehnung und nie eine Kappung; das Token wird nie ausgegeben; nichts gerät bei den Dateien in Panik; keine unabhängige Prüfung. |
 | Fenster | 🟠 | Mit `--features gui` geschrieben als andockbarer Rahmen der Suite, mit fünf Arbeitsbereichen (Vorbereiten, Prüfen, Ausführen, Einrichten und Kompakt), deren Bereiche sich entfernen, zurückholen, verschieben, als Reiter gruppieren, schweben lassen und einklappen lassen, und einer Menüleiste: Listen von Druckern und Filamenten mit Filtern, der Plan nach Schichten mit Schieberegler, die Warteschlange des Servers mit einem Start, der eine Bestätigung braucht, ein Not-Halt, änderbare Tastenkürzel, ein Bildmodus (`--shot`), eine 3D-Ansicht des Druckbetts mit schattierten Teilen, ein Teilebereich mit automatischem Ausrichten und Anordnen, Slicen im Hintergrund mit Schätzungen, bearbeitbare Temperaturgrenzen und ein dunkles und ein helles Aussehen; die Anordnung bleibt in der Einstellungsdatei; die Logik wird ohne Bildschirm getestet und das README zeigt aus dem Modell gezeichnete Bilder der Arbeitsbereiche, aber die Bereiche wurden nie auf einem Bildschirm gezeichnet und keine Person hat sie gesehen. |
 | Echte Hardware | 🔴 | Nicht getestet: nichts davon lief an einem Drucker, nicht einmal an einem Bambu Lab A1 oder P1S. |
@@ -110,6 +110,10 @@ Fotos des Fensters, vom Programm selbst mit seinem Bildmodus aufgenommen (`--sho
 </p>
 
 <p align="center">
+  <img src="images/screenshots/attachments.png" alt="Anhänge: ein geöffnetes Suite-Projekt mit der Liste seiner Anhänge, ein als gefährlich markiertes Dokument mit Makros und das Projekt sichtbar unter der oberen Leiste" width="100%">
+</p>
+
+<p align="center">
   <img src="images/layouts/prepare.svg" alt="Arbeitsbereich Vorbereiten: oben die Menüleiste; links Druckeinstellungen und Materialien als Reiter, in der Mitte die 3D-Ansicht über der Konsole und dem G-Code, rechts Objekte und Drucker als Reiter." width="100%">
 </p>
 
@@ -122,7 +126,7 @@ Fotos des Fensters, vom Programm selbst mit seinem Bildmodus aufgenommen (`--sho
 </p>
 
 <p align="center">
-  <img src="images/layouts/setup.svg" alt="Arbeitsbereich Einstellungen: das Projekt und die Fenstereinstellungen, darunter die Konsole." width="100%">
+  <img src="images/layouts/setup.svg" alt="Arbeitsbereich Einstellungen: das Projekt und die Fenstereinstellungen mit den Anhängen als zweitem Reiter, darunter die Konsole." width="100%">
 </p>
 
 <p align="center">
@@ -142,6 +146,7 @@ Zeichnungen der Werksanordnung jedes Arbeitsbereichs, aus dem Modell des Fenster
 * **Acht Sprachen:** die Texte des Programms und die Dokumentation gibt es auf Englisch, Spanisch, Deutsch, Französisch, Italienisch, Japanisch, Chinesisch und europäischem Portugiesisch.
 * **Kein unsicherer Code:** `#![forbid(unsafe_code)]` in jedem Crate.
 * **Vom Modell zur Datei des Druckers:** das Teil kann auf dem Bett gedreht, skaliert und kopiert werden, einzelne Einstellungen lassen sich ändern, ein Ausgangsprozess wählen und eigener Start- und End-G-Code hinzufügen; was nach dem Drucker begrenzt wird, wird mit Grund gesagt. Für einen Bambu-Drucker schreibt ein Name auf `.gcode.3mf` das Paket (G-Code, Prüfsumme, Bild, Kennzahlen), das `project` prüft und öffnet. Kein Drucker hat bisher eines erhalten: der Hersteller veröffentlicht den Aufbau nicht vollständig.
+* **Suite-Projekt (`.eh3d`) mit Anhängen:** eine Datei mit einem Zweig je Programm der Suite, von dem dieses Programm nur `3dp/` schreibt: die Teile mit ihrer Lage, die Slice-Einstellungen, Drucker, Filament und den G-Code des Slicens. Es steht unter Datei > Suite-Projekt und im Befehl `project`: öffnen, speichern, speichern unter, ein Modell oder Programm mit erhaltenem Original und Bericht importieren, ein Modell aus einem anderen Zweig mit einer Referenz übernehmen, die Änderungen der Quelle meldet, und einen Zweig entpacken; vor einem Schreiben, das eine Signatur entfernen oder hier nicht Gelesenes ändern würde, wird gefragt, und ein inzwischen von einem anderen Programm gespeichertes Projekt wird nicht überschrieben. Das Panel «Anhänge» hält Datenblätter, Handbücher, Dokumente und andere Projekte in der Datei und zeigt sie an (PDF-Seiten mit der PDFium-Bibliothek des Pakets, Bilder, Text und den Text von Office-Dokumenten); Programme, Skripte, Dateien mit Makros, Archive und unbekannte Typen fragen nach, bevor sie das Projekt verlassen, nichts wird ausgeführt und nichts heruntergeladen. Der G-Code eines Projekts wird nicht ins Fenster geladen und nichts an einen Drucker gesendet. Nicht von einer Person am Bildschirm erprobt.
 
 ## 🔒 Sicherheit und Schutz
 
@@ -178,13 +183,17 @@ phoenix-3dp resins [--kind KIND] [--printer ID] [--part-ml ML]
 phoenix-3dp fit MODEL --printer ID [--process LEVEL] [--settings FILE] [--set "key=value;key=value"] [--filament ID] [--nozzle MM] [--hardened] [--turn DEG] [--scale PERCENT] [--copies N] [--start-gcode FILE] [--end-gcode FILE]
 phoenix-3dp slice MODEL --printer ID [--process LEVEL] [--settings FILE] [--set "key=value;key=value"] [--filament ID] [--nozzle MM] [--hardened] [--turn DEG] [--scale PERCENT] [--copies N] [--start-gcode FILE] [--end-gcode FILE] [--report] [--out FILE.gcode|FILE.gcode.3mf] [--save-settings FILE] [--force]
 phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.gcode|FILE.sl1 [--thumbnail FILE] [--extract-gcode FILE] [--force] [--bottom-layers N] [--lift MM] [--light-power MW]
+phoenix-3dp project list FILE.eh3d [--json]
+phoenix-3dp project save FILE.eh3d [--model MODEL] [--settings FILE] [--printer ID] [--filament ID] [--gcode FILE.gcode] [--name NAME] [--id ID]
+phoenix-3dp project import FILE.eh3d MODEL|FILE.gcode [--name NAME] [--id ID]
+phoenix-3dp project open FILE.eh3d [--into DIR] | take FILE.eh3d BRANCH NAME | extract FILE.eh3d BRANCH DIR
 phoenix-3dp version
 phoenix-3dp gui [SETTINGS] [--open MODEL] [--printer ID] [--shot FILE.png [--window TAB] [--size WxH] [--slice] [--demo] [--peek]]  the window (a build with --features gui)
 ```
 
 ## ⚙️ Konfiguration
 
-Die Einstellungen sind eine Datei mit Zeilen `Schlüssel = Wert` (`--config DATEI`): die Grenzen der Leser (`limit_*`), die Verbindung zum Server (`server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries`, `server_mdns`, `server_max_answer_mib`), `direct_mode` (eigenständig, standardmäßig aus), `lang` und `default_printer`, die Preise (`price_filament_per_kg`, `price_resin_per_litre`, `resin_waste_percent`), der Bericht (`report_slowest_layers`, `report_short_layer_s`), die Warteschlange (`queue_refuse_duplicates`, `queue_max_waiting`) und wie weit eine einfache G-Code-Datei durchsucht wird (`limit_gcode_head_kib`, `limit_gcode_tail_kib`, `limit_gcode_thumbnails`). Ein Druckerprofil ist eine weitere Datei derselben Art (`examples/my-printer.cfg`). Ein unbekannter Schlüssel oder ein Wert außerhalb des Bereichs ist ein Fehler, der seine Zeile nennt; alle Vorgaben sind vorsichtig. Siehe `examples/phoenix-3dp.cfg`. Das Fenster hält seine eigenen Entscheidungen in derselben Datei fest: `theme` (`dark` oder `light`), `grid_mm`, `arrange_gap_mm`, `arrange_on_add`, `ui_hints`, `peek_wall_alpha` (wie undurchsichtig die Wände der Vorschau sind, wenn man hineinsieht), die Anordnung der Bereiche in Zeilen, die mit `dock.` beginnen, und für jeden Drucker, dessen Temperaturgrenzen geändert wurden, `printer_limits_<id>`.
+Die Einstellungen sind eine Datei mit Zeilen `Schlüssel = Wert` (`--config DATEI`): die Grenzen der Leser (`limit_*`), die Verbindung zum Server (`server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries`, `server_mdns`, `server_max_answer_mib`), `direct_mode` (eigenständig, standardmäßig aus), `lang` und `default_printer`, die Preise (`price_filament_per_kg`, `price_resin_per_litre`, `resin_waste_percent`), der Bericht (`report_slowest_layers`, `report_short_layer_s`), die Warteschlange (`queue_refuse_duplicates`, `queue_max_waiting`) und wie weit eine einfache G-Code-Datei durchsucht wird (`limit_gcode_head_kib`, `limit_gcode_tail_kib`, `limit_gcode_thumbnails`). Ein Druckerprofil ist eine weitere Datei derselben Art (`examples/my-printer.cfg`). Ein unbekannter Schlüssel oder ein Wert außerhalb des Bereichs ist ein Fehler, der seine Zeile nennt; alle Vorgaben sind vorsichtig. Siehe `examples/phoenix-3dp.cfg`. Das Fenster hält seine eigenen Entscheidungen in derselben Datei fest: `theme` (`dark` oder `light`), `grid_mm`, `arrange_gap_mm`, `arrange_on_add`, `ui_hints`, `peek_wall_alpha` (wie undurchsichtig die Wände der Vorschau sind, wenn man hineinsieht), die Anordnung der Bereiche in Zeilen, die mit `dock.` beginnen, und für jeden Drucker, dessen Temperaturgrenzen geändert wurden, `printer_limits_<id>`. Die Grenzen der Anhänge eines Projekts sind `attachments.max_mb` (die größte Datei, die angehängt oder entnommen wird, 1024) sowie `viewer.max_attachment_mb`, `viewer.max_pdf_mb`, `viewer.max_image_mb`, `viewer.max_text_mb`, `viewer.max_office_mb` und `viewer.max_preview_mb` (was im Programm angezeigt wird), jeweils eine ganze Zahl von 1 bis 4096.
 
 ## 🚀 Schnellstart
 
@@ -202,11 +211,11 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Tests
 
-Die Suite hat 1216 Tests (`cargo test --workspace`, in der CI unter Windows und Linux ausgeführt), mit festem Seed, wo Zufall im Spiel ist. Sie prüfen die Normalfälle, die Grenzfälle und beschädigte Eingaben: abgeschnittene Dateien, Müll und feindliche Header lösen nie eine Panik aus, und keine Temperatur eines Druckers des Katalogs überschreitet ihre Grenze. Die CI führt außerdem `cargo fmt --all --check`, `cargo clippy` mit Warnungen als Fehler und `python -I tools/ci_validate.py` aus.
+Die Suite hat 1233 Tests (`cargo test --workspace`, in der CI unter Windows und Linux ausgeführt), mit festem Seed, wo Zufall im Spiel ist. Sie prüfen die Normalfälle, die Grenzfälle und beschädigte Eingaben: abgeschnittene Dateien, Müll und feindliche Header lösen nie eine Panik aus, und keine Temperatur eines Druckers des Katalogs überschreitet ihre Grenze. Die CI führt außerdem `cargo fmt --all --check`, `cargo clippy` mit Warnungen als Fehler und `python -I tools/ci_validate.py` aus.
 
 ## 🏗️ Build und Veröffentlichung
 
-Die Version steht in `Cargo.toml` und in `eh3d.project.json`; jede Version hat ihren Eintrag in [CHANGELOG.md](CHANGELOG.md). `build.bat` / `build.sh` bauen das Programm, `test.bat` / `test.sh` führen die Tests aus und `run.bat` / `run.sh` starten es mit einem Beispiel. Veröffentlichungen erscheinen auf GitHub mit fertigen Programmen für Windows (64 und 32 Bit), Linux (64 Bit) und macOS (Apple Silicon und Intel): jedes Paket, `phoenix-3dp-<Version>-<System>.zip` oder `.tar.gz`, kommt mit seinen Dateien `.sha256` und `.sig`.
+Die Version steht in `Cargo.toml` und in `eh3d.project.json`; jede Version hat ihren Eintrag in [CHANGELOG.md](CHANGELOG.md). `build.bat` / `build.sh` bauen das Programm, `test.bat` / `test.sh` führen die Tests aus und `run.bat` / `run.sh` starten es mit einem Beispiel. Veröffentlichungen erscheinen auf GitHub mit fertigen Programmen für Windows (64 und 32 Bit), Linux (64 Bit) und macOS (Apple Silicon und Intel): jedes Paket, `phoenix-3dp-<Version>-<System>.zip` oder `.tar.gz`, kommt mit seinen Dateien `.sha256` und `.sig`. Die Pakete enthalten neben dem Programm die PDF-Bibliothek des Anhang-Betrachters (PDFium) mit ihren Lizenzen und Hinweisen.
 
 ## 📂 Struktur des Repositorys
 
@@ -232,6 +241,9 @@ EH3D-PHOENIX-3DP/
 │   ├── lib.rs                                   die Bibliothek des Programms: was Kommandozeile und Fenster nutzen
 │   ├── main.rs                                  die Kommandozeile und der Start des Fensters
 │   ├── cli.rs                                   die Befehle: printers, info, check-profile, convert, filaments, resins, slice, project, version
+│   ├── eh3dfile.rs                              der Zweig 3dp/ eines Suite-Projekts
+│   ├── eh3dcli.rs                               die Befehle eines Suite-Projekts
+│   ├── gui/suite.rs                             das Fenster des Suite-Projekts
 │   ├── app_state.rs                             der Zustand des Fensters ohne Fenster: Reiter, Drucker, Modell, Berichte, simuliertes Gerät
 │   ├── config.rs                                die Einstellungsdatei: Grenzen, Serververbindung, Sprache, Standarddrucker, Preise, Bericht und Warteschlange
 │   ├── demo.rs                                  das Demomodell für die Bilder: ein aus wenigen Radien gedrehter Pokal
@@ -256,6 +268,7 @@ EH3D-PHOENIX-3DP/
 │   └── gui.rs                                   das Fenster (egui, Feature gui): Leisten, Bereiche und 3D-Ansicht; gibt weiter, was die Person tut
 ├── tests/
 │   ├── end_to_end.rs                            Tests von einem Modell über ein Programm zu einem simulierten Drucker
+│   ├── eh3dfile.rs                              Tests des Suite-Projekts
 │   ├── examples.rs                              Tests, dass die Dateien in examples/ mit den Befehlen funktionieren
 │   ├── fuzz.rs                                  Fuzz-Tests mit festem Seed: abgeschnittene, beschädigte und feindliche Dateien
 │   ├── readme.rs                                Tests, dass die READMEs die Wahrheit sagen: Zahl der Tests und Befehle

@@ -178,6 +178,45 @@
           }
         },
         {
+          "name": "eh3dfile.rs",
+          "desc": {
+            "en": "the branch 3dp/ of a project of the suite",
+            "es": "la rama 3dp/ de un proyecto de la suite",
+            "de": "der Zweig 3dp/ eines Suite-Projekts",
+            "fr": "la branche 3dp/ d'un projet de la suite",
+            "it": "il ramo 3dp/ di un progetto della suite",
+            "ja": "スイートプロジェクトの 3dp/ ブランチ",
+            "zh": "套件项目的 3dp/ 分支",
+            "pt": "o ramo 3dp/ de um projeto da suite"
+          }
+        },
+        {
+          "name": "eh3dcli.rs",
+          "desc": {
+            "en": "the commands of a project of the suite",
+            "es": "las órdenes de un proyecto de la suite",
+            "de": "die Befehle eines Suite-Projekts",
+            "fr": "les commandes d'un projet de la suite",
+            "it": "i comandi di un progetto della suite",
+            "ja": "スイートプロジェクトのコマンド",
+            "zh": "套件项目的命令",
+            "pt": "os comandos de um projeto da suite"
+          }
+        },
+        {
+          "name": "gui/suite.rs",
+          "desc": {
+            "en": "the window of the project of the suite",
+            "es": "la ventana del proyecto de la suite",
+            "de": "das Fenster des Suite-Projekts",
+            "fr": "la fenêtre du projet de la suite",
+            "it": "la finestra del progetto della suite",
+            "ja": "スイートプロジェクトのウィンドウ",
+            "zh": "套件项目的窗口",
+            "pt": "a janela do projeto da suite"
+          }
+        },
+        {
           "name": "app_state.rs",
           "desc": {
             "en": "the state of the window without a window: tabs, printer, model, reports, simulated device",
@@ -481,6 +520,19 @@
             "ja": "モデルからプログラム、模擬プリンターまでのテスト",
             "zh": "从模型到程序再到模拟打印机的测试",
             "pt": "testes de um modelo a um programa a uma impressora simulada"
+          }
+        },
+        {
+          "name": "eh3dfile.rs",
+          "desc": {
+            "en": "tests of the project of the suite",
+            "es": "pruebas del proyecto de la suite",
+            "de": "Tests des Suite-Projekts",
+            "fr": "tests du projet de la suite",
+            "it": "test del progetto della suite",
+            "ja": "スイートプロジェクトのテスト",
+            "zh": "套件项目的测试",
+            "pt": "testes do projeto da suite"
           }
         },
         {

@@ -4,14 +4,15 @@
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
-"""Takes the pictures of the window for the READMEs with the picture mode of the program, one for each tab.
+"""Takes the pictures of the window for the READMEs with the picture mode of the program, one for each tab and one of the attachments of a project of the suite.
 
-    py -3.14 -I tools/make_screenshots.py PATH/TO/phoenix-3dp[.exe] [--out window-pictures] [--lang en] [--size 1360x860]
+    py -3.14 -I tools/make_screenshots.py PATH/TO/phoenix-3dp[.exe] [--out window-pictures] [--lang en] [--size 1360x860] [--suite-tool PATH/TO/eh3d-project]
     py -3.14 -I tools/make_screenshots.py --check [--out window-pictures]
 
 The program must have been built with `--features gui`. It is copied into a new empty folder and run from there, with the folders of the user (APPDATA,
 LOCALAPPDATA, USERPROFILE, HOME) pointing at that folder, so no picture carries the name of a folder or of a person. Each picture is quantized to a palette with Pillow and made
-smaller until it is at most 250 KB; the program is asked for `--demo` (a model and a server made in memory), so nothing here reaches a network or a printer.
+smaller until it is at most 250 KB; the program is asked for `--demo` (a model and a server made in memory), so nothing here reaches a network or a printer. The picture of the attachments needs the tool `eh3d-project` of EH3D-COMMON (`--suite-tool`): a made-up project is made with it
+and with the command `project` of the program, in the same empty folder.
 """
 from __future__ import annotations
 
@@ -25,6 +26,7 @@ from pathlib import Path
 
 MAX_BYTES = 250 * 1024
 WINDOWS = ("prepare", "preview", "device", "project")
+PICTURES = WINDOWS + ("attachments",)
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 
 
@@ -44,7 +46,24 @@ def quantize(src: Path, dst: Path) -> int:
     raise SystemExit(f"{dst.name}: could not be made smaller than {MAX_BYTES} bytes")
 
 
-def take(binary: Path, window: str, lang: str, size: str, out: Path) -> None:
+def made_up_project(exe: Path, tool: Path, work: Path, env: dict) -> None:
+    """A project `demo.eh3d` in `work` with the sample cube on its bed, a note and a document with macros (made-up bytes), to show the panel and its warning."""
+    shutil.copy2(Path(__file__).resolve().parent.parent / "examples" / "cube-20mm.stl", work / "cube-20mm.stl")
+    (work / "assembly-guide.md").write_text("# Assembly guide\n\n1. Print the cube with three walls.\n2. Measure it with a calliper.\n", encoding="utf-8")
+    (work / "label-maker.docm").write_bytes(b"made-up bytes for a picture")
+    commands = [
+        [str(exe), "project", "save", "demo.eh3d", "--model", "cube-20mm.stl", "--printer", "bambu-lab-p1s"],
+        [str(tool), "attach", "demo.eh3d", "assembly-guide.md", "--title", "Assembly guide", "--ref", "PART1"],
+        [str(tool), "attach", "demo.eh3d", "label-maker.docm", "--title", "Label maker"],
+    ]
+    for command in commands:
+        done = subprocess.run(command, cwd=work, env=env, capture_output=True, text=True, timeout=120,
+                              creationflags=0x08000000 if os.name == "nt" else 0)
+        if done.returncode not in (0, 1):
+            raise SystemExit(f"{command[1]}: {done.returncode}: {done.stderr.strip()[:300]}")
+
+
+def take(binary: Path, window: str, lang: str, size: str, out: Path, tool: Path | None = None) -> None:
     with tempfile.TemporaryDirectory(prefix="p3dp_shot_") as tmp:
         work = Path(tmp)
         exe = work / binary.name
@@ -54,6 +73,11 @@ def take(binary: Path, window: str, lang: str, size: str, out: Path) -> None:
             env[name] = str(work)
         args = [str(exe), "gui", "--shot", "raw.png", "--window", window, "--demo", "--lang", lang,
                 "--size", size, "--wait", "12"]
+        if window == "attachments" and tool is not None:
+            made_up_project(exe, tool, work, env)
+            # the project is read on a thread of its own, so the picture waits longer
+            args = [str(exe), "gui", "--shot", "raw.png", "--window", "project", "--open", "demo.eh3d", "--lang", lang,
+                    "--size", size, "--wait", "90"]
         if window == "preview":
             # look inside, so the picture shows the walls and the infill and not only the top skin
             args += ["--slice", "--peek"]
@@ -69,7 +93,7 @@ def take(binary: Path, window: str, lang: str, size: str, out: Path) -> None:
 
 def check(out: Path) -> int:
     bad = 0
-    for window in WINDOWS:
+    for window in PICTURES:
         f = out / f"{window}.png"
         if not f.is_file():
             print(f"missing {f}")
@@ -97,6 +121,7 @@ def main() -> int:
     ap.add_argument("--lang", default="en")
     ap.add_argument("--size", default="1360x860")
     ap.add_argument("--check", action="store_true")
+    ap.add_argument("--suite-tool", help="the tool eh3d-project of EH3D-COMMON, for the picture of the attachments")
     a = ap.parse_args()
     out = Path(a.out)
     if a.check:
@@ -106,8 +131,11 @@ def main() -> int:
     binary = Path(a.binary)
     if not binary.is_file():
         raise SystemExit(f"{binary} is not a file")
-    for window in WINDOWS:
-        take(binary, window, a.lang, a.size, out / f"{window}.png")
+    if not a.suite_tool or not Path(a.suite_tool).is_file():
+        ap.error("give the tool eh3d-project with --suite-tool")
+    tool = Path(a.suite_tool).resolve()
+    for window in PICTURES:
+        take(binary, window, a.lang, a.size, out / f"{window}.png", tool)
     return check(out)
 
 

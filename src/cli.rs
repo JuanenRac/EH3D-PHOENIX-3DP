@@ -3,6 +3,7 @@
 
 use crate::app_state::{profile_report, AppState};
 use crate::config::AppConfig;
+use crate::eh3dcli;
 use crate::held;
 use crate::i18n::{fill, Lang, Msg};
 use crate::import::{self, Word as ImportWord};
@@ -81,6 +82,10 @@ pub const USAGE: &str = "phoenix-3dp: prepare and send 3D prints (simulators onl
   phoenix-3dp fit MODEL --printer ID [--process LEVEL] [--settings FILE] [--set \"key=value;key=value\"] [--filament ID] [--nozzle MM] [--hardened] [--turn DEG] [--scale PERCENT] [--copies N] [--start-gcode FILE] [--end-gcode FILE]
   phoenix-3dp slice MODEL --printer ID [--process LEVEL] [--settings FILE] [--set \"key=value;key=value\"] [--filament ID] [--nozzle MM] [--hardened] [--turn DEG] [--scale PERCENT] [--copies N] [--start-gcode FILE] [--end-gcode FILE] [--report] [--out FILE.gcode|FILE.gcode.3mf] [--save-settings FILE] [--force]
   phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.gcode|FILE.sl1 [--thumbnail FILE] [--extract-gcode FILE] [--force] [--bottom-layers N] [--lift MM] [--light-power MW]
+  phoenix-3dp project list FILE.eh3d [--json]
+  phoenix-3dp project save FILE.eh3d [--model MODEL] [--settings FILE] [--printer ID] [--filament ID] [--gcode FILE.gcode] [--name NAME] [--id ID]
+  phoenix-3dp project import FILE.eh3d MODEL|FILE.gcode [--name NAME] [--id ID]
+  phoenix-3dp project open FILE.eh3d [--into DIR] | take FILE.eh3d BRANCH NAME | extract FILE.eh3d BRANCH DIR
   phoenix-3dp version
 
 Every command also takes --config FILE (the settings) and --lang CODE (en, es, de, fr, it, ja, zh, pt).
@@ -88,6 +93,8 @@ The models are STL, OBJ and 3MF; OUT is chosen by its extension (.stl, .obj, .3m
 `machines` and `machine` show the catalog of printers of the suite: what each maker publishes, with its pages, the filaments and processes to start from and, with --process,
 a settings file for `slice`. `import` brings the settings of a 3MF project or of a JSON or INI profile of yours, tells every key it applied, did not apply, did not use
 or did not read, and with --out writes the applied ones as a settings file. Nothing is sent to a printer.
+`project list`, `save`, `import`, `open`, `take` and `extract` work on a project of the suite (.eh3d), one file with a branch for each program, of which this program writes the
+branch 3dp only; their exit code is 1 when there is something to read and 2 when they could not be done.
 `slice` makes the layers and the G-code of a closed model for a printer of the catalog and refuses, never cuts down, what does not fit or goes past a limit;
 without --out it only reports; with --process it starts from that process for the nozzle (the keys of --settings win over it); the highest speed, acceleration and flow
 the maker states are kept to. --start-gcode and --end-gcode add your own lines to the ones of the program, checked line by line against the limits and the volume. `fit` tells,
@@ -98,6 +105,37 @@ a package and takes its G-code or its picture out. With --report it also tells t
 volume takes. `check-profile --set` edits a copy of a profile (a limit past the figure of the maker is allowed and told) and --save writes it as a profile file. `project` reads the
 objects, plates and settings of a 3MF project saved by another program, the header and thumbnails of a binary G-code file, the figures and thumbnails in the comments of a plain
 G-code file, or the header of an open package of resin layers (.sl1) with an estimate of its time; all of it read only, and the closed formats of resin printers are refused with the reason.";
+
+/// `project list|save|import|open|take|extract`: a project of the suite (`.eh3d`). `--config` gives the limits and `--lang` is taken like in every command.
+fn suite_project(args: &[String]) -> Outcome {
+    let mut words = Vec::new();
+    let mut flags = HashMap::new();
+    let mut it = args.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--config" | "--lang" => match it.next() {
+                Some(v) => {
+                    flags.insert(a.trim_start_matches('-').to_string(), v.clone());
+                }
+                None => return Outcome::usage(&format!("{a} needs a value")),
+            },
+            _ => words.push(a.clone()),
+        }
+    }
+    let settings = match load_config(&Parsed {
+        positional: Vec::new(),
+        flags,
+    }) {
+        Ok(c) => c,
+        Err(e) => return Outcome::fail(e),
+    };
+    let done = eh3dcli::run(&words, &settings.limits);
+    Outcome {
+        code: done.code,
+        out: done.out,
+        err: done.err,
+    }
+}
 
 struct Parsed {
     positional: Vec<String>,
@@ -173,6 +211,13 @@ pub fn run(args: &[String], env_lang: Option<&str>) -> Outcome {
         "resins" => resins(rest, env_lang),
         "fit" => fit_job(rest, env_lang),
         "slice" => slice(rest, env_lang),
+        "project"
+            if rest
+                .first()
+                .is_some_and(|w| eh3dcli::WORDS.contains(&w.as_str())) =>
+        {
+            suite_project(rest)
+        }
         "project" => project(rest, env_lang),
         other => Outcome::usage(&format!("{other:?} is not a command")),
     }
