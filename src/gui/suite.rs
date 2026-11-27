@@ -1207,6 +1207,27 @@ mod tests {
     }
 
     #[test]
+    fn the_panel_of_the_attachments_that_is_asked_for_comes_to_the_front() {
+        let mut shell = Shell::new(window(), false);
+        let _ = shell
+            .dock
+            .apply(DockAction::SwitchWorkspace("Setup".to_string()));
+        let front = |shell: &Shell| {
+            shell
+                .dock
+                .core()
+                .layout()
+                .active_of(pid::ATTACHMENTS)
+                .map(str::to_string)
+        };
+        assert_eq!(front(&shell).as_deref(), Some(pid::PROJECT));
+        let show = DockAction::ShowPanel(pid::ATTACHMENTS.to_string());
+        shell.app.borrow_mut().pending_dock.push(show);
+        shell.after(None, &egui::Context::default());
+        assert_eq!(front(&shell).as_deref(), Some(pid::ATTACHMENTS));
+    }
+
+    #[test]
     fn a_damaged_project_changes_nothing_and_the_windows_are_drawn() {
         let d = folder("damaged");
         let junk = d.join("junk.eh3d");

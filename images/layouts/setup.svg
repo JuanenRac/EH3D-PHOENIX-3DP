@@ -14,6 +14,8 @@
 <rect x="4.0" y="4.0" width="1272.0" height="22" rx="3" fill="#2a3142"/>
 <rect x="8.0" y="7.0" width="65.0" height="17.0" rx="3" fill="#3b82f6"/>
 <text x="16.0" y="20.0" fill="#e8ecf5" font-size="12" font-family="sans-serif" clip-path="inset(0)">Project</text>
+<rect x="76.0" y="7.0" width="93.0" height="17.0" rx="3" fill="#364058"/>
+<text x="84.0" y="20.0" fill="#e8ecf5" font-size="12" font-family="sans-serif" clip-path="inset(0)">Attachments</text>
 <text x="14.0" y="46.0" fill="#8893ab" font-size="11" font-family="sans-serif">project</text>
 <rect x="4.0" y="536.8" width="1272.0" height="149.2" rx="3" fill="#1f2430" stroke="#3a4256"/>
 <rect x="4.0" y="536.8" width="1272.0" height="22" rx="3" fill="#2a3142"/>

@@ -2804,10 +2804,12 @@ impl Shell {
         match chosen {
             Some(Chosen::App(cmd)) => app.run_cmd(cmd, ctx),
             Some(Chosen::Recent(path)) => app.open_path(&path),
-            Some(Chosen::Dock(_)) | None => {}
+            Some(Chosen::Dock(action)) => bring_to_front(&mut self.dock, &action),
+            None => {}
         }
         for action in std::mem::take(&mut app.pending_dock) {
-            let _ = self.dock.apply(action);
+            let _ = self.dock.apply(action.clone());
+            bring_to_front(&mut self.dock, &action);
         }
         for path in std::mem::take(&mut app.recent_added) {
             self.dock.core_mut().recent_mut().push(&path);
@@ -2876,6 +2878,13 @@ impl eframe::App for Shell {
                 self.app.borrow_mut().save_layout(&pairs);
             }
         }
+    }
+}
+
+/// A panel that was asked for by name is put on show also when it is a tab behind another one (the frame only brings back the hidden ones).
+fn bring_to_front(dock: &mut Dock, action: &DockAction) {
+    if let DockAction::ShowPanel(id) = action {
+        let _ = dock.core_mut().layout_mut().set_active(id);
     }
 }
 
