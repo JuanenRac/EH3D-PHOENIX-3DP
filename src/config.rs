@@ -4,6 +4,7 @@
 use crate::i18n::Lang;
 use crate::keys::{Action, Scheme, SchemeId};
 use crate::look::Theme;
+use eh3d_attachpanel::PanelLimits;
 use p3dp_core::kv;
 use p3dp_core::Limits;
 use p3dp_formats::gcode_meta::ScanLimits;
@@ -58,6 +59,8 @@ pub struct AppConfig {
     /// The lines of the frame of the window (`dock.*`): the arrangement of the panels, the workspaces, the shortcuts of the frame and the recent files. The program keeps them as they are and the
     /// frame reads and writes them.
     pub dock_lines: Vec<(String, String)>,
+    /// The limits of the panel of the attachments (`attachments.max_mb`, `viewer.max_*_mb`) that the file gives.
+    pub panel_lines: Vec<(String, String)>,
 }
 
 /// The limits of one printer set by the person.
@@ -146,6 +149,7 @@ impl Default for AppConfig {
             peek_wall_alpha: PEEK_WALL_ALPHA_DEFAULT,
             limit_overrides: Vec::new(),
             dock_lines: Vec::new(),
+            panel_lines: Vec::new(),
         }
     }
 }
@@ -291,6 +295,15 @@ impl AppConfig {
                     c.dock_lines.retain(|(k, _)| k != other);
                     c.dock_lines.push((other.to_string(), e.value.clone()));
                 }
+                other if PanelLimits::is_key(other) => {
+                    if !PanelLimits::default().apply(other, &e.value) {
+                        return Err(at(format!(
+                            "{other}: not a limit of the attachments, or not a whole number from 1 to 4096"
+                        )));
+                    }
+                    c.panel_lines.retain(|(k, _)| k != other);
+                    c.panel_lines.push((other.to_string(), e.value.clone()));
+                }
                 other if other.starts_with("key_") => {
                     let name = &other[4..];
                     if Action::from_name(name).is_none() {
@@ -369,12 +382,21 @@ impl AppConfig {
                 o.value_text()
             ));
         }
-        for (k, v) in &self.dock_lines {
+        for (k, v) in self.dock_lines.iter().chain(&self.panel_lines) {
             s.push_str(&format!("{k} = {v}\n"));
         }
         s.push_str(&self.limits.to_text());
         s.push_str(&self.server.to_text(reveal));
         s
+    }
+
+    /// The limits of attaching and of showing an attachment: the ones of the file over the usual ones.
+    pub fn panel_limits(&self) -> PanelLimits {
+        let mut limits = PanelLimits::default();
+        for (key, value) in &self.panel_lines {
+            limits.apply(key, value);
+        }
+        limits
     }
 
     /// The lines of the frame as the text of a settings file (what the frame reads at start).
@@ -398,6 +420,23 @@ impl AppConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_limits_of_the_attachments_are_read_checked_and_written_back() {
+        let c = AppConfig::from_text(
+            "attachments.max_mb = 16\nviewer.max_pdf_mb = 4\nviewer.max_pdf_mb = 8\n",
+        )
+        .unwrap();
+        let limits = c.panel_limits();
+        assert_eq!(limits.attachments.max_attachment_bytes, 16 << 20);
+        assert_eq!(limits.viewer.max_pdf_bytes, 8 << 20);
+        assert_eq!(AppConfig::from_text(&c.to_text(true)).unwrap(), c);
+        assert_eq!(AppConfig::default().panel_limits(), PanelLimits::default());
+        for text in ["attachments.max_mb = 0\n", "viewer.other_mb = 4\n"] {
+            let e = AppConfig::from_text(text).unwrap_err();
+            assert!(e.contains("line 1"), "{text:?} -> {e}");
+        }
+    }
 
     #[test]
     fn the_default_round_trips() {

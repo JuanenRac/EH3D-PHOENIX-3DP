@@ -7,6 +7,8 @@ pub mod cli;
 pub mod config;
 pub mod demo;
 pub mod device;
+pub mod eh3dcli;
+pub mod eh3dfile;
 pub mod held;
 pub mod i18n;
 pub mod import;
@@ -28,6 +30,10 @@ pub mod shot;
 pub mod slice_job;
 pub mod studio;
 pub mod view;
+
+// what the window shows and asks about an `.eh3d` project, and its words, are shared by the programs (crate `eh3d-project` of EH3D-COMMON)
+pub use eh3d_project::suitetext;
+pub use eh3d_project::suiteview as suitecore;
 
 #[cfg(feature = "gui")]
 pub mod gui;

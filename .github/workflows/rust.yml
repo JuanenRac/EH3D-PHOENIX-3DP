@@ -85,6 +85,9 @@ jobs:
       - name: Tests
         run: cargo test --workspace --all-targets
         working-directory: EH3D-PHOENIX-3DP
+      - name: Tests of the window
+        run: cargo test --all-targets --features gui
+        working-directory: EH3D-PHOENIX-3DP
 
   main-against-main:
     name: Siblings at main

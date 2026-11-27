@@ -25,6 +25,7 @@ use crate::shade::{self, LineKind, ShadedTriangle, StdView};
 use crate::shot::{self, ShotRequest, WindowArgs};
 use crate::studio::{Estimates, SliceEvent, Studio};
 use eframe::egui::{self, Color32, FontData, FontDefinitions, FontFamily, Pos2, Stroke};
+use eh3d_attachpanel::{AttachPanel, Program};
 use eh3d_dock::about::Phoenix;
 use eh3d_dock::core::AboutInfo;
 use eh3d_dock::gui::{primary_button, program_mark, Dock};
@@ -38,9 +39,11 @@ use p3dp_profiles::Technology;
 use p3dp_slicer::{Adhesion, InfillPattern, Kind, Seam, Supports};
 use p3dp_viewer::Viewport;
 use std::cell::RefCell;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
+
+mod suite;
 
 fn col(c: look::Rgb) -> Color32 {
     Color32::from_rgb(c[0], c[1], c[2])
@@ -259,6 +262,10 @@ struct App {
     sliced_with: Option<Recipe>,
     shot: Option<ShotState>,
     visuals_theme: Option<Theme>,
+    /// The project file of the suite (`.eh3d`) the window works on.
+    suite: suite::SuiteState,
+    /// The panel of the attachments of that project.
+    attachments: AttachPanel,
 }
 
 impl App {
@@ -288,7 +295,12 @@ impl App {
             studio.add_model(demo::DEMO_NAME, demo::goblet(), volume, &state.config);
         }
         studio.sync(&mut state);
+        let mut attachments =
+            AttachPanel::new(Program::new(crate::eh3dfile::BRANCH, crate::VERSION));
+        attachments.set_limits(state.config.panel_limits());
         App {
+            suite: suite::SuiteState::default(),
+            attachments,
             look: state.config.theme.palette(),
             config_path: args.config.clone(),
             filaments: FilamentCatalog::builtin().unwrap_or(FilamentCatalog {
@@ -360,6 +372,10 @@ impl App {
 
     fn open_model(&mut self) {
         let path = self.path_text.trim().to_string();
+        if crate::suitecore::is_project(Path::new(&path)) {
+            self.suite_open(Path::new(&path));
+            return;
+        }
         match self.state.read_model_file(&path) {
             Ok((name, mesh)) => {
                 self.add_part(&name, mesh);
@@ -487,6 +503,10 @@ impl App {
 
     /// Does what an entry of the menus asks.
     fn run_cmd(&mut self, cmd: Cmd, ctx: &egui::Context) {
+        // behind the question of a write only the emergency stop is done
+        if self.suite.pending.is_some() && cmd != Cmd::EmergencyStop {
+            return;
+        }
         let volume = self.volume();
         match cmd {
             Cmd::Std(a) => match a {
@@ -494,6 +514,7 @@ impl App {
                     self.studio.clear_all();
                     self.preview.forget();
                     self.saved_path = None;
+                    self.suite_forget();
                     self.studio.sync(&mut self.state);
                     self.state.status = Status::None;
                     self.note = None;
@@ -534,6 +555,13 @@ impl App {
             Cmd::LayerUp => self.preview.step_layer(1),
             Cmd::LayerDown => self.preview.step_layer(-1),
             Cmd::ExportGcode => self.export_gcode(),
+            Cmd::SuiteOpen => self.suite_prompt(suite::Ask::Open),
+            Cmd::SuiteSave => self.suite_save_entry(),
+            Cmd::SuiteSaveAs => self.suite_prompt(suite::Ask::SaveAs),
+            Cmd::SuiteImport => self.suite_prompt(suite::Ask::Import),
+            Cmd::SuiteTake => self.suite_show_list(suite::SuiteList::Take),
+            Cmd::SuiteExtract => self.suite_show_list(suite::SuiteList::Extract),
+            Cmd::SuiteBranches => self.suite_show_list(suite::SuiteList::Branches),
         }
     }
 
@@ -1492,6 +1520,28 @@ impl App {
                 .auto_shrink([false, false])
                 .show(ui, |ui| a.project_tab(ui));
         });
+    }
+
+    /// The attachments of the project of the suite, with their viewer.
+    fn panel_attachments(&mut self, ui: &mut egui::Ui) {
+        let code = self.lang().code();
+        let project = self.suite.file.clone();
+        if self.attachments.show(ui, project.as_deref(), code) {
+            self.suite_refresh();
+        }
+    }
+
+    /// Files dropped on the window: the panel of the attachments takes its own, the models and the projects of the suite are opened.
+    fn take_dropped(&mut self, ctx: &egui::Context) {
+        let opens = |path: &Path| {
+            let name = path.to_string_lossy().to_lowercase();
+            crate::suitecore::is_project(path) || crate::eh3dfile::is_model(&name)
+        };
+        for path in self.attachments.take_drop(ctx, opens) {
+            if opens(&path) {
+                self.open_path(&path.to_string_lossy());
+            }
+        }
     }
 
     /// What the program has to say: how the last thing went, the warnings of the bed and of the slice, and the advice of the filament.
@@ -2687,7 +2737,7 @@ impl Shell {
         let lang = app.lang();
         let app = Rc::new(RefCell::new(app));
         let mut dock = Dock::new(panels::defs(), panels::workspaces());
-        let draw: [(&str, PanelDraw); 12] = [
+        let draw: [(&str, PanelDraw); 13] = [
             (pid::VIEW3D, App::panel_view3d),
             (pid::OBJECTS, App::panel_objects),
             (pid::PRINT_SETTINGS, App::panel_print_settings),
@@ -2700,6 +2750,7 @@ impl Shell {
             (pid::STATUS, App::panel_status),
             (pid::QUEUE, App::panel_queue),
             (pid::PROJECT, App::panel_project),
+            (pid::ATTACHMENTS, App::panel_attachments),
         ];
         for (name, f) in draw {
             let a = app.clone();
@@ -2773,6 +2824,7 @@ impl eframe::App for Shell {
             app.handle_keys(&ctx);
             app.shot_tick(&ctx);
             app.poll_slice(&ctx);
+            app.take_dropped(&ctx);
             // the parts as meshes are made again when one moved; what is on the bed is the model of the program
             let _ = app.studio.world_parts();
             if app.studio.take_changed() {
@@ -2802,6 +2854,7 @@ impl eframe::App for Shell {
         {
             let mut app = self.app.borrow_mut();
             app.top_bar(ui);
+            app.suite_bar(ui);
             app.status_bar(ui);
             app.slice_bar(ui);
         }
@@ -2813,6 +2866,7 @@ impl eframe::App for Shell {
         {
             let mut app = self.app.borrow_mut();
             app.help_window(&ctx);
+            app.suite_windows(&ctx);
         }
         // the arrangement is kept in the settings file when it changed
         self.ticks = self.ticks.wrapping_add(1);
@@ -2882,7 +2936,12 @@ pub fn run(config: AppConfig, lang: Lang, args: &WindowArgs) -> Result<(), Strin
             return Err(format!("{id}: no such printer"));
         }
     }
-    if let Some(model) = &args.model {
+    // a project of the suite given with --open is opened by the window, with the panel of its attachments on view
+    let project = args
+        .model
+        .clone()
+        .filter(|m| crate::suitecore::is_project(m));
+    if let Some(model) = args.model.as_ref().filter(|_| project.is_none()) {
         if !state.load_model_file(&model.to_string_lossy()) {
             return Err(state.status.text(lang));
         }
@@ -2915,10 +2974,21 @@ pub fn run(config: AppConfig, lang: Lang, args: &WindowArgs) -> Result<(), Strin
         Box::new(move |cc| {
             install_fonts(&cc.egui_ctx);
             let mut app = App::new(state, &start, shot_state);
+            let opened = project.as_deref().is_some_and(|p| app.suite_open(p));
             if start.slice {
                 app.slice_blocking();
             }
+            if let Some(tab) = start.window {
+                app.state.tab = tab;
+            }
             let mut shell = Shell::new(app, start.window.is_some());
+            if opened {
+                shell
+                    .app
+                    .borrow_mut()
+                    .pending_dock
+                    .push(DockAction::ShowPanel(pid::ATTACHMENTS.to_string()));
+            }
             // the list of recent projects lives in the folder of the user; a picture reads and writes none
             if start.shot.is_none() {
                 shell.dock.keep_user_recent(Phoenix::Printer3d);

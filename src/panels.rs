@@ -5,9 +5,10 @@
 use crate::app_state::Tab;
 use crate::i18n::{Lang, Msg};
 use crate::keys::{Action, Scheme};
+use crate::suitetext::S;
 use eh3d_dock::about::{AboutBrand, Phoenix};
 use eh3d_dock::core::PanelDef;
-use eh3d_dock::menu::{Entry, Item, Label, Menu, MenuBar, StdAction};
+use eh3d_dock::menu::{DockAction, Entry, Item, Label, Menu, MenuBar, StdAction};
 use eh3d_dock::model::{Layout, Node};
 use eh3d_dock::sectors::Sector;
 use eh3d_dock::shortcuts::Shortcut;
@@ -59,9 +60,11 @@ pub mod id {
     pub const QUEUE: &str = "queue";
     /// The files of the project and the settings of the window.
     pub const PROJECT: &str = "project";
+    /// The attachments of the project of the suite: data sheets, manuals and other files, with their viewer.
+    pub const ATTACHMENTS: &str = eh3d_attachpanel::PANEL_ID;
 
     /// Every panel, in the order of the View menu.
-    pub const ALL: [&str; 12] = [
+    pub const ALL: [&str; 13] = [
         VIEW3D,
         OBJECTS,
         PRINT_SETTINGS,
@@ -74,6 +77,7 @@ pub mod id {
         STATUS,
         QUEUE,
         PROJECT,
+        ATTACHMENTS,
     ];
 }
 
@@ -100,7 +104,8 @@ pub fn t8(m: Msg) -> Text8 {
     ])
 }
 
-/// The panels: the ones the suite proposes for a 3D printing program, and the four that this program adds (the server and its machines, the state of the machine, the queue, the project).
+/// The panels: the ones the suite proposes for a 3D printing program, the four that this program adds (the server and its machines, the state of the machine, the queue, the project) and the
+/// attachments of the project of the suite.
 pub fn defs() -> Vec<PanelDef> {
     let mut v = Sector::Printer3d.panels();
     v.push(
@@ -123,6 +128,7 @@ pub fn defs() -> Vec<PanelDef> {
             .icon("J")
             .min(280.0, 200.0),
     );
+    v.push(eh3d_attachpanel::panel_def());
     v
 }
 
@@ -145,7 +151,7 @@ pub fn workspaces() -> Vec<Workspace> {
     ));
     v.push(ws(
         WS_SETUP,
-        Node::column(0.78, t(&[id::PROJECT]), t(&[id::CONSOLE])),
+        Node::column(0.78, t(&[id::PROJECT, id::ATTACHMENTS]), t(&[id::CONSOLE])),
     ));
     v
 }
@@ -198,6 +204,20 @@ pub enum Cmd {
     LayerDown,
     /// Write the G-code of the plan to a file.
     ExportGcode,
+    /// Open a project of the suite.
+    SuiteOpen,
+    /// Save the work into the project of the suite.
+    SuiteSave,
+    /// Save it into another project of the suite.
+    SuiteSaveAs,
+    /// Keep the original of a model or a program of another program in the project.
+    SuiteImport,
+    /// Take a file of another branch.
+    SuiteTake,
+    /// Write the files of a branch into a folder.
+    SuiteExtract,
+    /// The branches of the project and their state.
+    SuiteBranches,
 }
 
 impl From<StdAction> for Cmd {
@@ -238,6 +258,40 @@ fn own(id: &str, m: Msg, cmd: Cmd) -> Entry<Cmd> {
     Entry::app(id, Label::Own(t8(m)), cmd)
 }
 
+/// A word of the suite as the text of the frame, whose order of the languages is another.
+pub fn s8(word: S) -> Text8 {
+    let [en, es, de, fr, it, ja, zh, pt] = word.words();
+    Text8([en, es, it, de, fr, pt, zh, ja])
+}
+
+/// File > Suite project: what is done with the file `.eh3d` that holds a branch for each program of the suite.
+fn suite_menu() -> Menu<Cmd> {
+    let entry = |id: &str, word: S, cmd: Cmd| Entry::app(id, Label::Own(s8(word)), cmd);
+    Menu::new("file.suite", Label::Own(s8(S::Menu)))
+        .entry(entry("file.suite.open", S::MenuOpen, Cmd::SuiteOpen))
+        .entry(entry("file.suite.save", S::MenuSave, Cmd::SuiteSave))
+        .entry(entry("file.suite.save_as", S::MenuSaveAs, Cmd::SuiteSaveAs))
+        .sep()
+        .entry(entry("file.suite.import", S::MenuImport, Cmd::SuiteImport))
+        .entry(entry("file.suite.take", S::MenuTake, Cmd::SuiteTake))
+        .entry(entry(
+            "file.suite.extract",
+            S::MenuExtract,
+            Cmd::SuiteExtract,
+        ))
+        .sep()
+        .entry(entry(
+            "file.suite.branches",
+            S::MenuBranches,
+            Cmd::SuiteBranches,
+        ))
+        .entry(Entry::dock(
+            "file.suite.attachments",
+            Label::Own(eh3d_attachpanel::panel_title()),
+            DockAction::ShowPanel(id::ATTACHMENTS.to_string()),
+        ))
+}
+
 /// The menu bar: File, Edit, View, Tools, Window and Help. The shortcuts of the entries are the ones of the scheme of the program (so a key changed in the settings file is the key of the entry),
 /// and the keys the frame had for the same entries are taken off (F1 is the window of the shortcuts, not the online help).
 pub fn menu_bar(scheme: &Scheme) -> MenuBar<Cmd> {
@@ -258,6 +312,13 @@ pub fn menu_bar(scheme: &Scheme) -> MenuBar<Cmd> {
             }
         }
     }
+    // File: the project of the suite goes with the other files, before "save"
+    let at = file
+        .items
+        .iter()
+        .position(|i| matches!(i, Item::Entry(e) if e.id == "file.save"))
+        .unwrap_or(file.items.len());
+    file.items.insert(at, Item::Submenu(suite_menu()));
     // Edit: what is done to the parts, after the standard entries
     edit = edit
         .sep()
@@ -469,20 +530,23 @@ mod tests {
     }
 
     fn entry<'a>(bar: &'a MenuBar<Cmd>, id: &str) -> &'a Entry<Cmd> {
-        bar.menus
-            .iter()
-            .flat_map(|m| m.items.iter())
-            .find_map(|i| match i {
+        fn find<'a>(items: &'a [Item<Cmd>], id: &str) -> Option<&'a Entry<Cmd>> {
+            items.iter().find_map(|i| match i {
                 Item::Entry(e) if e.id == id => Some(e),
+                Item::Submenu(m) => find(&m.items, id),
                 _ => None,
             })
+        }
+        bar.menus
+            .iter()
+            .find_map(|m| find(&m.items, id))
             .unwrap_or_else(|| panic!("no entry {id}"))
     }
 
     #[test]
     fn the_panels_have_names_that_hold_and_titles_in_the_eight_languages() {
         let d = defs();
-        assert_eq!(d.len(), 12);
+        assert_eq!(d.len(), 13);
         let names: Vec<&str> = d.iter().map(|p| p.id.as_str()).collect();
         assert_eq!(names, id::ALL.to_vec());
         for p in &d {
@@ -641,6 +705,27 @@ mod tests {
             }
             assert!(entry(&bar, "help.online").shortcut.is_none());
         }
+    }
+
+    #[test]
+    fn the_file_menu_holds_the_project_of_the_suite_and_its_attachments() {
+        let ids = bar_ids(&menu_bar(&Scheme::of(SchemeId::Family)));
+        for want in [
+            "file.suite.open",
+            "file.suite.save",
+            "file.suite.save_as",
+            "file.suite.import",
+            "file.suite.take",
+            "file.suite.extract",
+            "file.suite.branches",
+            "file.suite.attachments",
+        ] {
+            assert!(ids.iter().any(|i| i == want), "{want}");
+        }
+        // the words of the shared module come in the order of the frame
+        assert_eq!(s8(S::Menu).0[1], "Proyecto de la suite (.eh3d)");
+        assert_eq!(s8(S::Menu).0[5], "Projeto da suite (.eh3d)");
+        assert_eq!(s8(S::Menu).0[7], "スイートプロジェクト (.eh3d)");
     }
 
     #[test]

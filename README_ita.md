@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.9-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-1216-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-1231-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Controllo di onestà - ciò che funziona davvero oggi:** un workspace Rust con otto librerie e un programma a riga di comando (`phoenix-3dp`) con 1216 test che girano su un computer. Legge e controlla modelli STL, OBJ e 3MF, contiene un catalogo di 120 profili di stampante costruiti da dati pubblici (nessuno provato su una macchina), scrive G-code per i dialetti Marlin, Klipper, RepRapFirmware e Bambu con limiti di temperatura che rifiutano un valore invece di tagliarlo, e pilota stampanti Moonraker e OctoPrint e il server EH3D, ma solo contro simulatori (in memoria e su un socket di questo computer). Taglia un modello chiuso in strati piani con perimetri, riempimento rettilineo e pelli piene (un piccolo slicer con riempimento a griglia e giroide, ponti, supporti semplici, giunzioni, larghezza variabile, sollevamento negli spostamenti, skirt, brim o raft, modalità vaso, strati corti rallentati, retrazione che segue lo spostamento e una stima del tempo con accelerazione; più materiali per altezza con torre di spurgo, stiratura della parte alta, pressure advance, strati la cui altezza segue la forma, un primo strato rientrato contro il piede d'elefante e un limite della portata, ma ancora niente pittura dei colori); la finestra, il telaio ancorabile della suite con cinque aree di lavoro (compilata con `--features gui`), non è stata vista su uno schermo da una persona; nulla è stato eseguito su una stampante reale.
+**Controllo di onestà - ciò che funziona davvero oggi:** un workspace Rust con otto librerie e un programma a riga di comando (`phoenix-3dp`) con 1231 test che girano su un computer. Legge e controlla modelli STL, OBJ e 3MF, contiene un catalogo di 120 profili di stampante costruiti da dati pubblici (nessuno provato su una macchina), scrive G-code per i dialetti Marlin, Klipper, RepRapFirmware e Bambu con limiti di temperatura che rifiutano un valore invece di tagliarlo, e pilota stampanti Moonraker e OctoPrint e il server EH3D, ma solo contro simulatori (in memoria e su un socket di questo computer). Taglia un modello chiuso in strati piani con perimetri, riempimento rettilineo e pelli piene (un piccolo slicer con riempimento a griglia e giroide, ponti, supporti semplici, giunzioni, larghezza variabile, sollevamento negli spostamenti, skirt, brim o raft, modalità vaso, strati corti rallentati, retrazione che segue lo spostamento e una stima del tempo con accelerazione; più materiali per altezza con torre di spurgo, stiratura della parte alta, pressure advance, strati la cui altezza segue la forma, un primo strato rientrato contro il piede d'elefante e un limite della portata, ma ancora niente pittura dei colori); la finestra, il telaio ancorabile della suite con cinque aree di lavoro (compilata con `--features gui`), non è stata vista su uno schermo da una persona; nulla è stato eseguito su una stampante reale.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Versione | `0.0.9` |
 | Maturità | Funzionale |
-| Test | 1216 |
+| Test | 1231 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di tutto ciò è stato eseguito su una stampante, nemmeno su una Bambu Lab A1 o una P1S. |
 
@@ -55,7 +55,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | Collegamento al server | 🟠 | le impostazioni del collegamento e un client del plugin delle stampanti del server sopra il client comune della suite (accesso, rinnovo, nuovi tentativi, errori in otto lingue), provato contro un server in memoria; mai contro il server reale. |
 | Slicer | 🟡 | strati piani di una mesh chiusa, perimetri, riempimento rettilineo, a griglia o giroide, pelli piene, ponti, supporti semplici, giunzioni, larghezza variabile, G-code per dialetto, un'anteprima per strati come dati e una stima del tempo con accelerazione; verificato con proprietà su forme a seme fisso (la plastica depositata è il volume del pezzo, nulla esce dal piatto, nessuna temperatura supera un limite); nessuna stampa ne è uscita su una stampante. |
 | Riga di comando | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) esegue le funzioni delle librerie e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 1216 test passano (`cargo test --workspace`), con casi normali, casi limite, input danneggiati e un seme fisso dove c'è casualità. |
+| Test | 🟡 | 1231 test passano (`cargo test --workspace`), con casi normali, casi limite, input danneggiati e un seme fisso dove c'è casualità. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): un limite è un rifiuto e mai un taglio; il token non si stampa mai; nulla va in panico con i file ricevuti; nessuna revisione indipendente. |
 | Finestra | 🟠 | Scritta con `--features gui` come telaio ancorabile della suite, con cinque aree di lavoro (Prepara, Verifica, Esegui, Configura e Compatto) i cui pannelli si possono togliere, rimettere, spostare, raggruppare in schede, far fluttuare e ripiegare, e una barra dei menu: elenchi di stampanti e filamenti con filtri, il piano per strati con un cursore, la coda del server con un avvio che chiede conferma, un arresto di emergenza, scorciatoie modificabili, una modalità immagine (`--shot`), una vista 3D del piano con i pezzi come solidi ombreggiati, un pannello dei pezzi con orienta in automatico e disponi, elaborazione in background con stime, limiti di temperatura modificabili e un aspetto scuro e uno chiaro; la disposizione è conservata nel file delle impostazioni; la logica è testata senza schermo e il README mostra disegni delle aree di lavoro fatti dal modello, ma i pannelli non sono mai stati disegnati su uno schermo e nessuna persona li ha visti. |
 | Hardware reale | 🔴 | Non provato: nulla di tutto ciò è stato eseguito su una stampante, nemmeno su una Bambu Lab A1 o una P1S. |
@@ -122,7 +122,7 @@ Fotografie della finestra, scattate dal programma stesso con la sua modalità im
 </p>
 
 <p align="center">
-  <img src="images/layouts/setup.svg" alt="Spazio Impostazioni: il progetto e le impostazioni della finestra, con la console sotto." width="100%">
+  <img src="images/layouts/setup.svg" alt="Spazio Impostazioni: il progetto e le impostazioni della finestra con gli allegati come seconda scheda, e la console sotto." width="100%">
 </p>
 
 <p align="center">
@@ -142,6 +142,7 @@ Disegni della disposizione di fabbrica di ogni spazio di lavoro, fatti dal model
 * **Otto lingue:** i testi del programma e la documentazione esistono in inglese, spagnolo, tedesco, francese, italiano, giapponese, cinese e portoghese del Portogallo.
 * **Nessun codice `unsafe`:** `#![forbid(unsafe_code)]` in ogni crate.
 * **Dal modello al file della stampante:** il pezzo si può ruotare, scalare e copiare sul piano, cambiare singole impostazioni, scegliere un processo di partenza e aggiungere il proprio G-code iniziale e finale; ciò che è limitato dalla stampante viene detto con il motivo. Per una stampante Bambu un nome che finisce in `.gcode.3mf` scrive il pacchetto (G-code, checksum, immagine, dati), che `project` controlla e apre. Nessuna stampante ne ha ricevuto uno: il produttore non ne pubblica tutta la struttura.
+* **Progetto della suite (`.eh3d`) con allegati:** un unico file con un ramo per ogni programma della suite, di cui questo programma scrive solo `3dp/`: i pezzi con la loro posizione, le impostazioni di slicing, la stampante, il filamento e il G-code dello slicing. È in File > Progetto della suite e nel comando `project`: aprire, salvare, salvare con nome, importare un modello o un programma conservando l'originale con un rapporto, prendere un modello da un altro ramo con un riferimento che segnala quando l'origine cambia, ed estrarre un ramo; prima di una scrittura che toglierebbe una firma o cambierebbe qualcosa non letto qui viene chiesta conferma. Il pannello «Allegati» tiene dentro il file schede tecniche, manuali, documenti e altri progetti e li mostra (pagine PDF con la libreria PDFium del pacchetto, immagini, testo e il testo dei documenti d'ufficio); programmi, script, file con macro, archivi e tipi sconosciuti chiedono conferma prima di uscire dal progetto, nulla viene eseguito né scaricato. Il G-code di un progetto non viene caricato nella finestra e nulla viene inviato a una stampante. Non provato a schermo da una persona.
 
 ## 🔒 Sicurezza e protezione
 
@@ -178,13 +179,17 @@ phoenix-3dp resins [--kind KIND] [--printer ID] [--part-ml ML]
 phoenix-3dp fit MODEL --printer ID [--process LEVEL] [--settings FILE] [--set "key=value;key=value"] [--filament ID] [--nozzle MM] [--hardened] [--turn DEG] [--scale PERCENT] [--copies N] [--start-gcode FILE] [--end-gcode FILE]
 phoenix-3dp slice MODEL --printer ID [--process LEVEL] [--settings FILE] [--set "key=value;key=value"] [--filament ID] [--nozzle MM] [--hardened] [--turn DEG] [--scale PERCENT] [--copies N] [--start-gcode FILE] [--end-gcode FILE] [--report] [--out FILE.gcode|FILE.gcode.3mf] [--save-settings FILE] [--force]
 phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.gcode|FILE.sl1 [--thumbnail FILE] [--extract-gcode FILE] [--force] [--bottom-layers N] [--lift MM] [--light-power MW]
+phoenix-3dp project list FILE.eh3d [--json]
+phoenix-3dp project save FILE.eh3d [--model MODEL] [--settings FILE] [--printer ID] [--filament ID] [--gcode FILE.gcode] [--name NAME] [--id ID]
+phoenix-3dp project import FILE.eh3d MODEL|FILE.gcode [--name NAME] [--id ID]
+phoenix-3dp project open FILE.eh3d [--into DIR] | take FILE.eh3d BRANCH NAME | extract FILE.eh3d BRANCH DIR
 phoenix-3dp version
 phoenix-3dp gui [SETTINGS] [--open MODEL] [--printer ID] [--shot FILE.png [--window TAB] [--size WxH] [--slice] [--demo] [--peek]]  the window (a build with --features gui)
 ```
 
 ## ⚙️ Configurazione
 
-Le impostazioni sono un file di righe `chiave = valore` (`--config FILE`): i limiti dei lettori (`limit_*`), il collegamento al server (`server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries`, `server_mdns`, `server_max_answer_mib`), `direct_mode` (autonomo, spento per impostazione predefinita), `lang` e `default_printer`, i prezzi (`price_filament_per_kg`, `price_resin_per_litre`, `resin_waste_percent`), il rapporto (`report_slowest_layers`, `report_short_layer_s`), la coda (`queue_refuse_duplicates`, `queue_max_waiting`) e fin dove si cerca in un G-code semplice (`limit_gcode_head_kib`, `limit_gcode_tail_kib`, `limit_gcode_thumbnails`). Un profilo di stampante è un altro file dello stesso tipo (`examples/my-printer.cfg`). Una chiave sconosciuta o un valore fuori intervallo è un errore che nomina la sua riga; tutti i valori predefiniti sono prudenti. Vedi `examples/phoenix-3dp.cfg`. La finestra conserva le proprie scelte nello stesso file: `theme` (`dark` o `light`), `grid_mm`, `arrange_gap_mm`, `arrange_on_add`, `ui_hints`, `peek_wall_alpha` (quanto sono opache le pareti dell'anteprima quando si guarda dentro), la disposizione dei pannelli in righe che iniziano con `dock.` e, per ogni stampante di cui sono stati cambiati i limiti di temperatura, `printer_limits_<id>`.
+Le impostazioni sono un file di righe `chiave = valore` (`--config FILE`): i limiti dei lettori (`limit_*`), il collegamento al server (`server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries`, `server_mdns`, `server_max_answer_mib`), `direct_mode` (autonomo, spento per impostazione predefinita), `lang` e `default_printer`, i prezzi (`price_filament_per_kg`, `price_resin_per_litre`, `resin_waste_percent`), il rapporto (`report_slowest_layers`, `report_short_layer_s`), la coda (`queue_refuse_duplicates`, `queue_max_waiting`) e fin dove si cerca in un G-code semplice (`limit_gcode_head_kib`, `limit_gcode_tail_kib`, `limit_gcode_thumbnails`). Un profilo di stampante è un altro file dello stesso tipo (`examples/my-printer.cfg`). Una chiave sconosciuta o un valore fuori intervallo è un errore che nomina la sua riga; tutti i valori predefiniti sono prudenti. Vedi `examples/phoenix-3dp.cfg`. La finestra conserva le proprie scelte nello stesso file: `theme` (`dark` o `light`), `grid_mm`, `arrange_gap_mm`, `arrange_on_add`, `ui_hints`, `peek_wall_alpha` (quanto sono opache le pareti dell'anteprima quando si guarda dentro), la disposizione dei pannelli in righe che iniziano con `dock.` e, per ogni stampante di cui sono stati cambiati i limiti di temperatura, `printer_limits_<id>`. I limiti degli allegati di un progetto sono `attachments.max_mb` (il file più grande che si allega o si estrae, 1024) e `viewer.max_attachment_mb`, `viewer.max_pdf_mb`, `viewer.max_image_mb`, `viewer.max_text_mb` e `viewer.max_office_mb` (ciò che si mostra nel programma), ciascuno un numero intero da 1 a 4096.
 
 ## 🚀 Avvio rapido
 
@@ -202,11 +207,11 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Test
 
-La suite ha 1216 test (`cargo test --workspace`, eseguiti su Windows e Linux nella CI), con seme fisso dove c'è casualità. Verificano i casi normali, i casi limite e gli input danneggiati: file tagliati, rumore e intestazioni ostili non vanno mai in panico, e nessuna temperatura di nessuna stampante del catalogo supera il suo limite. La CI esegue anche `cargo fmt --all --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 1231 test (`cargo test --workspace`, eseguiti su Windows e Linux nella CI), con seme fisso dove c'è casualità. Verificano i casi normali, i casi limite e gli input danneggiati: file tagliati, rumore e intestazioni ostili non vanno mai in panico, e nessuna temperatura di nessuna stampante del catalogo supera il suo limite. La CI esegue anche `cargo fmt --all --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 
-La versione vive in `Cargo.toml` e in `eh3d.project.json`; ogni versione ha la sua voce in [CHANGELOG.md](CHANGELOG.md). `build.bat` / `build.sh` compilano il programma, `test.bat` / `test.sh` eseguono i test e `run.bat` / `run.sh` lo eseguono con un esempio. Le versioni sono pubblicate su GitHub con programmi già pronti per Windows (64 e 32 bit), Linux (64 bit) e macOS (Apple silicon e Intel): ogni pacchetto, `phoenix-3dp-<versione>-<sistema>.zip` o `.tar.gz`, arriva con i suoi file `.sha256` e `.sig`.
+La versione vive in `Cargo.toml` e in `eh3d.project.json`; ogni versione ha la sua voce in [CHANGELOG.md](CHANGELOG.md). `build.bat` / `build.sh` compilano il programma, `test.bat` / `test.sh` eseguono i test e `run.bat` / `run.sh` lo eseguono con un esempio. Le versioni sono pubblicate su GitHub con programmi già pronti per Windows (64 e 32 bit), Linux (64 bit) e macOS (Apple silicon e Intel): ogni pacchetto, `phoenix-3dp-<versione>-<sistema>.zip` o `.tar.gz`, arriva con i suoi file `.sha256` e `.sig`. I pacchetti contengono accanto al programma la libreria PDF del visualizzatore degli allegati (PDFium) con le sue licenze e avvertenze.
 
 ## 📂 Struttura del repository
 
@@ -232,6 +237,9 @@ EH3D-PHOENIX-3DP/
 │   ├── lib.rs                                   la libreria del programma: ciò che usano la riga di comando e la finestra
 │   ├── main.rs                                  la riga di comando e l'avvio della finestra
 │   ├── cli.rs                                   i comandi: printers, info, check-profile, convert, filaments, resins, slice, project, version
+│   ├── eh3dfile.rs                              il ramo 3dp/ di un progetto della suite
+│   ├── eh3dcli.rs                               i comandi di un progetto della suite
+│   ├── gui/suite.rs                             la finestra del progetto della suite
 │   ├── app_state.rs                             lo stato della finestra senza finestra: schede, stampante, modello, rapporti, dispositivo simulato
 │   ├── config.rs                                il file di impostazioni: limiti, collegamento al server, lingua, stampante predefinita, prezzi, rapporto e coda
 │   ├── demo.rs                                  il modello dimostrativo per le immagini: un calice tornito da pochi raggi
@@ -256,6 +264,7 @@ EH3D-PHOENIX-3DP/
 │   └── gui.rs                                   la finestra (egui, funzione gui): barre, pannelli e vista 3D; trasmette ciò che fa la persona
 ├── tests/
 │   ├── end_to_end.rs                            test da un modello a un programma a una stampante simulata
+│   ├── eh3dfile.rs                              test del progetto della suite
 │   ├── examples.rs                              test che i file di examples/ funzionino con i comandi
 │   ├── fuzz.rs                                  test di fuzzing con seme fisso: file tagliati, danneggiati e ostili
 │   ├── readme.rs                                test che i README dicano la verità: il numero di test e i comandi

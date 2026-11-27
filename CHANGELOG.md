@@ -4,6 +4,11 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A project of the suite (`.eh3d`)**, one file with a branch for each program, of which PHOENIX-3DP writes `3dp/` only: the parts with their placement, the settings of the slice, the printer, the filament and the G-code of the slice. Every other branch keeps its bytes. It is in File > Suite project of the window and in `project list`, `save`, `import`, `open`, `take` and `extract` of the command line, in the eight languages in the window. A model or a G-code program of another program is imported keeping the original and a report; a model taken from another branch keeps a reference that tells when its source changes; a write that would remove a signature, change another project or what was not read here is asked about first.
+- **The panel «Attachments»:** data sheets, manuals, documents and other projects are kept inside the project, linked to a part by its reference, and shown beside the list (PDF pages, pictures, text and the text of office documents). Programs, scripts, files with macros, archives and unknown kinds ask before they leave the project; nothing is run and nothing is downloaded. Its limits are `attachments.max_mb` and `viewer.max_*_mb` of the settings file. The packages carry the PDF library (PDFium) with its licences.
+- Files dropped on the window are attached on the panel or opened as models and projects.
+- The G-code of a project is not loaded into the window, a work that changed loses its old G-code, and nothing is sent to a printer. Not tried on a screen by a person.
+
 ## [0.0.9] - Machine limits, your own start and end G-code, and a package for Bambu printers not tried on a printer yet
 
 - **What the tag v0.3.6 of EH3D-COMMON brings to the window:** tabs that do not fit go to further rows with their whole name and the window About reads on the light theme. The photographs of the window in the README are new.

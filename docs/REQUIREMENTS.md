@@ -2,7 +2,7 @@
 
 This register is the single source of the state of each capability: `STATUS.md` and the README files cite it and never state a state that it does not. A state is one of `planned`, `prototype`, `implemented` and `validated`. `validated` means that a person has run the capability on a real machine and the evidence of the manifest says `bench` or `field`; nothing here is validated, because nothing of this program has run on a real printer, a real server or a screen: the printers are simulators (in memory and on a socket of the same computer), the server is a double, and every profile of the catalog says `verified = false`.
 
-The register has 135 requirements: 121 implemented, 8 prototype, 6 planned and 0 validated. By progress: 121 done, 8 partial, 2 pending and 4 blocked. High coverage is not proof of correctness, so each row says how it is checked: the test that names it, and what it shows.
+The register has 142 requirements: 128 implemented, 8 prototype, 6 planned and 0 validated. By progress: 128 done, 8 partial, 2 pending and 4 blocked. High coverage is not proof of correctness, so each row says how it is checked: the test that names it, and what it shows.
 
 ## How to read the register
 
@@ -204,3 +204,15 @@ The check is `tests/reqs.rs`: it reads this table, finds each test and fails whe
 | P3DP-133 | A change of the printer, the filament, a setting or a block marks the plan as out of date. | implemented | done | host-test | `src/held::a_change_of_the_printer_the_filament_a_setting_or_a_block_makes_another_recipe` | - |
 | P3DP-134 | A starting process is put over the settings whole or not at all. | implemented | done | host-test | `src/machine_view::a_starting_process_is_put_over_the_settings_whole_or_not_at_all` | - |
 | P3DP-135 | The start and end G-code of the person are read from their files, and a file that cannot be read is named. | implemented | done | host-test | `src/held::the_blocks_of_the_person_are_read_or_the_file_that_cannot_be_read_is_named` | - |
+
+## The project of the suite and its attachments
+
+| ID | Requirement | State | Progress | Evidence | Test | Limits |
+|---|---|---|---|---|---|---|
+| P3DP-136 | The branch `3dp/` keeps the parts with their placement, the settings, the printer and the filament, comes back as it was, is not written again when nothing changed and leaves every other branch as it is. | implemented | done | host-test | `eh3dfile::what_is_saved_comes_back_and_saving_it_again_writes_nothing` | - |
+| P3DP-137 | The G-code of a work whose parts, settings, printer or filament changed leaves the project. | implemented | done | host-test | `eh3dfile::a_work_that_changed_loses_its_old_g_code_and_keeps_the_rest` | - |
+| P3DP-138 | A model or a G-code program of another program is imported with the original kept and a report, and a file that cannot be read writes nothing. | implemented | done | host-test | `eh3dfile::an_imported_model_is_kept_with_a_report_and_is_the_part_of_the_bed` | - |
+| P3DP-139 | A model taken from another branch is a part of the bed with a reference that tells when its source changes, until the part is gone. | implemented | done | host-test | `eh3dfile::a_model_taken_from_cad_keeps_its_reference_until_the_part_is_gone` | - |
+| P3DP-140 | The command `project` saves, lists, opens and extracts, refuses a damaged file and puts nothing but the keys of the slicer from a settings file in a project. | implemented | done | host-test | `eh3dfile::the_command_saves_lists_opens_and_extracts_and_a_damaged_file_is_an_error` | - |
+| P3DP-141 | The window asks before a write that removes a signature or touches a project it did not open, and does not throw away what the project does not have. | implemented | done | host-test | `src/gui/suite::a_signed_branch_is_asked_about_and_escape_says_no` | - |
+| P3DP-142 | The limits of the attachments are read from the settings file, checked and written back. | implemented | done | host-test | `src/config::the_limits_of_the_attachments_are_read_checked_and_written_back` | - |

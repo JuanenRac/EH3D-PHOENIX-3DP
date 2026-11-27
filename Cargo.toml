@@ -45,7 +45,7 @@ path = "tools/workspace_pictures.rs"
 [features]
 default = []
 # the window (egui): `cargo run --release --features gui`
-gui = ["dep:eframe", "dep:png", "eh3d-view/gui", "eh3d-dock/gui"]
+gui = ["dep:eframe", "dep:png", "eh3d-view/gui", "eh3d-dock/gui", "eh3d-attachpanel/gui"]
 
 [dependencies]
 p3dp-core = { path = "crates/p3dp-core" }
@@ -70,6 +70,15 @@ eh3d-printmaterials = { version = ">=0.0.1", path = "../EH3D-COMMON/crates/print
 # the catalog of printers of the suite, shown by the commands `machines` and `machine`
 eh3d-printers = { version = ">=0.0.1", path = "../EH3D-COMMON/crates/printers" }
 
+# the project of the suite (.eh3d), of which this program writes the branch 3dp
+eh3d-project = { version = ">=0.0.1", path = "../EH3D-COMMON/crates/project" }
+
+# the panel of the attachments of that project, with its viewer (PDF pages with the PDFium library placed beside the program)
+eh3d-attachpanel = { version = ">=0.0.1", path = "../EH3D-COMMON/crates/attachpanel" }
+
+# the record of the parts in the branch and the list of branches as JSON
+serde_json = "1"
+
 # the window
 eframe = { version = "0.37.0", default-features = false, features = ["glow", "default_fonts"], optional = true }
 
@@ -79,6 +88,10 @@ png = { version = "0.17", optional = true }
 # the window of Linux needs a windowing system chosen at build time (X11 and Wayland); Windows and macOS have their own
 [target.'cfg(target_os = "linux")'.dependencies]
 eframe = { version = "0.37.0", default-features = false, features = ["glow", "default_fonts", "x11", "wayland"], optional = true }
+
+[dev-dependencies]
+# the tests of the project of the suite make their own projects with branches of other programs
+eh3d-container = { version = ">=0.0.1", path = "../EH3D-COMMON/crates/container" }
 
 # the icon and the version information of the Windows executable (build.rs; nothing on other systems)
 [target.'cfg(windows)'.build-dependencies]
