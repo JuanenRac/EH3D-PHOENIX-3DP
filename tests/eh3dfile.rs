@@ -10,8 +10,8 @@ use eh3d_phoenix_3dp::cli;
 use eh3d_phoenix_3dp::eh3dfile::{self, Contents, Held, Identity, Part, BRANCH, PLATE};
 use eh3d_project::{BranchUpdate, NewProject, OpenOptions, Project, SaveOptions, Writer};
 use p3dp_core::mesh::cube;
-use p3dp_core::Limits;
-use p3dp_formats::{write_mesh, Format};
+use p3dp_core::{Limits, Mesh};
+use p3dp_formats::{read_mesh, write_mesh, Format};
 use p3dp_slicer::SliceConfig;
 
 /// A folder of its own for one test.
@@ -29,6 +29,11 @@ fn text(path: &Path) -> String {
 
 fn stl(size: f64) -> Vec<u8> {
     write_mesh(&cube(size), Format::Stl, "").unwrap()
+}
+
+/// The mesh the program reads from the STL of a cube.
+fn read_stl(size: f64) -> Mesh {
+    read_mesh(&stl(size), Some("cube.stl"), &Limits::default()).unwrap()
 }
 
 fn file(dir: &Path, name: &str, bytes: &[u8]) -> PathBuf {
@@ -181,7 +186,10 @@ fn an_imported_model_is_kept_with_a_report_and_is_the_part_of_the_bed() {
     assert_eq!(report.source.name, "bracket.stl");
     let held = eh3dfile::held(&project, &limits).unwrap();
     assert_eq!(held.files["origin/bracket.stl"], stl(15.0));
-    assert_eq!(held.parts, vec![Part::loaded("bracket.stl", cube(15.0))]);
+    assert_eq!(
+        held.parts,
+        vec![Part::loaded("bracket.stl", read_stl(15.0))]
+    );
     // the record of the bed refers to the original and writes no second copy
     assert!(!held.files.keys().any(|n| n.ends_with(".3mf")));
 
@@ -190,7 +198,10 @@ fn an_imported_model_is_kept_with_a_report_and_is_the_part_of_the_bed() {
     eh3dfile::import_file(&project, &program, &Identity::default(), &limits).unwrap();
     let held = eh3dfile::held(&project, &limits).unwrap();
     assert_eq!(held.program.as_deref(), Some("origin/bracket.gcode"));
-    assert_eq!(held.parts, vec![Part::loaded("bracket.stl", cube(15.0))]);
+    assert_eq!(
+        held.parts,
+        vec![Part::loaded("bracket.stl", read_stl(15.0))]
+    );
     assert!(!held.files.contains_key("origin/bracket.stl"));
 
     for (name, bytes) in [("notes.txt", &b"x"[..]), ("broken.stl", &b"garbage"[..])] {
@@ -214,7 +225,7 @@ fn a_model_taken_from_cad_keeps_its_reference_until_the_part_is_gone() {
     let (target, _) = eh3dfile::take(&project, "cad", "box.stl", &limits).unwrap();
     assert_eq!(target, "taken/cad/box.stl");
     let held = eh3dfile::held(&project, &limits).unwrap();
-    assert_eq!(held.parts, vec![Part::loaded("box.stl", cube(8.0))]);
+    assert_eq!(held.parts, vec![Part::loaded("box.stl", read_stl(8.0))]);
     // a file the program cannot read is kept and is no part
     eh3dfile::take(&project, "cad", "part.step", &limits).unwrap();
     assert_eq!(eh3dfile::held(&project, &limits).unwrap().parts.len(), 1);
@@ -268,29 +279,24 @@ fn a_record_of_the_bed_that_is_not_valid_is_refused() {
         r#"{"parts":[{"file":"plate/part-01.3mf","name":"a","pos":null,"rot":[0,0,0],"scale":[0,1,1]}]}"#,
         r#"{"parts":[{"file":"plate/part-01.3mf","name":"a","pos":[1e9,0],"rot":[0,0,0],"scale":[1,1,1]}]}"#,
     ] {
-        let held = eh3dfile::held(&project, &limits);
-        let mut files: Vec<(String, Vec<u8>)> = match held {
-            Ok(h) => h.files.into_iter().collect(),
-            Err(_) => Vec::new(),
-        };
-        if files.is_empty() {
-            let mut p = Project::open(&project, &OpenOptions::default()).unwrap();
-            let names: Vec<String> = p
-                .branch(BRANCH)
-                .unwrap()
-                .files
-                .keys()
-                .filter(|n| n.as_str() != "branch.json")
-                .cloned()
-                .collect();
-            files = names
-                .into_iter()
-                .map(|n| {
-                    let bytes = p.read_entry(BRANCH, &n).unwrap();
-                    (n, bytes)
-                })
-                .collect();
-        }
+        // the files of the branch as they are, whether or not the record can be read
+        let mut opened = Project::open(&project, &OpenOptions::default()).unwrap();
+        let names: Vec<String> = opened
+            .branch(BRANCH)
+            .unwrap()
+            .files
+            .keys()
+            .filter(|n| n.as_str() != "branch.json")
+            .cloned()
+            .collect();
+        let mut files: Vec<(String, Vec<u8>)> = names
+            .into_iter()
+            .map(|n| {
+                let bytes = opened.read_entry(BRANCH, &n).unwrap();
+                (n, bytes)
+            })
+            .collect();
+        drop(opened);
         for (name, bytes) in &mut files {
             if name == PLATE {
                 *bytes = record.as_bytes().to_vec();

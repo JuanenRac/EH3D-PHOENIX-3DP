@@ -112,6 +112,32 @@ impl App {
         self.suite_fail(line)
     }
 
+    /// A refusal of the shared module; the one of a file that another program saved is said in the language of the window.
+    fn suite_refusal(&mut self, why: String, target: &Path) -> Step {
+        if suitecore::is_changed_refusal(&why) {
+            let said = Said(S::ChangedOnDisk, vec![name_of(target)]);
+            let line = said.text(self.suite_code());
+            return self.suite_fail(line);
+        }
+        self.suite_fail(why)
+    }
+
+    /// Whether the project of the window still holds what was read; `Err` with the step of the refusal when another program saved it. Asked right before a write, because the person
+    /// may have taken long to answer a question.
+    fn suite_unchanged(&mut self, target: &Path) -> Result<(), Step> {
+        let own = self
+            .suite
+            .file
+            .as_deref()
+            .is_some_and(|c| suitecore::same_file(c, target));
+        match self.suite.seen.clone().filter(|_| own) {
+            Some(seen) => {
+                suitecore::check_unchanged(target, &seen).map_err(|e| self.suite_refusal(e, target))
+            }
+            None => Ok(()),
+        }
+    }
+
     /// Reads the project again to tell what is out of date now. What the window holds does not change.
     pub(super) fn suite_refresh(&mut self) {
         if let Some(file) = &self.suite.file {
@@ -421,7 +447,7 @@ impl App {
                 });
                 Some(Step::Asked)
             }
-            Err(e) => Some(self.suite_fail(e)),
+            Err(e) => Some(self.suite_refusal(e, target)),
         }
     }
 
@@ -450,6 +476,9 @@ impl App {
             if let Some(step) = self.suite_ask(&file, action) {
                 return step;
             }
+        }
+        if let Err(step) = self.suite_unchanged(&file) {
+            return step;
         }
         let limits = self.state.config.limits.clone();
         let done = match action {
@@ -487,7 +516,11 @@ impl App {
             .is_some_and(|c| suitecore::same_file(c, target));
         let copy_from = current.filter(|c| !target.exists() && c.is_file());
         // the file that will be written, or the one that is copied to it, is the project of the window: only what changed since goes
-        if same || copy_from.is_some() {
+        let untouched = match (&self.suite.file, &self.suite.seen) {
+            (Some(file), Some(seen)) => suitecore::check_unchanged(file, seen).is_ok(),
+            _ => true,
+        };
+        if (same || copy_from.is_some()) && untouched {
             if let Some(loaded) = &self.suite.loaded {
                 drop_untouched(&mut contents, loaded);
             }
@@ -520,6 +553,11 @@ impl App {
         }
         if !contents.is_empty() && !agreed {
             if let Some(step) = self.suite_ask(target, action) {
+                return step;
+            }
+        }
+        if !contents.is_empty() {
+            if let Err(step) = self.suite_unchanged(target) {
                 return step;
             }
         }
@@ -1072,6 +1110,39 @@ mod tests {
         assert_eq!(a.suite_save(), Step::Asked);
         assert_eq!(a.suite_confirm(), Step::Done);
         assert_ne!(fs::read(&project).unwrap(), bytes);
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn a_project_saved_by_another_program_is_not_written_over() {
+        let d = folder("changed");
+        let project = d.join("job.eh3d");
+        let mut a = with_part(&d, "part.stl");
+        assert_eq!(a.suite_save_as(&project), Step::Done);
+        // another program saves the file: the bytes arrive without this program writing them
+        let elsewhere = d.join("elsewhere.eh3d");
+        foreign(&elsewhere);
+        fs::copy(&elsewhere, &project).unwrap();
+        let theirs = fs::read(&project).unwrap();
+        a.studio.plate.selected_mut().unwrap().pos = [30.0, 30.0];
+        assert_eq!(a.suite_save(), Step::Refused);
+        assert!(
+            problem(&a).contains("another program saved it"),
+            "{}",
+            problem(&a)
+        );
+        assert_eq!(fs::read(&project).unwrap(), theirs);
+        // saved after the question was shown: the answer writes nothing either
+        a.suite.pending = Some(Pending {
+            action: Action::Save(project.clone()),
+            warnings: Vec::new(),
+        });
+        assert_eq!(a.suite_confirm(), Step::Refused);
+        assert_eq!(fs::read(&project).unwrap(), theirs);
+        // another name takes the work of the window
+        assert_eq!(a.suite_save_as(&d.join("mine.eh3d")), Step::Done);
+        let held = eh3dfile::held(&d.join("mine.eh3d"), &a.state.config.limits).unwrap();
+        assert_eq!(held.parts, a.suite_parts());
         let _ = fs::remove_dir_all(&d);
     }
 

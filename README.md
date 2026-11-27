@@ -13,12 +13,12 @@
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
   <img src="https://img.shields.io/badge/Version-0.0.9-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-4CAF50.svg" alt="Maturity">
-  <img src="https://img.shields.io/badge/Tests-1231-4CAF50.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-1232-4CAF50.svg" alt="Tests">
 </p>
 
 ---
 
-**Honesty check - what actually runs today:** a Rust workspace of eight libraries and a command line program (`phoenix-3dp`) with 1231 tests that run on a computer. It reads STL, OBJ and 3MF models and checks them, holds a catalog of 120 printer profiles built from public data (none of them tried on a machine), writes G-code for the Marlin, Klipper, RepRapFirmware and Bambu dialects with temperature limits that refuse a value instead of cutting it down, and drives Moonraker and OctoPrint printers and the EH3D server, but only against simulators (in memory, and on a socket of this computer). It slices a closed model into flat layers with perimeters, a rectilinear infill and solid skins (a small slicer with grid and gyroid infill, bridges, plain supports, seams, variable width, a lift on travel, a skirt, a brim or a raft, a vase mode, slower short layers, retraction that follows the travel and an estimate of the time with acceleration; several materials divided by height with a purge tower, ironing of the top, pressure advance, layers that follow the shape, a first layer drawn in against the flared foot and a limit of the flow, but no painting of colours yet); the window, the docking frame of the suite with five workspaces (built with `--features gui`), has not been looked at on a screen by a person; nothing has run on a real printer.
+**Honesty check - what actually runs today:** a Rust workspace of eight libraries and a command line program (`phoenix-3dp`) with 1232 tests that run on a computer. It reads STL, OBJ and 3MF models and checks them, holds a catalog of 120 printer profiles built from public data (none of them tried on a machine), writes G-code for the Marlin, Klipper, RepRapFirmware and Bambu dialects with temperature limits that refuse a value instead of cutting it down, and drives Moonraker and OctoPrint printers and the EH3D server, but only against simulators (in memory, and on a socket of this computer). It slices a closed model into flat layers with perimeters, a rectilinear infill and solid skins (a small slicer with grid and gyroid infill, bridges, plain supports, seams, variable width, a lift on travel, a skirt, a brim or a raft, a vase mode, slower short layers, retraction that follows the travel and an estimate of the time with acceleration; several materials divided by height with a purge tower, ironing of the top, pressure advance, layers that follow the shape, a first layer drawn in against the flared foot and a limit of the flow, but no painting of colours yet); the window, the docking frame of the suite with five workspaces (built with `--features gui`), has not been looked at on a screen by a person; nothing has run on a real printer.
 
 ---
 
@@ -33,7 +33,7 @@
 |---|---|
 | Version | `0.0.9` |
 | Maturity | Functional |
-| Tests | 1231 |
+| Tests | 1232 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a printer, not even on a Bambu Lab A1 or a P1S. |
 
@@ -55,7 +55,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Server link | 🟠 | the settings of the link and a client of the printer plugin of the server over the common client of the suite (login, renewal, retries, errors in eight languages), tried against a server in memory; never against the real server. |
 | Slicer | 🟡 | flat layers of a closed mesh, perimeters, rectilinear, grid or gyroid infill, solid skins, bridges, plain supports, seams, variable width, G-code per dialect, a preview by layers as data and an estimate of the time with acceleration; checked with properties on shapes from a fixed seed (the plastic laid down is the volume of the part, nothing leaves the bed, no temperature goes past a limit); no print has come out of it on a printer. |
 | Command line | 🟡 | `phoenix-3dp` (`printers`, `info`, `check-profile`, `convert`, `filaments`, `resins`, `slice`, `project`, `version`) runs the functions of the libraries and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 1231 tests pass (`cargo test --workspace`), with normal cases, edge cases, damaged input and a fixed seed wherever they are random. |
+| Tests | 🟡 | 1232 tests pass (`cargo test --workspace`), with normal cases, edge cases, damaged input and a fixed seed wherever they are random. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): a limit is a refusal and never a trim; the token never prints; nothing panics on the files it is given; no independent review. |
 | Window | 🟠 | Written with `--features gui` as the docking frame of the suite, with five workspaces (Prepare, Review, Run, Setup and Compact) whose panels can be taken away, put back, moved, tabbed, floated and folded, and a menu bar: lists of printers and filaments with filters, the plan by layers with a slider, the queue of the server with a start that needs a confirmation, an emergency stop, shortcuts that can be changed, a picture mode (`--shot`), a 3D view of the bed with the parts as shaded solids, a panel of the parts with auto-orient and arrange, slicing in the background with the estimates, temperature limits that can be edited and a dark and a light look; the arrangement is kept in the settings file; the logic is tested without a screen and the README shows drawings of the workspaces made from the model, but the panels have never been drawn on a screen and no person has looked at them. |
 | Real hardware | 🔴 | Not tried: nothing here has run on a printer, not even on a Bambu Lab A1 or a P1S. |
@@ -110,6 +110,10 @@ Photographs of the window, taken by the program itself with its picture mode (`-
 </p>
 
 <p align="center">
+  <img src="images/screenshots/attachments.png" alt="Attachments: a project of the suite open, with the list of its attachments, a document with macros marked as dangerous and the project in sight under the top bar" width="100%">
+</p>
+
+<p align="center">
   <img src="images/layouts/prepare.svg" alt="Prepare workspace: the menu bar on top; the print settings and the materials as tabs on the left, the 3D view in the middle above the console and the G-code tabs, and the objects and the printer as tabs on the right." width="100%">
 </p>
 
@@ -142,7 +146,7 @@ Drawings of the factory arrangement of each workspace, made from the model of th
 * **Eight languages:** the texts of the program and the documentation exist in English, Spanish, German, French, Italian, Japanese, Chinese and European Portuguese.
 * **No unsafe code:** `#![forbid(unsafe_code)]` in every crate.
 * **From the model to the file of the printer:** the part can be turned, sized and copied on the bed, single settings changed, a starting process chosen and your own start and end G-code added; what is held to the printer is told with its reason. For a Bambu printer a name ending in `.gcode.3mf` writes the package (G-code, checksum, picture, figures), which `project` checks and opens. No printer has been given one: the maker does not publish its whole layout.
-* **Project of the suite (`.eh3d`) with attachments:** one file with a branch for each program of the suite, of which this program writes `3dp/` only: the parts with their placement, the settings of the slice, the printer, the filament and the G-code of the slice. It is in File > Suite project and in the command `project`: open, save, save as, import a model or a program keeping the original with a report, take a model of another branch with a reference that tells when its source changes, extract a branch; a write that would remove a signature or change what was not read here is asked about first. The panel «Attachments» keeps data sheets, manuals, documents and other projects inside the file and shows them (PDF pages with the PDFium library of the package, pictures, text and the text of office documents); programs, scripts, files with macros, archives and unknown kinds ask before they leave the project, nothing is run and nothing is downloaded. The G-code of a project is not loaded into the window and nothing is sent to a printer. Not tried on a screen by a person.
+* **Project of the suite (`.eh3d`) with attachments:** one file with a branch for each program of the suite, of which this program writes `3dp/` only: the parts with their placement, the settings of the slice, the printer, the filament and the G-code of the slice. It is in File > Suite project and in the command `project`: open, save, save as, import a model or a program keeping the original with a report, take a model of another branch with a reference that tells when its source changes, extract a branch; a write that would remove a signature or change what was not read here is asked about first, and a project that another program saved meanwhile is not written over. The panel «Attachments» keeps data sheets, manuals, documents and other projects inside the file and shows them (PDF pages with the PDFium library of the package, pictures, text and the text of office documents); programs, scripts, files with macros, archives and unknown kinds ask before they leave the project, nothing is run and nothing is downloaded. The G-code of a project is not loaded into the window and nothing is sent to a printer. Not tried on a screen by a person.
 
 ## 🔒 Security & Safety
 
@@ -189,7 +193,7 @@ phoenix-3dp gui [SETTINGS] [--open MODEL] [--printer ID] [--shot FILE.png [--win
 
 ## ⚙️ Configuration
 
-The settings are one file of `key = value` lines (`--config FILE`): the limits of the readers (`limit_*`), the link to the server (`server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries`, `server_mdns`, `server_max_answer_mib`), `direct_mode` (stand-alone, off by default), `lang` and `default_printer`, the prices (`price_filament_per_kg`, `price_resin_per_litre`, `resin_waste_percent`), the report (`report_slowest_layers`, `report_short_layer_s`), the queue (`queue_refuse_duplicates`, `queue_max_waiting`) and how far a plain G-code file is searched (`limit_gcode_head_kib`, `limit_gcode_tail_kib`, `limit_gcode_thumbnails`). A printer profile is another file of the same kind (`examples/my-printer.cfg`). A key that is not known or a value out of range is an error that names its line; every default is conservative. See `examples/phoenix-3dp.cfg`. The window keeps its own choices in the same file: `theme` (`dark` or `light`), `grid_mm`, `arrange_gap_mm`, `arrange_on_add`, `ui_hints`, `peek_wall_alpha` (how opaque the walls of the preview are when you look inside), the arrangement of the panels in lines that start with `dock.` and, for each printer whose temperature limits were changed, `printer_limits_<id>`. The limits of the attachments of a project are `attachments.max_mb` (the largest file attached or taken out, 1024) and `viewer.max_attachment_mb`, `viewer.max_pdf_mb`, `viewer.max_image_mb`, `viewer.max_text_mb` and `viewer.max_office_mb` (what is shown inside), each a whole number from 1 to 4096.
+The settings are one file of `key = value` lines (`--config FILE`): the limits of the readers (`limit_*`), the link to the server (`server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries`, `server_mdns`, `server_max_answer_mib`), `direct_mode` (stand-alone, off by default), `lang` and `default_printer`, the prices (`price_filament_per_kg`, `price_resin_per_litre`, `resin_waste_percent`), the report (`report_slowest_layers`, `report_short_layer_s`), the queue (`queue_refuse_duplicates`, `queue_max_waiting`) and how far a plain G-code file is searched (`limit_gcode_head_kib`, `limit_gcode_tail_kib`, `limit_gcode_thumbnails`). A printer profile is another file of the same kind (`examples/my-printer.cfg`). A key that is not known or a value out of range is an error that names its line; every default is conservative. See `examples/phoenix-3dp.cfg`. The window keeps its own choices in the same file: `theme` (`dark` or `light`), `grid_mm`, `arrange_gap_mm`, `arrange_on_add`, `ui_hints`, `peek_wall_alpha` (how opaque the walls of the preview are when you look inside), the arrangement of the panels in lines that start with `dock.` and, for each printer whose temperature limits were changed, `printer_limits_<id>`. The limits of the attachments of a project are `attachments.max_mb` (the largest file attached or taken out, 1024) and `viewer.max_attachment_mb`, `viewer.max_pdf_mb`, `viewer.max_image_mb`, `viewer.max_text_mb`, `viewer.max_office_mb` and `viewer.max_preview_mb` (what is shown inside), each a whole number from 1 to 4096.
 
 ## 🚀 Quick start
 
@@ -207,7 +211,7 @@ cargo run --release --features gui -- gui   # the window
 
 ## 🧪 Testing
 
-The suite has 1231 tests (`cargo test --workspace`, run on Windows and Linux in the CI), with a fixed seed wherever they are random. They check the normal cases, the edge cases and damaged input: cut files, garbage and hostile headers never panic, and no temperature of any printer of the catalog goes past its limit. The CI also runs `cargo fmt --all --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 1232 tests (`cargo test --workspace`, run on Windows and Linux in the CI), with a fixed seed wherever they are random. They check the normal cases, the edge cases and damaged input: cut files, garbage and hostile headers never panic, and no temperature of any printer of the catalog goes past its limit. The CI also runs `cargo fmt --all --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 

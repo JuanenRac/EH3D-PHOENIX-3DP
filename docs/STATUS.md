@@ -10,7 +10,7 @@ The window became the docking frame of the suite with five workspaces for tasks,
 
 ## Capabilities
 
-The official state of each capability is in `REQUIREMENTS.md`. The register has 142 requirements: 128 implemented, 8 prototype, 6 planned and 0 validated. By progress: 128 done, 8 partial, 2 pending and 4 blocked. This page never states a state that `REQUIREMENTS.md` does not.
+The official state of each capability is in `REQUIREMENTS.md`. The register has 143 requirements: 129 implemented, 8 prototype, 6 planned and 0 validated. By progress: 129 done, 8 partial, 2 pending and 4 blocked. This page never states a state that `REQUIREMENTS.md` does not.
 
 ## Open questions
 
@@ -26,7 +26,7 @@ The official state of each capability is in `REQUIREMENTS.md`. The register has 
 
 ## Known technical debt and omitted tests
 
-* 1231 tests (`#[test]` lines of `src/`, `tests/` and `crates/`, the method of `tests/readme.rs`; nine of them keep this register true), all on a computer, with fixed seeds where chance is involved.
+* 1232 tests (`#[test]` lines of `src/`, `tests/` and `crates/`, the method of `tests/readme.rs`; nine of them keep this register true), all on a computer, with fixed seeds where chance is involved.
 * No driver has spoken to a real printer or a real server; the simulators are written in this repository and prove the logic, not that a real printer answers the same way.
 * The window has not been looked at on a screen by a person.
 * The temperature limits of the catalog are the ones that the makers state and have not been compared with a printer.

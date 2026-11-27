@@ -2,7 +2,7 @@
 
 This register is the single source of the state of each capability: `STATUS.md` and the README files cite it and never state a state that it does not. A state is one of `planned`, `prototype`, `implemented` and `validated`. `validated` means that a person has run the capability on a real machine and the evidence of the manifest says `bench` or `field`; nothing here is validated, because nothing of this program has run on a real printer, a real server or a screen: the printers are simulators (in memory and on a socket of the same computer), the server is a double, and every profile of the catalog says `verified = false`.
 
-The register has 142 requirements: 128 implemented, 8 prototype, 6 planned and 0 validated. By progress: 128 done, 8 partial, 2 pending and 4 blocked. High coverage is not proof of correctness, so each row says how it is checked: the test that names it, and what it shows.
+The register has 143 requirements: 129 implemented, 8 prototype, 6 planned and 0 validated. By progress: 129 done, 8 partial, 2 pending and 4 blocked. High coverage is not proof of correctness, so each row says how it is checked: the test that names it, and what it shows.
 
 ## How to read the register
 
@@ -216,3 +216,4 @@ The check is `tests/reqs.rs`: it reads this table, finds each test and fails whe
 | P3DP-140 | The command `project` saves, lists, opens and extracts, refuses a damaged file and puts nothing but the keys of the slicer from a settings file in a project. | implemented | done | host-test | `eh3dfile::the_command_saves_lists_opens_and_extracts_and_a_damaged_file_is_an_error` | - |
 | P3DP-141 | The window asks before a write that removes a signature or touches a project it did not open, and does not throw away what the project does not have. | implemented | done | host-test | `src/gui/suite::a_signed_branch_is_asked_about_and_escape_says_no` | - |
 | P3DP-142 | The limits of the attachments are read from the settings file, checked and written back. | implemented | done | host-test | `src/config::the_limits_of_the_attachments_are_read_checked_and_written_back` | - |
+| P3DP-143 | A project that another program saved since it was read is not written over, before or after a question, and the work can go under another name. | implemented | done | host-test | `src/gui/suite::a_project_saved_by_another_program_is_not_written_over` | - |
