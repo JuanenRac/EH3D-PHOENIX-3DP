@@ -114,6 +114,10 @@ Fotografie della finestra, scattate dal programma stesso con la sua modalità im
 </p>
 
 <p align="center">
+  <img src="images/screenshots/program.png" alt="Progetto della suite: il suo G-code, con le righe contate e le temperature confrontate con i limiti della stampante, sopra i comandi del pannello Progetto" width="100%">
+</p>
+
+<p align="center">
   <img src="images/layouts/prepare.svg" alt="Spazio Prepara: la barra dei menu in alto; le impostazioni di stampa e i materiali come schede a sinistra, la vista 3D al centro sopra la console e il G-code, e gli oggetti e la stampante come schede a destra." width="100%">
 </p>
 

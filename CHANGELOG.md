@@ -17,6 +17,7 @@ All notable changes to this project are documented here.
 - **The panel «Attachments»:** data sheets, manuals, documents and other projects are kept inside the project, linked to a part by its reference, and shown beside the list (PDF pages, pictures, text and the text of office documents). Programs, scripts, files with macros, archives and unknown kinds ask before they leave the project; nothing is run and nothing is downloaded. Its limits are `attachments.max_mb` and `viewer.max_*_mb` (`viewer.max_preview_mb` among them) of the settings file. The packages carry the PDF library (PDFium) with its licences.
 - The README shows a photograph of the window with a project of the suite open, and the workflow Window pictures takes it.
 - Files dropped on the window are attached on the panel or opened as models and projects.
+- The README shows a photograph of the G-code of a project, taken by the workflow Window pictures (the picture mode takes `--panel NAME` to put a panel in front).
 - The G-code of a project is not loaded into the plan, a work that changed loses its old G-code, and nothing is sent to a printer. Not tried on a screen by a person.
 
 ## [0.0.9] - Machine limits, your own start and end G-code, and a package for Bambu printers not tried on a printer yet

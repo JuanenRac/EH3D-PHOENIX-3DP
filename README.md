@@ -114,6 +114,10 @@ Photographs of the window, taken by the program itself with its picture mode (`-
 </p>
 
 <p align="center">
+  <img src="images/screenshots/program.png" alt="Project of the suite: its G-code, with the lines counted and the temperatures compared with the limits of the printer, above the controls of the Project panel" width="100%">
+</p>
+
+<p align="center">
   <img src="images/layouts/prepare.svg" alt="Prepare workspace: the menu bar on top; the print settings and the materials as tabs on the left, the 3D view in the middle above the console and the G-code tabs, and the objects and the printer as tabs on the right." width="100%">
 </p>
 

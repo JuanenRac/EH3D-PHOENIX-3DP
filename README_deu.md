@@ -114,6 +114,10 @@ Fotos des Fensters, vom Programm selbst mit seinem Bildmodus aufgenommen (`--sho
 </p>
 
 <p align="center">
+  <img src="images/screenshots/program.png" alt="Suite-Projekt: sein G-Code mit gezählten Zeilen und mit den Grenzen des Druckers verglichenen Temperaturen, über den Bedienelementen des Panels Projekt" width="100%">
+</p>
+
+<p align="center">
   <img src="images/layouts/prepare.svg" alt="Arbeitsbereich Vorbereiten: oben die Menüleiste; links Druckeinstellungen und Materialien als Reiter, in der Mitte die 3D-Ansicht über der Konsole und dem G-Code, rechts Objekte und Drucker als Reiter." width="100%">
 </p>
 

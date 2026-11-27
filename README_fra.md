@@ -114,6 +114,10 @@ Photographies de la fenêtre, prises par le programme lui-même avec son mode im
 </p>
 
 <p align="center">
+  <img src="images/screenshots/program.png" alt="Projet de la suite : son G-code, avec les lignes comptées et les températures comparées aux limites de l'imprimante, au-dessus des commandes du panneau Projet" width="100%">
+</p>
+
+<p align="center">
   <img src="images/layouts/prepare.svg" alt="Espace Préparer : la barre de menus en haut ; les réglages d'impression et les matériaux en onglets à gauche, la vue 3D au centre au-dessus de la console et du G-code, et les objets et l'imprimante en onglets à droite." width="100%">
 </p>
 

@@ -114,6 +114,10 @@ Fotografías de la ventana, hechas por el propio programa con su modo de imagen 
 </p>
 
 <p align="center">
+  <img src="images/screenshots/program.png" alt="Proyecto de la suite: su G-code, con las líneas contadas y las temperaturas comparadas con los límites de la impresora, sobre los controles del panel Proyecto" width="100%">
+</p>
+
+<p align="center">
   <img src="images/layouts/prepare.svg" alt="Espacio Preparar: la barra de menús arriba; los ajustes de impresión y los materiales como pestañas a la izquierda, la vista 3D en el centro sobre la consola y el G-code, y los objetos y la impresora como pestañas a la derecha." width="100%">
 </p>
 
