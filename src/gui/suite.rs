@@ -10,6 +10,8 @@ use super::*;
 use crate::eh3dfile::{self, Contents, Heat, Held, Identity, Opened, Part, Review, BRANCH};
 use crate::suitecore::{self, name_of, ProjectView};
 use crate::suitetext::{Said, S};
+use p3dp_gcode::{read_motion, Motion, RiskKind};
+use p3dp_profiles::{Bound, PrinterProfile};
 use p3dp_slicer::UserGcode;
 
 /// Something that writes a project.
@@ -84,6 +86,14 @@ pub(super) struct SuiteState {
     pub blocks: UserGcode,
     /// The person ticked them for the next slice.
     pub use_blocks: bool,
+    /// The movements of that program, read once for the printer named when the person asks to see the layers.
+    motion: Option<(String, Motion)>,
+    /// The person asked to see the layers of the program.
+    show_layers: bool,
+    /// The layer on view, counted from 0.
+    program_layer: usize,
+    /// The printer profile as it was before the one of a project lowered it, to be put back.
+    untightened: Option<PrinterProfile>,
 }
 
 /// Leaves out what did not change since the branch was read or written, so a part taken from another branch stays with its reference and the G-code of the project stays with the work.
@@ -105,6 +115,35 @@ fn drop_untouched(contents: &mut Contents, loaded: &Contents) {
     }
     if contents.end_gcode == loaded.end_gcode {
         contents.end_gcode = None;
+    }
+    if contents.printer_profile == loaded.printer_profile {
+        contents.printer_profile = None;
+    }
+}
+
+/// The figures of a profile that another one gives differently, as `key theirs (yours)`.
+fn bounds_text(list: &[Bound]) -> String {
+    list.iter()
+        .map(|b| format!("{} {} ({})", b.key, b.other, b.own))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// Where a point of the bed (mm) is drawn in a rectangle of the window: the bed fits it with its shape kept, and y grows away from the person, so upwards.
+fn on_canvas(bed_mm: [f64; 2], rect: egui::Rect, p: [f64; 2]) -> egui::Pos2 {
+    let (w, h) = (bed_mm[0].max(1.0) as f32, bed_mm[1].max(1.0) as f32);
+    let scale = (rect.width() / w).min(rect.height() / h);
+    let left = rect.center().x - w * scale / 2.0;
+    let bottom = rect.center().y + h * scale / 2.0;
+    egui::pos2(left + p[0] as f32 * scale, bottom - p[1] as f32 * scale)
+}
+
+fn risk_word(kind: RiskKind) -> Msg {
+    match kind {
+        RiskKind::Protection => Msg::RiskProtection,
+        RiskKind::Position => Msg::RiskPosition,
+        RiskKind::Settings => Msg::RiskSettings,
+        RiskKind::Firmware => Msg::RiskFirmware,
     }
 }
 
@@ -166,6 +205,7 @@ impl App {
 
     /// The window forgets its project (a new bed).
     pub(super) fn suite_forget(&mut self) {
+        self.suite_untighten();
         self.suite = SuiteState::default();
     }
 
@@ -198,6 +238,54 @@ impl App {
             .collect()
     }
 
+    /// Puts back the printer profile that the one of a project had lowered.
+    fn suite_untighten(&mut self) {
+        if let Some(own) = self.suite.untightened.take() {
+            if let Some(slot) = self
+                .state
+                .catalog
+                .profiles
+                .iter_mut()
+                .find(|p| p.id == own.id)
+            {
+                *slot = own;
+            }
+        }
+    }
+
+    /// Lays the printer profile of a project over the one of the person: it can only lower limits and room, for this session, and the settings file is not touched.
+    fn suite_tighten(&mut self, theirs: &PrinterProfile) {
+        let lang = self.lang();
+        let chosen = self.state.printer_id.clone();
+        let slot = self
+            .state
+            .catalog
+            .profiles
+            .iter_mut()
+            .find(|p| p.id == chosen);
+        let Some(slot) = slot.filter(|p| p.id == theirs.id) else {
+            self.suite
+                .own_notes
+                .push(fill(Msg::SuiteProfileOther.tr(lang), &[&theirs.id]));
+            return;
+        };
+        let t = slot.tightened_by(theirs);
+        if !t.lowered.is_empty() {
+            self.suite.untightened = Some(slot.clone());
+            *slot = t.profile;
+            self.suite.own_notes.push(fill(
+                Msg::SuiteProfileLowered.tr(lang),
+                &[&bounds_text(&t.lowered)],
+            ));
+        }
+        if !t.refused.is_empty() {
+            self.suite.own_notes.push(fill(
+                Msg::SuiteProfileNotRaised.tr(lang),
+                &[&bounds_text(&t.refused)],
+            ));
+        }
+    }
+
     /// The start and end G-code the project is to hold: the ones of the files the person named and, where none is named, the ones it already holds.
     fn suite_blocks(&self) -> Result<UserGcode, String> {
         let typed = held::read_user_gcode(&self.start_text, &self.end_text)?;
@@ -218,6 +306,10 @@ impl App {
             printer: (!self.state.printer_id.is_empty()).then(|| self.state.printer_id.clone()),
             filament: self.filament_id.clone(),
             program: None,
+            // the profile goes only when its limits are the person's own, and not while a project holds them lower
+            printer_profile: (self.state.limits_are_mine() && self.suite.untightened.is_none())
+                .then(|| self.state.printer().map(PrinterProfile::to_text))
+                .flatten(),
         }
     }
 
@@ -327,6 +419,7 @@ impl App {
         self.saved_path = None;
         self.exported_path = None;
         self.sliced_with = None;
+        self.suite_untighten();
         self.suite_hold(held);
         self.suite.use_blocks = false;
         if let Some(id) = &held.printer {
@@ -337,6 +430,9 @@ impl App {
                     .own_notes
                     .push(fill(Msg::SuitePrinterUnknown.tr(lang), &[id]));
             }
+        }
+        if let Some(profile) = &held.profile {
+            self.suite_tighten(profile);
         }
         if let Some(id) = &held.filament {
             self.filament_id = self.filaments.find(id).map(|f| f.id.clone());
@@ -354,6 +450,7 @@ impl App {
             self.preview.config.max_gcode_lines = own.max_gcode_lines;
             self.preview.config.max_support_samples = own.max_support_samples;
             self.process = None;
+            self.pause_text = None;
             self.suite.notes.push(Said::plain(S::LimitsKept));
         }
         let volume = self.volume();
@@ -390,6 +487,8 @@ impl App {
             .program_file()
             .map(|(name, bytes)| (name.to_string(), bytes.to_vec()));
         self.suite.review = None;
+        self.suite.motion = None;
+        self.suite.program_layer = 0;
         self.suite.blocks = held.blocks.clone();
     }
 
@@ -495,12 +594,128 @@ impl App {
                 }
             }
         }
+        if let (Some(moves), Heat::Checked { printer, .. }) = (&review.moves, &review.heat) {
+            if moves.outside_count == 0 {
+                let said = fill(Msg::ProjectProgramMovesOk.tr(lang), &[printer]);
+                ui.label(egui::RichText::new(said).color(good));
+            } else {
+                let said = fill(
+                    Msg::ProjectProgramMovesBad.tr(lang),
+                    &[&moves.outside_count.to_string(), printer],
+                );
+                ui.label(egui::RichText::new(said).color(danger));
+                for o in moves.outside.iter().take(LISTED) {
+                    let line = fill(
+                        Msg::ProjectProgramMoveLine.tr(lang),
+                        &[
+                            &o.line.to_string(),
+                            &o.axis.to_string(),
+                            &format!("{:.2}", o.value_mm),
+                        ],
+                    );
+                    ui.label(egui::RichText::new(line).small().color(danger));
+                }
+            }
+            if moves.unfollowed > 0 {
+                ui.label(
+                    egui::RichText::new(fill(
+                        Msg::ProjectProgramUnfollowed.tr(lang),
+                        &[&moves.unfollowed.to_string()],
+                    ))
+                    .small()
+                    .color(dim),
+                );
+            }
+        }
+        if !review.risks.is_empty() {
+            let said = fill(
+                Msg::ProjectProgramRisks.tr(lang),
+                &[&review.risks.len().to_string()],
+            );
+            ui.label(egui::RichText::new(said).color(danger));
+            for r in review.risks.iter().take(LISTED) {
+                let line = format!("{} {} - {}", r.line, r.command, risk_word(r.kind).tr(lang));
+                ui.label(egui::RichText::new(line).small().color(danger));
+            }
+        }
         ui.label(
             egui::RichText::new(Msg::ProjectProgramReadOnly.tr(lang))
                 .small()
                 .color(dim),
         );
+        ui.checkbox(
+            &mut self.suite.show_layers,
+            Msg::ProjectProgramShowLayers.tr(lang),
+        );
+        if self.suite.show_layers {
+            self.program_layers(ui);
+        }
         ui.separator();
+    }
+
+    /// The layers of the G-code of the project, drawn from above, one at a time: the lines that lay plastic, the travels faint and what leaves the bed in the colour of a
+    /// danger. Only a picture: nothing is loaded into the plan and nothing is sent.
+    fn program_layers(&mut self, ui: &mut egui::Ui) {
+        let lang = self.lang();
+        let Some((_, bytes)) = &self.suite.program else {
+            return;
+        };
+        let id = self.state.printer_id.clone();
+        let volume = self.volume();
+        if self.suite.motion.as_ref().is_none_or(|(of, _)| *of != id) {
+            let text = String::from_utf8_lossy(bytes);
+            self.suite.motion = Some((id, read_motion(&text, Some(volume))));
+        }
+        let Some((_, motion)) = &self.suite.motion else {
+            return;
+        };
+        let count = motion.layers.len();
+        if count == 0 {
+            ui.label(Msg::ProjectProgramNoLayers.tr(lang));
+            return;
+        }
+        let mut at = self.suite.program_layer.min(count - 1) + 1;
+        ui.add(egui::Slider::new(&mut at, 1..=count).show_value(false));
+        self.suite.program_layer = at - 1;
+        let layer = &motion.layers[at - 1];
+        ui.label(fill(
+            Msg::ProjectProgramLayer.tr(lang),
+            &[
+                &at.to_string(),
+                &count.to_string(),
+                &format!("{:.2}", layer.z_mm),
+            ],
+        ));
+        let side = ui.available_width().clamp(120.0, 420.0);
+        let (rect, _) = ui.allocate_exact_size(egui::vec2(side, side), egui::Sense::hover());
+        let painter = ui.painter_at(rect);
+        let bed = [volume[0], volume[1]];
+        let corner = on_canvas(bed, rect, [0.0, 0.0]);
+        let far = on_canvas(bed, rect, bed);
+        painter.rect_stroke(
+            egui::Rect::from_two_pos(corner, far),
+            0.0,
+            egui::Stroke::new(1.0, col(self.look.dim)),
+            egui::StrokeKind::Inside,
+        );
+        let outside = |p: &[f64; 2]| p[0] < 0.0 || p[1] < 0.0 || p[0] > bed[0] || p[1] > bed[1];
+        let travel = col(self.look.dim).gamma_multiply(0.35);
+        for (segments, colour) in [
+            (&layer.travels, travel),
+            (&layer.extrusions, col(self.look.accent)),
+        ] {
+            for s in segments {
+                let colour = if outside(&s[0]) || outside(&s[1]) {
+                    col(self.look.danger)
+                } else {
+                    colour
+                };
+                painter.line_segment(
+                    [on_canvas(bed, rect, s[0]), on_canvas(bed, rect, s[1])],
+                    egui::Stroke::new(1.0, colour),
+                );
+            }
+        }
     }
 
     /// The name offered for a project that is saved for the first time or under another name.
@@ -1294,6 +1509,132 @@ mod tests {
             "{review:?}"
         );
         let _ = fs::remove_dir_all(&d);
+    }
+
+    /// Draws something of the window in a panel 300 points wide, in every language, and gives the widest it came out.
+    fn widest(a: &mut App, draw: fn(&mut App, &mut egui::Ui)) -> f32 {
+        let ctx = egui::Context::default();
+        let mut widest = 0.0f32;
+        for lang in Lang::ALL {
+            a.state.lang = lang;
+            let input = egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(900.0, 2000.0),
+                )),
+                ..egui::RawInput::default()
+            };
+            let mut out = ctx.run_ui(input, |ui| {
+                ui.allocate_ui(egui::vec2(300.0, 1800.0), |ui| {
+                    ui.set_max_width(300.0);
+                    draw(a, ui);
+                    widest = widest.max(ui.min_rect().width());
+                });
+            });
+            out.textures_delta.clear();
+        }
+        widest
+    }
+
+    #[test]
+    fn the_layers_of_the_g_code_of_a_project_are_drawn_with_what_leaves_the_bed() {
+        let d = folder("drawn");
+        let project = d.join("job.eh3d");
+        let program = d.join("moves.gcode");
+        fs::write(
+            &program,
+            "G28\nM500\nM83\nG1 Z0.2\nG1 X10 Y10\nG1 X200 E1\nG1 Z0.4\nG1 X999 E1\n",
+        )
+        .unwrap();
+        let mut a = with_part(&d, "part.stl");
+        assert!(a.state.select_printer("bambu-lab-a1"));
+        assert_eq!(a.suite_save_as(&project), Step::Done);
+        assert_eq!(a.suite_import(&program), Step::Done, "{:?}", a.state.status);
+        a.suite.show_layers = true;
+        a.suite.program_layer = 7;
+        let width = widest(&mut a, App::project_program_section);
+        assert!(width > 0.0 && width <= 301.0, "{width}");
+        let Some((_, motion)) = &a.suite.motion else {
+            panic!("the layers were not read");
+        };
+        assert_eq!(motion.layers.len(), 2);
+        assert_eq!(a.suite.program_layer, 1, "held to the layers there are");
+        let Some((_, review)) = &a.suite.review else {
+            panic!("the program was not looked at");
+        };
+        assert_eq!(review.moves.as_ref().map(|m| m.outside_count), Some(1));
+        assert_eq!(review.risks.len(), 1);
+        // the bed keeps its shape in the rectangle, with y going away from the person
+        let rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(200.0, 200.0));
+        assert_eq!(
+            on_canvas([100.0, 50.0], rect, [0.0, 0.0]),
+            egui::pos2(0.0, 150.0)
+        );
+        assert_eq!(
+            on_canvas([100.0, 50.0], rect, [100.0, 50.0]),
+            egui::pos2(200.0, 50.0)
+        );
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn the_profile_of_a_project_lowers_the_limits_for_the_session_only() {
+        let d = folder("lowered");
+        let project = d.join("job.eh3d");
+        let mut a = with_part(&d, "part.stl");
+        assert!(a.state.select_printer("bambu-lab-a1"));
+        assert_eq!(a.suite_save_as(&project), Step::Done);
+        let own = a.state.printer().cloned().unwrap();
+        let mut lower = own.clone();
+        let limits = own.limits.unwrap();
+        lower.limits = Some(p3dp_core::TempLimits {
+            nozzle_c: 240.0,
+            bed_c: limits.bed_c + 50.0,
+            chamber_c: limits.chamber_c,
+        });
+        let contents = Contents {
+            printer_profile: Some(lower.to_text()),
+            ..Contents::default()
+        };
+        let limits_of_the_file = a.state.config.limits.clone();
+        eh3dfile::save_contents(
+            &project,
+            &contents,
+            &Identity::default(),
+            &limits_of_the_file,
+        )
+        .unwrap();
+        let overrides = a.state.config.limit_overrides.clone();
+        let mut b = window();
+        assert!(b.suite_open(&project), "{:?}", b.state.status);
+        let now = b.state.printer().and_then(|p| p.limits).unwrap();
+        assert_eq!((now.nozzle_c, now.bed_c), (240.0, limits.bed_c));
+        assert_eq!(b.suite.own_notes.len(), 2, "{:?}", b.suite.own_notes);
+        assert_eq!(
+            b.state.config.limit_overrides, overrides,
+            "the settings are not touched"
+        );
+        b.suite_forget();
+        assert_eq!(b.state.printer().and_then(|p| p.limits), own.limits);
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn the_quality_settings_fit_a_narrow_panel_and_take_the_pauses_whole() {
+        let mut a = window();
+        let width = widest(&mut a, App::quality_section);
+        assert!(width > 0.0 && width <= 301.0, "{width}");
+        a.pause_text = Some("3,9".to_owned());
+        widest(&mut a, App::quality_section);
+        assert_eq!(a.preview.config.pause_at_layers, [3, 9]);
+        a.pause_text = Some("3,".to_owned());
+        let width = widest(&mut a, App::quality_section);
+        assert!(width <= 301.0, "{width}");
+        assert_eq!(
+            a.preview.config.pause_at_layers,
+            [3, 9],
+            "half a list changes nothing"
+        );
     }
 
     #[test]

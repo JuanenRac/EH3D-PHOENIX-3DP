@@ -9,7 +9,7 @@ use crate::error::SliceError;
 use crate::plan::{Kind, Plan};
 
 /// The kinds of line, in the order they are reported.
-pub const KINDS: [Kind; 10] = [
+pub const KINDS: [Kind; 11] = [
     Kind::ExternalPerimeter,
     Kind::Perimeter,
     Kind::Infill,
@@ -20,6 +20,7 @@ pub const KINDS: [Kind; 10] = [
     Kind::Raft,
     Kind::Tower,
     Kind::Ironing,
+    Kind::OverhangPerimeter,
 ];
 
 /// What one kind of line takes.
@@ -155,7 +156,9 @@ pub enum Group {
 impl Group {
     fn of(kind: Kind) -> Group {
         match kind {
-            Kind::ExternalPerimeter | Kind::Perimeter => Group::Perimeters,
+            Kind::ExternalPerimeter | Kind::Perimeter | Kind::OverhangPerimeter => {
+                Group::Perimeters
+            }
             Kind::Infill => Group::Infill,
             Kind::SolidInfill | Kind::Ironing => Group::Solid,
             Kind::Bridge => Group::Bridges,

@@ -16,6 +16,7 @@ pub use machines::{
 };
 pub use multi::{caps_of, MultiCaps, MultiKind};
 pub use profile::{
-    Change, Connectivity, Edited, LimitSource, Notice, PrinterProfile, ProfileError, Technology,
+    Bound, Change, Connectivity, Edited, LimitSource, Notice, PrinterProfile, ProfileError,
+    Technology, Tightened,
 };
 pub use resin::{ResinCatalog, ResinKind, ResinProfile, ResinUse, Wash};

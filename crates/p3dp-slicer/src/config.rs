@@ -55,6 +55,8 @@ pub enum Seam {
     Aligned,
     /// The corner farthest back (the highest y, then the lowest x): the seam is at the back of the part.
     Rear,
+    /// The sharpest corner that turns into the part, else the sharpest one: a corner hides the seam better than a flat wall.
+    Corner,
 }
 
 impl Seam {
@@ -63,6 +65,7 @@ impl Seam {
             Seam::Nearest => "nearest",
             Seam::Aligned => "aligned",
             Seam::Rear => "rear",
+            Seam::Corner => "corner",
         }
     }
 }
@@ -233,6 +236,53 @@ pub struct SliceConfig {
     pub elephant_foot_mm: f64,
     /// The most plastic the nozzle melts, in cubic millimetres a second (0 is no limit): a line that would ask for more is slowed down.
     pub max_volumetric_flow_mm3_s: f64,
+    /// The layers at the top of a support that are laid close together, so the overhang rests on an even floor (0 is off).
+    pub support_interface_layers: u32,
+    /// The distance between the lines of those layers.
+    pub support_interface_spacing_mm: f64,
+    /// The speed of the parts of an outer wall that hang past the layer below, with the fan of a bridge (0 is off).
+    pub overhang_speed_mm_s: f64,
+    /// The nozzle temperature of the first layer (0 is `nozzle_c`).
+    pub first_layer_nozzle_c: f64,
+    /// The bed temperature of the first layer (0 is `bed_c`).
+    pub first_layer_bed_c: f64,
+    /// How far the infill and the skins reach into the innermost perimeter, in per cent of the line width, so they hold to it.
+    pub infill_overlap_percent: f64,
+    /// The outer wall is laid before the inner ones (truer dimensions; the overhangs have less to rest on).
+    pub external_perimeters_first: bool,
+    /// A travel that stays inside the outline of its layer is made without pulling the filament back.
+    pub retract_only_crossing: bool,
+    /// How far the head goes back along the line it has just laid while it pulls the filament back (0 is off).
+    pub wipe_mm: f64,
+    /// The layers, counted from 1, before which the printer pauses for a change of colour or an insert.
+    pub pause_at_layers: Vec<u32>,
+    /// The G-code says how far the print is and how long is left (`M73`).
+    pub progress_marks: bool,
+    /// The skirt gets more loops until it is at least this long, to bring the nozzle to a steady flow (0 is off).
+    pub skirt_min_length_mm: f64,
+}
+
+/// The most layers a print may pause at.
+pub const MAX_PAUSES: usize = 20;
+
+/// The layers of `pause_at_layers`: numbers from 2, rising, separated by commas; `none` (or nothing) is no pause.
+fn pauses(key: &str, value: &str) -> Result<Vec<u32>, CoreError> {
+    let v = value.trim();
+    if v.is_empty() || v.eq_ignore_ascii_case("none") {
+        return Ok(Vec::new());
+    }
+    let mut out: Vec<u32> = Vec::new();
+    for part in v.split(',') {
+        let layer = kv::int_in(key, part.trim(), 2, 100_000)? as u32;
+        if out.last().is_some_and(|last| *last >= layer) {
+            return Err(invalid(format!("{key}: the layers rise, each once")));
+        }
+        out.push(layer);
+        if out.len() > MAX_PAUSES {
+            return Err(invalid(format!("{key}: at most {MAX_PAUSES} pauses")));
+        }
+    }
+    Ok(out)
 }
 
 impl Default for SliceConfig {
@@ -312,12 +362,24 @@ impl Default for SliceConfig {
             adaptive_cusp_mm: 0.05,
             elephant_foot_mm: 0.0,
             max_volumetric_flow_mm3_s: 0.0,
+            support_interface_layers: 0,
+            support_interface_spacing_mm: 0.8,
+            overhang_speed_mm_s: 0.0,
+            first_layer_nozzle_c: 0.0,
+            first_layer_bed_c: 0.0,
+            infill_overlap_percent: 0.0,
+            external_perimeters_first: false,
+            retract_only_crossing: false,
+            wipe_mm: 0.0,
+            pause_at_layers: Vec::new(),
+            progress_marks: true,
+            skirt_min_length_mm: 0.0,
         }
     }
 }
 
 /// The keys, in the order of the file.
-pub const KEYS: [&str; 74] = [
+pub const KEYS: [&str; 86] = [
     "layer_height_mm",
     "first_layer_height_mm",
     "nozzle_diameter_mm",
@@ -392,6 +454,18 @@ pub const KEYS: [&str; 74] = [
     "adaptive_cusp_mm",
     "elephant_foot_mm",
     "max_volumetric_flow_mm3_s",
+    "support_interface_layers",
+    "support_interface_spacing_mm",
+    "overhang_speed_mm_s",
+    "first_layer_nozzle_c",
+    "first_layer_bed_c",
+    "infill_overlap_percent",
+    "external_perimeters_first",
+    "retract_only_crossing",
+    "wipe_mm",
+    "pause_at_layers",
+    "progress_marks",
+    "skirt_min_length_mm",
 ];
 
 fn invalid(msg: String) -> CoreError {
@@ -469,6 +543,7 @@ impl SliceConfig {
                     "nearest" => Seam::Nearest,
                     "aligned" => Seam::Aligned,
                     "rear" => Seam::Rear,
+                    "corner" => Seam::Corner,
                     _ => return Err(invalid(format!("{key}: expected nearest, aligned or rear"))),
                 }
             }
@@ -535,6 +610,18 @@ impl SliceConfig {
             "adaptive_cusp_mm" => self.adaptive_cusp_mm = f(0.005, 0.5)?,
             "elephant_foot_mm" => self.elephant_foot_mm = f(0.0, 2.0)?,
             "max_volumetric_flow_mm3_s" => self.max_volumetric_flow_mm3_s = f(0.0, 100.0)?,
+            "support_interface_layers" => self.support_interface_layers = n(0, 10)? as u32,
+            "support_interface_spacing_mm" => self.support_interface_spacing_mm = f(0.2, 5.0)?,
+            "overhang_speed_mm_s" => self.overhang_speed_mm_s = f(0.0, 1000.0)?,
+            "first_layer_nozzle_c" => self.first_layer_nozzle_c = f(0.0, 500.0)?,
+            "first_layer_bed_c" => self.first_layer_bed_c = f(0.0, 200.0)?,
+            "infill_overlap_percent" => self.infill_overlap_percent = f(0.0, 50.0)?,
+            "external_perimeters_first" => self.external_perimeters_first = kv::on_off(key, value)?,
+            "retract_only_crossing" => self.retract_only_crossing = kv::on_off(key, value)?,
+            "wipe_mm" => self.wipe_mm = f(0.0, 10.0)?,
+            "pause_at_layers" => self.pause_at_layers = pauses(key, value)?,
+            "progress_marks" => self.progress_marks = kv::on_off(key, value)?,
+            "skirt_min_length_mm" => self.skirt_min_length_mm = f(0.0, 10_000.0)?,
             other => return Err(invalid(format!("{other}: not a setting of the slicer"))),
         }
         Ok(())
@@ -622,6 +709,24 @@ impl SliceConfig {
             "adaptive_cusp_mm" => self.adaptive_cusp_mm.to_string(),
             "elephant_foot_mm" => self.elephant_foot_mm.to_string(),
             "max_volumetric_flow_mm3_s" => self.max_volumetric_flow_mm3_s.to_string(),
+            "support_interface_layers" => self.support_interface_layers.to_string(),
+            "support_interface_spacing_mm" => self.support_interface_spacing_mm.to_string(),
+            "overhang_speed_mm_s" => self.overhang_speed_mm_s.to_string(),
+            "first_layer_nozzle_c" => self.first_layer_nozzle_c.to_string(),
+            "first_layer_bed_c" => self.first_layer_bed_c.to_string(),
+            "infill_overlap_percent" => self.infill_overlap_percent.to_string(),
+            "external_perimeters_first" => on_off(self.external_perimeters_first),
+            "retract_only_crossing" => on_off(self.retract_only_crossing),
+            "wipe_mm" => self.wipe_mm.to_string(),
+            "pause_at_layers" if self.pause_at_layers.is_empty() => "none".to_string(),
+            "pause_at_layers" => self
+                .pause_at_layers
+                .iter()
+                .map(u32::to_string)
+                .collect::<Vec<_>>()
+                .join(","),
+            "progress_marks" => on_off(self.progress_marks),
+            "skirt_min_length_mm" => self.skirt_min_length_mm.to_string(),
             "adhesion" => self.adhesion.name().to_string(),
             "placement" => match self.placement {
                 Placement::Center => "center",
@@ -703,6 +808,23 @@ impl SliceConfig {
                     self.max_speed_mm_s
                 ));
             }
+        }
+        if self.overhang_speed_mm_s > self.max_speed_mm_s {
+            return bad(format!(
+                "overhang_speed_mm_s {} is above max_speed_mm_s {}",
+                self.overhang_speed_mm_s, self.max_speed_mm_s
+            ));
+        }
+        if self.overhang_speed_mm_s > 0.0 && self.overhang_speed_mm_s < 1.0 {
+            return bad("overhang_speed_mm_s is 0 (off) or at least 1".to_string());
+        }
+        if self.support_interface_layers > 0
+            && self.support_interface_spacing_mm < self.line_width_mm - 1e-9
+        {
+            return bad(format!(
+                "support_interface_spacing_mm {} is narrower than a line ({})",
+                self.support_interface_spacing_mm, self.line_width_mm
+            ));
         }
         let narrowest = self.line_width_mm * (1.0 - self.width_variation_percent / 100.0);
         if self.width_variation_percent > 0.0

@@ -502,3 +502,115 @@ fn a_program_that_is_not_text_is_not_said_to_be_checked() {
         matches!(r.heat, eh3dfile::Heat::Checked { ref violations, .. } if violations.len() == 1)
     );
 }
+
+#[test]
+fn the_printer_profile_of_a_project_is_kept_and_only_ever_lowers_the_limits() {
+    let dir = folder("profile");
+    let project = dir.join("job.eh3d");
+    let limits = Limits::default();
+    let catalog = p3dp_profiles::suite_overlay().unwrap().catalog;
+    let own = catalog.find("bambu-lab-a1").unwrap().clone();
+    let mut mine = own.clone();
+    let l = own.limits.unwrap();
+    mine.limits = Some(p3dp_core::TempLimits {
+        nozzle_c: 230.0,
+        bed_c: l.bed_c + 40.0,
+        chamber_c: l.chamber_c,
+    });
+    mine.limit_source = p3dp_profiles::LimitSource::Owner;
+    mine.verified = false;
+    let profile = file(&dir, "mine.printer", mine.to_text().as_bytes());
+    let hot = file(
+        &dir,
+        "hot.gcode",
+        format!("G28\nM104 S250\nM140 S{}\n", l.bed_c + 30.0).as_bytes(),
+    );
+    let go = |words: &[&str]| {
+        let args: Vec<String> = words.iter().map(|w| (*w).to_string()).collect();
+        cli::run(&args, None)
+    };
+    let p = text(&project);
+    let saved = go(&["project", "save", &p, "--printer-file", &text(&profile)]);
+    assert_eq!(saved.code, 0, "{}", saved.err);
+    let held = eh3dfile::held(&project, &limits).unwrap();
+    assert_eq!(held.profile.as_ref(), Some(&mine));
+    // the printer of the project is the one of the profile
+    assert_eq!(held.printer.as_deref(), Some("bambu-lab-a1"));
+    let looked = go(&["project", "import", &p, &text(&hot)]);
+    assert_eq!(looked.code, 1, "{} {}", looked.out, looked.err);
+    // 250 C is fine for the printer and not for the profile; the higher bed of the profile is not followed
+    assert!(looked
+        .out
+        .contains("the profile of the project lowers: nozzle_max_c 230"));
+    assert!(looked.err.contains("bed_max_c") && looked.err.contains("not followed"));
+    assert!(looked.out.contains("M104 S250"), "{}", looked.out);
+    assert!(looked.out.contains("M140 S"), "{}", looked.out);
+    // a profile that is not one is refused and nothing is written
+    let before = fs::read(&project).unwrap();
+    let junk = file(&dir, "junk.printer", b"id = x\nnozzle_max_c = 999\n");
+    assert_eq!(
+        go(&["project", "save", &p, "--printer-file", &text(&junk)]).code,
+        2
+    );
+    assert_eq!(fs::read(&project).unwrap(), before);
+    // an empty file takes it out
+    let empty = file(&dir, "empty.printer", b"");
+    assert_eq!(
+        go(&["project", "save", &p, "--printer-file", &text(&empty)]).code,
+        0
+    );
+    assert!(eh3dfile::held(&project, &limits).unwrap().profile.is_none());
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_command_lists_the_layers_and_tells_what_leaves_the_bed_or_acts_on_the_machine() {
+    let dir = folder("layers");
+    let project = dir.join("job.eh3d");
+    let program = file(
+        &dir,
+        "moves.gcode",
+        b"G28\nM211 S0\nM83\nG1 Z0.2\nG1 X10 Y10\nG1 X20 E1\nG1 Z0.4\nG1 X999 E1\n",
+    );
+    let go = |words: &[&str]| {
+        let args: Vec<String> = words.iter().map(|w| (*w).to_string()).collect();
+        cli::run(&args, None)
+    };
+    let p = text(&project);
+    assert_eq!(
+        go(&[
+            "project",
+            "save",
+            &p,
+            "--printer",
+            "bambu-lab-a1",
+            "--gcode",
+            &text(&program)
+        ])
+        .code,
+        0
+    );
+    let opened = go(&["project", "open", &p]);
+    assert_eq!(opened.code, 1, "{}", opened.err);
+    assert!(opened
+        .out
+        .contains("line 8: X999.000 is outside the build volume"));
+    assert!(opened
+        .out
+        .contains("turns off or raises a protection (M211 S0)"));
+    assert!(opened.err.contains("leave the build volume"));
+    let layers = go(&["project", "layers", &p]);
+    assert_eq!(layers.code, 1, "{}", layers.err);
+    assert!(layers.out.contains("2 layer(s)"), "{}", layers.out);
+    assert!(layers.out.contains("layer 2: z 0.400 mm"));
+    let one = go(&["project", "layers", &p, "--layer", "1"]);
+    assert!(one.out.contains("layer 1:") && !one.out.contains("layer 2:"));
+    assert_eq!(go(&["project", "layers", &p, "--layer", "3"]).code, 2);
+    assert_eq!(go(&["project", "layers", &p, "--layer", "x"]).code, 2);
+    // the same for a loose file against a printer
+    let checked = go(&["check-profile", "bambu-lab-a1", "--gcode", &text(&program)]);
+    assert_eq!(checked.code, 1, "{}", checked.out);
+    assert!(checked.out.contains("is outside the build volume"));
+    assert!(checked.err.contains("act on the machine itself"));
+    let _ = fs::remove_dir_all(&dir);
+}

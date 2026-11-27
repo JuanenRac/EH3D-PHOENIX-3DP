@@ -118,7 +118,15 @@ pub(crate) fn support_paths(
         }
     }
     for (k, set) in cells.iter().enumerate() {
-        out[k] = rows(set, k, &outlines[k], pitch, cfg);
+        // a cell with nothing of its column some layers above is near the top: it is an interface cell
+        let near_top = |c: &(i64, i64)| {
+            (1..=cfg.support_interface_layers as usize)
+                .any(|up| !cells.get(k + up).is_some_and(|above| above.contains(c)))
+        };
+        let (floor, body): (BTreeSet<(i64, i64)>, BTreeSet<(i64, i64)>) =
+            set.iter().copied().partition(near_top);
+        out[k] = rows(&body, k, &outlines[k], pitch, cfg);
+        out[k].extend(interface_rows(&floor, k, &outlines[k], pitch, cfg));
     }
     Ok(out)
 }
@@ -181,6 +189,69 @@ fn rows(
             });
         }
         i = j;
+    }
+    paths
+}
+
+/// The lines of the interface cells of one layer: lines `support_interface_spacing_mm` apart over the whole cell, along x on the even layers and along y on the odd ones,
+/// joined across neighbouring cells and cut where they would touch the part.
+fn interface_rows(
+    set: &BTreeSet<(i64, i64)>,
+    layer: usize,
+    outline: &[Loop],
+    pitch: f64,
+    cfg: &SliceConfig,
+) -> Vec<Path> {
+    let along_x = layer.is_multiple_of(2);
+    let step = cfg.support_interface_spacing_mm;
+    let place = |u: f64, v: f64| -> P {
+        if along_x {
+            [u, v]
+        } else {
+            [v, u]
+        }
+    };
+    let clear =
+        |p: P| !inside(p, outline) && distance_to_loops(p, outline) >= cfg.support_xy_gap_mm;
+    let mut sorted: Vec<(i64, i64)> = set
+        .iter()
+        .map(|c| if along_x { (c.1, c.0) } else { (c.0, c.1) })
+        .collect();
+    sorted.sort_unstable();
+    let count = ((pitch / step).ceil() as usize).max(1);
+    let mut paths = Vec::new();
+    let mut i = 0;
+    while i < sorted.len() {
+        let (row, first) = sorted[i];
+        let mut last = first;
+        i += 1;
+        while i < sorted.len() && sorted[i] == (row, last + 1) {
+            last += 1;
+            i += 1;
+        }
+        let (from, to) = ((first as f64 - 0.5) * pitch, (last as f64 + 0.5) * pitch);
+        for n in 0..count {
+            let v = row as f64 * pitch - pitch / 2.0 + pitch * (n as f64 + 0.5) / count as f64;
+            let samples = (((to - from) / (pitch / 8.0)).ceil() as usize).max(1);
+            let mut start: Option<f64> = None;
+            let mut end = from;
+            for s in 0..=samples + 1 {
+                let u = from + (to - from) * s.min(samples) as f64 / samples as f64;
+                if s <= samples && clear(place(u, v)) {
+                    start.get_or_insert(u);
+                    end = u;
+                } else if let Some(a) = start.take() {
+                    if end - a >= cfg.line_width_mm {
+                        paths.push(Path {
+                            kind: Kind::Support,
+                            points: vec![place(a, v), place(end, v)],
+                            closed: false,
+                            width_mm: cfg.line_width_mm,
+                        });
+                    }
+                }
+            }
+        }
     }
     paths
 }

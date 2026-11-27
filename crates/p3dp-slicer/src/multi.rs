@@ -680,6 +680,12 @@ mod tests {
         let first_t = lines.iter().position(|l| *l == "T0").expect("T0");
         let change = lines.iter().position(|l| *l == "T1").expect("T1");
         assert!(first_t < change);
+        // the filament of the tool that was printing is pulled back before the change, not after it
+        assert!(
+            lines[change - 2].starts_with("G1 E-"),
+            "{}",
+            lines[change - 2]
+        );
         // the temperature of the new tool is set and waited for just before the tool is picked
         let petg = tools()[1].nozzle_c;
         assert!(

@@ -157,6 +157,82 @@ pub(crate) fn check_plain(id: &str, what: &str, text: &str) -> Result<(), Profil
     Ok(())
 }
 
+/// One figure that another profile of the same printer gives differently.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Bound {
+    /// The key of the profile file.
+    pub key: &'static str,
+    /// The figure of the person; 0 for a chamber with no heater.
+    pub own: f64,
+    /// The figure of the other profile.
+    pub other: f64,
+}
+
+/// A profile after another one was laid over it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Tightened {
+    pub profile: PrinterProfile,
+    /// The limits that the other profile made lower.
+    pub lowered: Vec<Bound>,
+    /// The limits the other profile would have raised, which stay as they were.
+    pub refused: Vec<Bound>,
+}
+
+impl PrinterProfile {
+    /// This profile with the limits and the build volume of `other` where those are lower. A profile that came from somewhere else can take room away and never give it: a
+    /// higher temperature, a chamber heater that is not there or a larger volume stay out and are listed. Nothing else of `other` is taken.
+    pub fn tightened_by(&self, other: &PrinterProfile) -> Tightened {
+        let mut out = Tightened {
+            profile: self.clone(),
+            lowered: Vec::new(),
+            refused: Vec::new(),
+        };
+        let mut judge = |key: &'static str, own: f64, theirs: f64| -> f64 {
+            let bound = Bound {
+                key,
+                own,
+                other: theirs,
+            };
+            if theirs < own {
+                out.lowered.push(bound);
+                theirs
+            } else {
+                if theirs > own {
+                    out.refused.push(bound);
+                }
+                own
+            }
+        };
+        let mut volume = self.volume_mm;
+        for (i, key) in ["volume_x_mm", "volume_y_mm", "volume_z_mm"]
+            .into_iter()
+            .enumerate()
+        {
+            volume[i] = judge(key, self.volume_mm[i], other.volume_mm[i]);
+        }
+        let limits = match (self.limits, other.limits) {
+            (Some(own), Some(theirs)) => {
+                let nozzle_c = judge("nozzle_max_c", own.nozzle_c, theirs.nozzle_c);
+                let bed_c = judge("bed_max_c", own.bed_c, theirs.bed_c);
+                let chamber = judge(
+                    "chamber_max_c",
+                    own.chamber_c.unwrap_or(0.0),
+                    theirs.chamber_c.unwrap_or(0.0),
+                );
+                Some(TempLimits {
+                    nozzle_c,
+                    bed_c,
+                    chamber_c: (chamber > 0.0).then_some(chamber),
+                })
+            }
+            (own, _) => own,
+        };
+        out.profile.volume_mm = volume;
+        out.profile.limits = limits;
+        out
+    }
+}
+
 impl PrinterProfile {
     /// Checks that the profile makes sense: a positive volume, the right fields for its technology, limits that are finite and not absurd.
     pub fn validate(&self) -> Result<(), ProfileError> {

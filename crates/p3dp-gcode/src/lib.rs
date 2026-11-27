@@ -3,9 +3,11 @@
 #![forbid(unsafe_code)]
 
 pub mod check;
+pub mod motion;
 pub mod template;
 pub mod writer;
 
-pub use check::{check_program, Violation};
+pub use check::{check_program, risky_commands, Risk, RiskKind, Violation};
+pub use motion::{read_motion, Motion, MotionLayer, Outside};
 pub use template::{check_block, BlockJob, Place};
 pub use writer::{required_macros, requires_package, GcodeError, JobParams, Writer};

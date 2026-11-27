@@ -427,7 +427,7 @@ fn the_defaults_are_valid_and_the_text_reads_back_to_the_same_settings() {
 
 #[test]
 fn every_key_of_the_slicer_has_a_value_and_takes_it_back() {
-    assert_eq!(KEYS.len(), 74);
+    assert_eq!(KEYS.len(), 86);
     let mut seen = std::collections::HashSet::new();
     let d = SliceConfig::default();
     for key in KEYS {

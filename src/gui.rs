@@ -233,6 +233,8 @@ struct App {
     path_text: String,
     save_text: String,
     project_text: String,
+    /// The layers to pause before, as they are typed; `None` until the settings are shown, and after other settings are loaded.
+    pause_text: Option<String>,
     /// The file the G-code is written to.
     export_text: String,
     /// The project file that was saved last, so saving again replaces it.
@@ -323,6 +325,7 @@ impl App {
             path_text: String::new(),
             save_text: "project.3mf".to_string(),
             project_text: String::new(),
+            pause_text: None,
             export_text: "print.gcode".to_string(),
             saved_path: None,
             exported_path: None,
@@ -1318,6 +1321,89 @@ impl App {
         }
     }
 
+    /// The finer settings of the quality of a print. Each one is a key of the settings file too; a value that does not go with the others is refused when slicing.
+    fn quality_section(&mut self, ui: &mut egui::Ui) {
+        let lang = self.lang();
+        if self.pause_text.is_none() {
+            self.pause_text = Some(if self.preview.config.pause_at_layers.is_empty() {
+                String::new()
+            } else {
+                self.preview
+                    .config
+                    .value_of("pause_at_layers")
+                    .unwrap_or_default()
+            });
+        }
+        let c = &mut self.preview.config;
+        for (flag, label) in [
+            (&mut c.external_perimeters_first, Msg::QualityOuterFirst),
+            (&mut c.retract_only_crossing, Msg::QualityCrossing),
+            (&mut c.progress_marks, Msg::QualityMarks),
+        ] {
+            ui.checkbox(flag, label.tr(lang));
+        }
+        // the name on a line of its own and the number under it, so a long name fits a narrow panel
+        let mut number = |ui: &mut egui::Ui, label: Msg, value: &mut f64, max: f64, unit: &str| {
+            ui.add(egui::Label::new(label.tr(lang)).wrap());
+            ui.add(
+                egui::DragValue::new(value)
+                    .range(0.0..=max)
+                    .speed(max / 500.0)
+                    .suffix(unit),
+            );
+        };
+        number(
+            ui,
+            Msg::QualityOverhang,
+            &mut c.overhang_speed_mm_s,
+            200.0,
+            " mm/s",
+        );
+        number(
+            ui,
+            Msg::QualityOverlap,
+            &mut c.infill_overlap_percent,
+            50.0,
+            " %",
+        );
+        number(ui, Msg::QualityWipe, &mut c.wipe_mm, 10.0, " mm");
+        number(
+            ui,
+            Msg::QualitySkirt,
+            &mut c.skirt_min_length_mm,
+            10_000.0,
+            " mm",
+        );
+        number(
+            ui,
+            Msg::QualityFirstNozzle,
+            &mut c.first_layer_nozzle_c,
+            500.0,
+            " C",
+        );
+        number(
+            ui,
+            Msg::QualityFirstBed,
+            &mut c.first_layer_bed_c,
+            200.0,
+            " C",
+        );
+        ui.add(egui::Label::new(Msg::QualityInterface.tr(lang)).wrap());
+        ui.add(egui::DragValue::new(&mut c.support_interface_layers).range(0..=10));
+        ui.add(egui::Label::new(Msg::QualityPauses.tr(lang)).wrap());
+        if let Some(text) = &mut self.pause_text {
+            let width = panels::path_field_width(ui.available_width(), 0.0);
+            ui.add(egui::TextEdit::singleline(text).desired_width(width));
+            // the text is taken as a whole or not at all: while it is being typed the last good list stays
+            let mut next = c.clone();
+            if next.set("pause_at_layers", text).is_ok() {
+                c.pause_at_layers = next.pause_at_layers;
+            } else {
+                ui.add(egui::Label::new(Msg::QualityPausesBad.tr(lang)).wrap());
+            }
+        }
+    }
+
     fn slice_options(&mut self, ui: &mut egui::Ui) {
         let lang = self.lang();
         self.process_choice(ui);
@@ -1385,6 +1471,7 @@ impl App {
                 (Seam::Nearest, Msg::SeamNearest),
                 (Seam::Aligned, Msg::SeamAligned),
                 (Seam::Rear, Msg::SeamRear),
+                (Seam::Corner, Msg::SeamCorner),
             ];
             let shown = seams
                 .iter()
@@ -1419,6 +1506,9 @@ impl App {
                     .desired_width(panels::path_field_width(ui.available_width(), 0.0)),
             );
         }
+        egui::CollapsingHeader::new(Msg::QualityTitle.tr(lang))
+            .id_salt("quality")
+            .show(ui, |ui| self.quality_section(ui));
         self.project_blocks_section(ui);
         if let Some(e) = &self.preview.error {
             ui.label(
@@ -2016,7 +2106,11 @@ impl App {
                 &mut f.perimeters,
                 Msg::KindPerimeters,
                 colour(Kind::ExternalPerimeter),
-                mm(&[Kind::ExternalPerimeter, Kind::Perimeter]),
+                mm(&[
+                    Kind::ExternalPerimeter,
+                    Kind::Perimeter,
+                    Kind::OverhangPerimeter,
+                ]),
             ),
             (
                 &mut f.infill,

@@ -1215,3 +1215,44 @@ fn every_built_in_resin_is_written_and_read_back_the_same() {
         assert_eq!(&back, p, "{}", p.id);
     }
 }
+
+// ---------------------------------------------------------------- a profile that came with a project
+
+#[test]
+fn a_profile_from_elsewhere_can_lower_limits_and_room_and_never_raise_them() {
+    let own = mk4s();
+    let limits = own.limits.unwrap();
+    let mut theirs = own.clone();
+    theirs.limits = Some(TempLimits {
+        nozzle_c: limits.nozzle_c + 100.0,
+        bed_c: limits.bed_c - 20.0,
+        chamber_c: Some(70.0),
+    });
+    theirs.volume_mm = [
+        own.volume_mm[0] + 50.0,
+        own.volume_mm[1] - 10.0,
+        own.volume_mm[2],
+    ];
+    theirs.verified = true;
+    theirs.nozzles_mm = vec![2.0];
+    let t = own.tightened_by(&theirs);
+    let now = t.profile.limits.unwrap();
+    assert_eq!(now.nozzle_c, limits.nozzle_c);
+    assert_eq!(now.bed_c, limits.bed_c - 20.0);
+    assert_eq!(now.chamber_c, limits.chamber_c);
+    assert_eq!(t.profile.volume_mm[0], own.volume_mm[0]);
+    assert_eq!(t.profile.volume_mm[1], own.volume_mm[1] - 10.0);
+    // nothing else of the other profile is taken
+    assert_eq!(t.profile.verified, own.verified);
+    assert_eq!(t.profile.nozzles_mm, own.nozzles_mm);
+    let keys = |list: &[p3dp_profiles::Bound]| list.iter().map(|b| b.key).collect::<Vec<_>>();
+    assert_eq!(keys(&t.lowered), ["volume_y_mm", "bed_max_c"]);
+    assert_eq!(
+        keys(&t.refused),
+        ["volume_x_mm", "nozzle_max_c", "chamber_max_c"]
+    );
+    // the same profile changes nothing, and a resin printer keeps having no limits
+    let same = own.tightened_by(&own);
+    assert!(same.lowered.is_empty() && same.refused.is_empty());
+    assert_eq!(resin_printer().tightened_by(&own).profile.limits, None);
+}

@@ -43,11 +43,24 @@ impl Fit {
     }
 }
 
+/// The loops a skirt round a box of this size has: `skirt_loops`, or more until it is `skirt_min_length_mm` long.
+fn skirt_loops_of(c: &SliceConfig, size_mm: [f64; 3]) -> f64 {
+    let round = 2.0 * (size_mm[0] + size_mm[1] + 4.0 * c.skirt_distance_mm);
+    let wanted = if c.skirt_min_length_mm > 0.0 && round > 0.0 {
+        (c.skirt_min_length_mm / round)
+            .ceil()
+            .min(f64::from(crate::adhesion::MAX_SKIRT_LOOPS))
+    } else {
+        0.0
+    };
+    wanted.max(f64::from(c.skirt_loops))
+}
+
 /// How far what is laid round the part reaches beyond it, on each side.
-fn reach_mm(c: &SliceConfig) -> f64 {
+fn reach_mm(c: &SliceConfig, size_mm: [f64; 3]) -> f64 {
     match c.adhesion {
         Adhesion::None => 0.0,
-        Adhesion::Skirt => c.skirt_distance_mm + f64::from(c.skirt_loops) * c.line_width_mm,
+        Adhesion::Skirt => c.skirt_distance_mm + skirt_loops_of(c, size_mm) * c.line_width_mm,
         Adhesion::Brim => c.brim_width_mm,
         Adhesion::Raft => c.raft_margin_mm,
     }
@@ -70,7 +83,7 @@ pub fn fit(
     config: &SliceConfig,
     default_height_mm: Option<f64>,
 ) -> Fit {
-    let round = 2.0 * (config.bed_margin_mm + reach_mm(config));
+    let round = 2.0 * (config.bed_margin_mm + reach_mm(config, size_mm));
     let needs_mm = [
         size_mm[0] + round,
         size_mm[1] + round,
@@ -126,6 +139,9 @@ pub fn too_fast(config: &SliceConfig, limits: &MotionLimits) -> Vec<TooFast> {
     }
     if config.ironing {
         speeds.push(("ironing_speed_mm_s", config.ironing_speed_mm_s));
+    }
+    if config.overhang_speed_mm_s > 0.0 {
+        speeds.push(("overhang_speed_mm_s", config.overhang_speed_mm_s));
     }
     speeds
         .into_iter()

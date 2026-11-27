@@ -97,6 +97,7 @@ pub fn colour_of(kind: Kind) -> [f32; 3] {
         Kind::Raft => [0.55, 0.55, 0.60],
         Kind::Tower => [0.35, 0.55, 0.90],
         Kind::Ironing => [0.85, 0.75, 0.95],
+        Kind::OverhangPerimeter => [0.20, 0.35, 0.85],
     }
 }
 
@@ -164,7 +165,7 @@ impl Default for KindFilter {
 impl KindFilter {
     pub fn allows(&self, kind: Kind) -> bool {
         match kind {
-            Kind::ExternalPerimeter | Kind::Perimeter => self.perimeters,
+            Kind::ExternalPerimeter | Kind::Perimeter | Kind::OverhangPerimeter => self.perimeters,
             Kind::Infill => self.infill,
             Kind::SolidInfill | Kind::Ironing => self.solid,
             Kind::Bridge => self.bridges,

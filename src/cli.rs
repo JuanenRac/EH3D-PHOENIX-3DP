@@ -18,7 +18,7 @@ use p3dp_formats::picture::PictureFormat;
 use p3dp_formats::project3mf::read_project;
 use p3dp_formats::{bgcode, gcode_meta, resin, resin_control};
 use p3dp_formats::{write_mesh, Format};
-use p3dp_gcode::{check_block, check_program, BlockJob, Place};
+use p3dp_gcode::{check_block, check_program, read_motion, risky_commands, BlockJob, Place};
 use p3dp_profiles::filament::{FilamentCatalog, Nozzle};
 use p3dp_profiles::{
     motion_limits, suite_machines, MotionLimits, PrinterProfile, ResinCatalog, ResinKind,
@@ -83,7 +83,8 @@ pub const USAGE: &str = "phoenix-3dp: prepare and send 3D prints (simulators onl
   phoenix-3dp slice MODEL --printer ID [--process LEVEL] [--settings FILE] [--set \"key=value;key=value\"] [--filament ID] [--nozzle MM] [--hardened] [--turn DEG] [--scale PERCENT] [--copies N] [--start-gcode FILE] [--end-gcode FILE] [--report] [--out FILE.gcode|FILE.gcode.3mf] [--save-settings FILE] [--force]
   phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.gcode|FILE.sl1 [--thumbnail FILE] [--extract-gcode FILE] [--force] [--bottom-layers N] [--lift MM] [--light-power MW]
   phoenix-3dp project list FILE.eh3d [--json]
-  phoenix-3dp project save FILE.eh3d [--model MODEL] [--settings FILE] [--printer ID] [--filament ID] [--gcode FILE.gcode] [--start-gcode FILE] [--end-gcode FILE] [--name NAME] [--id ID]
+  phoenix-3dp project save FILE.eh3d [--model MODEL] [--settings FILE] [--printer ID] [--filament ID] [--gcode FILE.gcode] [--start-gcode FILE] [--end-gcode FILE] [--printer-file PROFILE] [--name NAME] [--id ID]
+  phoenix-3dp project layers FILE.eh3d [--layer N] [--printer ID]
   phoenix-3dp project import FILE.eh3d MODEL|FILE.gcode [--printer ID] [--name NAME] [--id ID]
   phoenix-3dp project open FILE.eh3d [--into DIR] [--printer ID] | take FILE.eh3d BRANCH NAME [--printer ID] | extract FILE.eh3d BRANCH DIR
   phoenix-3dp version
@@ -93,6 +94,9 @@ The models are STL, OBJ and 3MF; OUT is chosen by its extension (.stl, .obj, .3m
 `machines` and `machine` show the catalog of printers of the suite: what each maker publishes, with its pages, the filaments and processes to start from and, with --process,
 a settings file for `slice`. `import` brings the settings of a 3MF project or of a JSON or INI profile of yours, tells every key it applied, did not apply, did not use
 or did not read, and with --out writes the applied ones as a settings file. Nothing is sent to a printer.
+`project layers` lists the layers of the G-code of a project. A printer profile kept in a project (--printer-file) can only lower the limits and the volume of the same
+printer, never raise them. The G-code of a project and of `check-profile --gcode` is checked for temperatures, for moves past the build volume and for commands that act on
+the machine itself.
 `project list`, `save`, `import`, `open`, `take` and `extract` work on a project of the suite (.eh3d), one file with a branch for each program, of which this program writes the
 branch 3dp only; their exit code is 1 when there is something to read and 2 when they could not be done.
 `slice` makes the layers and the G-code of a closed model for a printer of the catalog and refuses, never cuts down, what does not fit or goes past a limit;
@@ -792,26 +796,62 @@ fn check_profile(args: &[String], env_lang: Option<&str>) -> Outcome {
         Err(e) => return Outcome::fail(format!("{gpath}: {e}")),
     };
     let violations = check_program(&text, &limits);
+    let mut err = String::new();
     if violations.is_empty() {
         out.push_str(&format!(
             "{gpath}: no temperature goes past the limits of this model\n"
         ));
-        return Outcome::ok(out);
-    }
-    for v in &violations {
-        out.push_str(&format!(
-            "{gpath}: line {}: {} ({})\n",
-            v.line, v.error, v.command
-        ));
-    }
-    Outcome {
-        code: 1,
-        out,
-        err: format!(
+    } else {
+        for v in &violations {
+            out.push_str(&format!(
+                "{gpath}: line {}: {} ({})\n",
+                v.line, v.error, v.command
+            ));
+        }
+        err.push_str(&format!(
             "{} line(s) go past the limits of {}\n",
             violations.len(),
             profile.id
-        ),
+        ));
+    }
+    let motion = read_motion(&text, Some(profile.volume_mm));
+    for o in &motion.outside {
+        out.push_str(&format!(
+            "{gpath}: line {}: {}{:.3} is outside the build volume\n",
+            o.line, o.axis, o.value_mm
+        ));
+    }
+    if motion.outside_count > 0 {
+        err.push_str(&format!(
+            "{} line(s) leave the build volume of {}\n",
+            motion.outside_count, profile.id
+        ));
+    }
+    if motion.unfollowed > 0 {
+        out.push_str(&format!(
+            "{gpath}: {} move(s) could not be followed and are not checked\n",
+            motion.unfollowed
+        ));
+    }
+    let risks = risky_commands(&text);
+    for r in &risks {
+        out.push_str(&format!(
+            "{gpath}: line {}: {} ({})\n",
+            r.line,
+            r.kind.name(),
+            r.command
+        ));
+    }
+    if !risks.is_empty() {
+        err.push_str(&format!(
+            "{} line(s) act on the machine itself\n",
+            risks.len()
+        ));
+    }
+    Outcome {
+        code: i32::from(!err.is_empty()),
+        out,
+        err,
     }
 }
 
