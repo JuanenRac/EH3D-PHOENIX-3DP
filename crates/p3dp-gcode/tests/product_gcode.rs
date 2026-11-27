@@ -673,3 +673,63 @@ fn the_checker_never_panics_on_odd_lines() {
     let odd = "\u{0}\n;;;\nM104\nM104 S\nG10 P\nSET_HEATER_TEMPERATURE\nPRINT_START BED=\nPRINT_START =5\n\u{e9}\u{4e2d} S5\n";
     let _ = check_program(odd, &LIMITS);
 }
+
+#[test]
+fn the_checker_reads_a_command_the_way_the_firmware_does() {
+    // no space, a line number with its checksum, leading zeros, lower case, a carriage return
+    for line in [
+        "M104S301",
+        "N10 M104 S301*55",
+        "N10M104S301",
+        "M0104 S301",
+        "m104s301",
+        "; note\rM104 S301",
+        "M104 S200 S301",
+    ] {
+        let v = check_program(&format!("{line}\n"), &LIMITS);
+        assert_eq!(v.len(), 1, "{line:?}: {v:?}");
+    }
+}
+
+#[test]
+fn the_checker_sees_every_way_of_asking_for_heat() {
+    for line in [
+        "M109 R301",
+        "M190 R101",
+        "G10 P0 R301",
+        "M568 P0 S301",
+        "M568 P0 R301 S200",
+        "M303 E0 S301",
+        "M303 E-1 S101",
+        "SET_HEATER_TEMPERATURE HEATER=hotend TARGET=301",
+        "START_PRINT BED_TEMP=101 EXTRUDER_TEMP=200",
+        "PRINT_START HOTEND=301",
+    ] {
+        let v = check_program(&format!("{line}\n"), &LIMITS);
+        assert_eq!(v.len(), 1, "{line:?}: {v:?}");
+    }
+    let fine = "M109 R200\nM303 E-1 S90\nG10 P0 R150 S200\nG1 E-2 S900\nG10\nSET_HEATER_TEMPERATURE HEATER=hotend TARGET=0\n";
+    assert!(check_program(fine, &LIMITS).is_empty());
+}
+
+#[test]
+fn a_block_may_not_give_every_axis_a_new_origin() {
+    let job = p3dp_gcode::BlockJob {
+        nozzle_c: 200.0,
+        bed_c: 60.0,
+        chamber_c: 0.0,
+        top_z_mm: 10.0,
+    };
+    let check = |text: &str| {
+        p3dp_gcode::check_block(
+            text,
+            p3dp_gcode::Place::Start,
+            &job,
+            Dialect::Marlin,
+            LIMITS,
+            VOLUME,
+        )
+    };
+    assert!(check("G92").is_err());
+    assert!(check("G92 E0").is_ok());
+}
