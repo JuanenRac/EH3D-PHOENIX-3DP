@@ -156,7 +156,7 @@ jobs:
           name="phoenix-3dp-${version}-${MATRIX_LABEL}"
           mkdir "$name"
           cp "target/${MATRIX_TARGET}/release/phoenix-3dp${MATRIX_EXT}" "$name/"
-          cp LICENSE README.md CHANGELOG.md "$name/"
+          cp LICENSE README.md CHANGELOG.md docs/THIRD_PARTY_NOTICES "$name/"
           # the sample files, as examples
           cp -r examples "$name/examples"
           # the PDF library of the viewer of attachments, beside the program with its licences, as it is published (never signed again)
