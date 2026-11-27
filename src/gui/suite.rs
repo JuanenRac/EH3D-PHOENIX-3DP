@@ -601,7 +601,7 @@ impl App {
             } else {
                 let said = fill(
                     Msg::ProjectProgramMovesBad.tr(lang),
-                    &[&moves.outside_count.to_string(), printer],
+                    &[printer, &moves.outside_count.to_string()],
                 );
                 ui.label(egui::RichText::new(said).color(danger));
                 for o in moves.outside.iter().take(LISTED) {
@@ -686,7 +686,7 @@ impl App {
                 &format!("{:.2}", layer.z_mm),
             ],
         ));
-        let side = ui.available_width().clamp(120.0, 420.0);
+        let side = ui.available_width().clamp(120.0, 300.0);
         let (rect, _) = ui.allocate_exact_size(egui::vec2(side, side), egui::Sense::hover());
         let painter = ui.painter_at(rect);
         let bed = [volume[0], volume[1]];

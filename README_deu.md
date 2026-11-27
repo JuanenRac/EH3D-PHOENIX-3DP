@@ -114,7 +114,7 @@ Fotos des Fensters, vom Programm selbst mit seinem Bildmodus aufgenommen (`--sho
 </p>
 
 <p align="center">
-  <img src="images/screenshots/program.png" alt="Suite-Projekt: sein G-Code mit gezählten Zeilen und mit den Grenzen des Druckers verglichenen Temperaturen, über den Bedienelementen des Panels Projekt" width="100%">
+  <img src="images/screenshots/program.png" alt="Suite-Projekt: sein G-Code mit gezählten Zeilen, gegen den Drucker geprüften Temperaturen und Bewegungen, einem gemeldeten Befehl, der in die Maschine eingreift, und einer von oben gezeichneten Schicht" width="100%">
 </p>
 
 <p align="center">

@@ -114,7 +114,7 @@ Fotografie della finestra, scattate dal programma stesso con la sua modalità im
 </p>
 
 <p align="center">
-  <img src="images/screenshots/program.png" alt="Progetto della suite: il suo G-code, con le righe contate e le temperature confrontate con i limiti della stampante, sopra i comandi del pannello Progetto" width="100%">
+  <img src="images/screenshots/program.png" alt="Progetto della suite: il suo G-code, con le righe contate, temperature e movimenti controllati rispetto alla stampante, un comando che agisce sulla macchina segnalato e uno strato disegnato dall'alto" width="100%">
 </p>
 
 <p align="center">

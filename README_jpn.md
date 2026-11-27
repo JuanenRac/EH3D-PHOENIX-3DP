@@ -114,7 +114,7 @@ EH3D-PHOENIX-3DP は EH3D Fabrication Suite の PHOENIX ファミリーに属す
 </p>
 
 <p align="center">
-  <img src="images/screenshots/program.png" alt="スイートプロジェクト：行数を数え、温度をプリンターの上限と照合した G コード。プロジェクトパネルの操作の上に表示" width="100%">
+  <img src="images/screenshots/program.png" alt="スイートプロジェクト：行数を数え、温度と移動をプリンターと照合し、機械を操作する指令を知らせ、一層を真上から描いた G コード" width="100%">
 </p>
 
 <p align="center">

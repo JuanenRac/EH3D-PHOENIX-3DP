@@ -114,7 +114,7 @@ Fotografías de la ventana, hechas por el propio programa con su modo de imagen 
 </p>
 
 <p align="center">
-  <img src="images/screenshots/program.png" alt="Proyecto de la suite: su G-code, con las líneas contadas y las temperaturas comparadas con los límites de la impresora, sobre los controles del panel Proyecto" width="100%">
+  <img src="images/screenshots/program.png" alt="Proyecto de la suite: su G-code, con las líneas contadas, las temperaturas y los movimientos comprobados con la impresora, una orden que actúa sobre la máquina señalada y una capa dibujada desde arriba" width="100%">
 </p>
 
 <p align="center">

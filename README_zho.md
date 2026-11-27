@@ -114,7 +114,7 @@ EH3D-PHOENIX-3DP 是 EH3D Fabrication Suite 中 PHOENIX 家族的 3D 打印程�
 </p>
 
 <p align="center">
-  <img src="images/screenshots/program.png" alt="套件项目：其 G 代码，已统计行数并将温度与打印机上限比对，显示在“项目”面板控件上方" width="100%">
+  <img src="images/screenshots/program.png" alt="套件项目：其 G 代码，已统计行数，温度和移动已与打印机比对，指出操作机器本身的指令，并从上方绘出一层" width="100%">
 </p>
 
 <p align="center">

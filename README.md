@@ -114,7 +114,7 @@ Photographs of the window, taken by the program itself with its picture mode (`-
 </p>
 
 <p align="center">
-  <img src="images/screenshots/program.png" alt="Project of the suite: its G-code, with the lines counted and the temperatures compared with the limits of the printer, above the controls of the Project panel" width="100%">
+  <img src="images/screenshots/program.png" alt="Project of the suite: its G-code, with the lines counted, the temperatures and the moves checked against the printer, a command that acts on the machine told and one layer drawn from above" width="100%">
 </p>
 
 <p align="center">
