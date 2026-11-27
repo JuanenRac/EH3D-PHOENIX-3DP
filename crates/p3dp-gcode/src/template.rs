@@ -211,6 +211,8 @@ impl Rules {
                 Ok(())
             }
             // only the extruder may be given a new origin: a new origin of an axis would move the build volume
+            // with no word at all some firmwares give every axis a new origin
+            "G92" if words.is_empty() => Err("G92 needs the E word".to_string()),
             "G92" => self.numbers(&words, "E").map(|_| ()),
             "G21" | "G29" | "M82" | "M83" | "M84" | "M105" | "M400" => bare(&words),
             "M104" | "M109" => self.temperature(&words, Zone::Nozzle),

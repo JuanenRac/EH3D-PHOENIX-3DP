@@ -13,15 +13,58 @@ pub struct Violation {
     pub error: TempError,
 }
 
-fn value_of(tokens: &[&str], letter: char) -> Option<Result<f64, ()>> {
-    tokens.iter().skip(1).find_map(|t| {
-        let mut c = t.chars();
-        if c.next()?.eq_ignore_ascii_case(&letter) {
-            Some(c.as_str().parse::<f64>().map_err(|_| ()))
-        } else {
-            None
+/// A word of a G, M or T command: its letter and the number after it (`Err` when what follows the letter is not a number).
+type Word = (char, Result<f64, ()>);
+
+/// The words of a line the way a firmware reads them: with or without blanks between them (`M104S210`).
+fn words_of(code: &str) -> Vec<Word> {
+    let mut out = Vec::new();
+    let mut chars = code.chars().peekable();
+    while let Some(c) = chars.next() {
+        if !c.is_ascii_alphabetic() {
+            continue;
         }
-    })
+        while chars.next_if(|d| d.is_ascii_whitespace()).is_some() {}
+        let mut number = String::new();
+        while let Some(d) = chars.next_if(|d| d.is_ascii_digit() || matches!(d, '+' | '-' | '.')) {
+            number.push(d);
+        }
+        out.push((
+            c.to_ascii_uppercase(),
+            number.parse::<f64>().map_err(|_| ()),
+        ));
+    }
+    out
+}
+
+/// What of a line is a command: without the comment, the line number (`N12`) and the checksum (`*45`).
+fn command_of(raw: &str) -> &str {
+    let code = raw.split(';').next().unwrap_or("");
+    let code = code.split('*').next().unwrap_or("").trim();
+    match code.strip_prefix(['N', 'n']) {
+        Some(rest) if rest.starts_with(|c: char| c.is_ascii_digit()) => rest
+            .trim_start_matches(|c: char| c.is_ascii_digit())
+            .trim_start(),
+        _ => code,
+    }
+}
+
+/// Whether the line is a G, M or T command (a letter and a number), and not a macro with a name of its own.
+fn is_classic(code: &str) -> bool {
+    let mut c = code.chars();
+    c.next()
+        .is_some_and(|c| matches!(c.to_ascii_uppercase(), 'G' | 'M' | 'T'))
+        && c.find(|c| !c.is_ascii_whitespace())
+            .is_some_and(|c| c.is_ascii_digit())
+}
+
+/// Every value given with `letter`: a firmware may take any of two words of the same letter, so each one is judged.
+fn values(words: &[Word], letter: char) -> impl Iterator<Item = Result<f64, ()>> + '_ {
+    words
+        .iter()
+        .skip(1)
+        .filter(move |(l, _)| *l == letter)
+        .map(|(_, v)| *v)
 }
 
 fn named_value(tokens: &[&str], key: &str) -> Option<Result<f64, ()>> {
@@ -42,66 +85,105 @@ fn judge(limits: &TempLimits, zone: Zone, v: Result<f64, ()>) -> Option<TempErro
     }
 }
 
-/// Checks a whole program. The commands it knows: `M104`, `M109` (nozzle), `M140`, `M190` (bed), `M141`, `M191` (chamber), `G10 P.. S..` (RepRapFirmware tool),
-/// `SET_HEATER_TEMPERATURE` and the parameters `BED`, `EXTRUDER`, `CHAMBER` of `PRINT_START`. Comments are ignored. A value that is not a number is reported as such.
-pub fn check_program(text: &str, limits: &TempLimits) -> Vec<Violation> {
-    let mut out = Vec::new();
-    for (i, raw) in text.lines().enumerate() {
-        let code = raw.split(';').next().unwrap_or("").trim();
-        if code.is_empty() {
-            continue;
+/// The temperatures a G, M or T command asks for: the target (`S`) and, where the command has one, the temperature to wait or stand by at (`R`).
+fn classic(code: &str, limits: &TempLimits) -> Vec<TempError> {
+    let words = words_of(code);
+    let Some(&(letter, Ok(number))) = words.first() else {
+        return Vec::new();
+    };
+    let (zone, letters): (Zone, &[char]) = match (letter, number as i64) {
+        ('M', 104 | 109) => (Zone::Nozzle, &['S', 'R']),
+        ('M', 140 | 190) => (Zone::Bed, &['S', 'R']),
+        ('M', 141 | 191) => (Zone::Chamber, &['S', 'R']),
+        // RepRapFirmware: the temperatures of a tool, only when the tool is named (`G10` alone retracts)
+        ('M', 568) => (Zone::Nozzle, &['S', 'R']),
+        ('G', 10) if values(&words, 'P').next().is_some() => (Zone::Nozzle, &['S', 'R']),
+        // the tuning of a heater heats it: E-1 is the bed and E-2 the chamber
+        ('M', 303) => {
+            let zone = match values(&words, 'E').next() {
+                Some(Ok(e)) if e == -1.0 => Zone::Bed,
+                Some(Ok(e)) if e == -2.0 => Zone::Chamber,
+                _ => Zone::Nozzle,
+            };
+            (zone, &['S'])
         }
-        let tokens: Vec<&str> = code.split_ascii_whitespace().collect();
-        let cmd = tokens[0].to_ascii_uppercase();
-        let mut found: Vec<TempError> = Vec::new();
-        match cmd.as_str() {
-            "M104" | "M109" => {
-                found.extend(value_of(&tokens, 'S').and_then(|v| judge(limits, Zone::Nozzle, v)))
-            }
-            "M140" | "M190" => {
-                found.extend(value_of(&tokens, 'S').and_then(|v| judge(limits, Zone::Bed, v)))
-            }
-            "M141" | "M191" => {
-                found.extend(value_of(&tokens, 'S').and_then(|v| judge(limits, Zone::Chamber, v)))
-            }
-            "G10" => {
-                if value_of(&tokens, 'P').is_some() {
-                    found.extend(
-                        value_of(&tokens, 'S').and_then(|v| judge(limits, Zone::Nozzle, v)),
-                    );
+        _ => return Vec::new(),
+    };
+    letters
+        .iter()
+        .flat_map(|&l| values(&words, l))
+        .filter_map(|v| judge(limits, zone, v))
+        .collect()
+}
+
+/// The temperatures a macro with a name of its own (Klipper) asks for.
+fn named(code: &str, limits: &TempLimits) -> Vec<TempError> {
+    let tokens: Vec<&str> = code.split_ascii_whitespace().collect();
+    let mut found = Vec::new();
+    match tokens[0].to_ascii_uppercase().as_str() {
+        "SET_HEATER_TEMPERATURE" => {
+            let heater = tokens.iter().skip(1).find_map(|t| {
+                t.split_once('=')
+                    .filter(|(k, _)| k.eq_ignore_ascii_case("HEATER"))
+                    .map(|(_, v)| v.to_ascii_lowercase())
+            });
+            let zone = match heater.as_deref() {
+                Some("heater_bed" | "bed") => Some(Zone::Bed),
+                Some(h) if h.contains("chamber") => Some(Zone::Chamber),
+                Some(h)
+                    if ["extruder", "hotend", "nozzle"]
+                        .iter()
+                        .any(|n| h.contains(n)) =>
+                {
+                    Some(Zone::Nozzle)
                 }
+                _ => None,
+            };
+            if let Some(z) = zone {
+                found.extend(named_value(&tokens, "TARGET").and_then(|v| judge(limits, z, v)));
             }
-            "SET_HEATER_TEMPERATURE" => {
-                let heater = tokens.iter().skip(1).find_map(|t| {
-                    t.split_once('=')
-                        .filter(|(k, _)| k.eq_ignore_ascii_case("HEATER"))
-                        .map(|(_, v)| v.to_ascii_lowercase())
-                });
-                let zone = match heater.as_deref() {
-                    Some(h) if h.starts_with("extruder") => Some(Zone::Nozzle),
-                    Some("heater_bed") => Some(Zone::Bed),
-                    Some(h) if h.contains("chamber") => Some(Zone::Chamber),
-                    _ => None,
-                };
-                if let Some(z) = zone {
-                    found.extend(named_value(&tokens, "TARGET").and_then(|v| judge(limits, z, v)));
-                }
-            }
-            "PRINT_START" => {
-                for (key, zone) in [
-                    ("EXTRUDER", Zone::Nozzle),
-                    ("BED", Zone::Bed),
-                    ("CHAMBER", Zone::Chamber),
-                ] {
+        }
+        "PRINT_START" | "START_PRINT" => {
+            for (keys, zone) in [
+                (
+                    &["EXTRUDER", "EXTRUDER_TEMP", "HOTEND", "HOTEND_TEMP"][..],
+                    Zone::Nozzle,
+                ),
+                (&["BED", "BED_TEMP"][..], Zone::Bed),
+                (&["CHAMBER", "CHAMBER_TEMP"][..], Zone::Chamber),
+            ] {
+                for key in keys {
                     found.extend(named_value(&tokens, key).and_then(|v| judge(limits, zone, v)));
                 }
             }
-            _ => {}
         }
+        _ => {}
+    }
+    found
+}
+
+/// Checks a whole program. The commands it knows: `M104`, `M109` (nozzle), `M140`, `M190` (bed), `M141`, `M191` (chamber), `M303` (tuning), `G10 P.. S.. R..` and
+/// `M568` (RepRapFirmware tool), `SET_HEATER_TEMPERATURE` and the temperature parameters of `PRINT_START` and `START_PRINT`. A command is read with or without blanks,
+/// behind a line number and a checksum, and a carriage return ends a line. Comments are ignored. A value that is not a number is reported as such.
+pub fn check_program(text: &str, limits: &TempLimits) -> Vec<Violation> {
+    let mut out = Vec::new();
+    let lines = text
+        .split_terminator('\n')
+        .flat_map(|l| l.strip_suffix('\r').unwrap_or(l).split('\r'));
+    for (i, raw) in lines.enumerate() {
+        let code = command_of(raw);
+        if code.is_empty() {
+            continue;
+        }
+        let found = if is_classic(code) {
+            classic(code, limits)
+        } else {
+            named(code, limits)
+        };
         for error in found {
             out.push(Violation {
                 line: i + 1,
-                command: code.to_string(),
+                command: raw.split(';').next().unwrap_or("").trim().to_string(),
                 error,
             });
         }
