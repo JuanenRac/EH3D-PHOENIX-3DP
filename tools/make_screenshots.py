@@ -4,7 +4,7 @@
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
-"""Takes the pictures of the window for the READMEs with the picture mode of the program, one for each tab and one of the attachments of a project of the suite.
+"""Takes the pictures of the window for the READMEs with the picture mode of the program, one for each tab and two of a project of the suite (its attachments and its G-code).
 
     py -3.14 -I tools/make_screenshots.py PATH/TO/phoenix-3dp[.exe] [--out window-pictures] [--lang en] [--size 1360x860] [--suite-tool PATH/TO/eh3d-project]
     py -3.14 -I tools/make_screenshots.py --check [--out window-pictures]
@@ -26,7 +26,7 @@ from pathlib import Path
 
 MAX_BYTES = 250 * 1024
 WINDOWS = ("prepare", "preview", "device", "project")
-PICTURES = WINDOWS + ("attachments",)
+PICTURES = WINDOWS + ("attachments", "program")
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 
 
@@ -74,11 +74,14 @@ def take(binary: Path, window: str, lang: str, size: str, out: Path, tool: Path 
             env[name] = str(work)
         args = [str(exe), "gui", "--shot", "raw.png", "--window", window, "--demo", "--lang", lang,
                 "--size", size, "--wait", "12"]
-        if window == "attachments" and tool is not None:
+        if window in ("attachments", "program") and tool is not None:
             made_up_project(exe, tool, work, env)
             # the project is read on a thread of its own, so the picture waits longer
             args = [str(exe), "gui", "--shot", "raw.png", "--window", "project", "--open", "demo.eh3d", "--lang", lang,
                     "--size", size, "--wait", "90"]
+            if window == "program":
+                # the panel Project is the one that shows the G-code of the project
+                args += ["--panel", "project"]
         if window == "preview":
             # look inside, so the picture shows the walls and the infill and not only the top skin
             args += ["--slice", "--peek"]

@@ -3000,6 +3000,14 @@ pub fn run(config: AppConfig, lang: Lang, args: &WindowArgs) -> Result<(), Strin
                     .pending_dock
                     .push(DockAction::ShowPanel(pid::ATTACHMENTS.to_string()));
             }
+            // a panel asked for by name comes after, so it is the one in front
+            if let Some(panel) = &start.panel {
+                shell
+                    .app
+                    .borrow_mut()
+                    .pending_dock
+                    .push(DockAction::ShowPanel(panel.clone()));
+            }
             // the list of recent projects lives in the folder of the user; a picture reads and writes none
             if start.shot.is_none() {
                 shell.dock.keep_user_recent(Phoenix::Printer3d);

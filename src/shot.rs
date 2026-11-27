@@ -60,6 +60,8 @@ pub struct WindowArgs {
     pub demo: bool,
     /// Show the inside of the plan, with the top and bottom skins hidden, in the Preview tab (`--peek`).
     pub peek: bool,
+    /// A panel to put in front for the picture (`--panel project`), when it is a tab behind another one.
+    pub panel: Option<String>,
 }
 
 /// Reads a size written `WIDTHxHEIGHT` (`1280x720`, also with a capital X), each side between [`SIZE_MIN`] and [`SIZE_MAX`].
@@ -126,6 +128,10 @@ pub fn parse_window_args(args: &[String]) -> Result<WindowArgs, String> {
                 let id = iter.next().ok_or("--printer needs the id of a profile")?;
                 parsed.printer = Some(id.to_ascii_lowercase());
             }
+            "--panel" => {
+                let id = iter.next().ok_or("--panel needs the name of a panel")?;
+                parsed.panel = Some(id.to_ascii_lowercase());
+            }
             "--replace" => replace = true,
             "--slice" => parsed.slice = true,
             "--demo" => parsed.demo = true,
@@ -156,6 +162,9 @@ pub fn parse_window_args(args: &[String]) -> Result<WindowArgs, String> {
         && (parsed.window.is_some() || parsed.slice || parsed.demo || parsed.peek)
     {
         return Err("--window, --slice, --demo and --peek need --shot".to_owned());
+    }
+    if parsed.shot.is_none() && parsed.panel.is_some() {
+        return Err("--panel needs --shot".to_owned());
     }
     if parsed.slice && parsed.model.is_none() && !parsed.demo {
         return Err("--slice needs a model: give --open or --demo".to_owned());
@@ -270,7 +279,7 @@ mod tests {
     #[test]
     fn every_option_is_read() {
         let w = parse_window_args(&args(
-            "my.cfg --shot out.PNG --size 1000x600 --wait 12 --replace --window preview --open cube.stl --printer PRUSA-MK4S --slice --demo --peek --lang pt",
+            "my.cfg --shot out.PNG --size 1000x600 --wait 12 --replace --window preview --open cube.stl --printer PRUSA-MK4S --slice --demo --peek --panel Project --lang pt",
         ))
         .unwrap();
         let s = w.shot.clone().unwrap();
@@ -280,6 +289,7 @@ mod tests {
         assert_eq!(w.model, Some(PathBuf::from("cube.stl")));
         assert_eq!(w.printer.as_deref(), Some("prusa-mk4s"));
         assert!(w.slice && w.demo && w.peek);
+        assert_eq!(w.panel.as_deref(), Some("project"));
         assert_eq!(w.lang, Some(Lang::Pt));
         assert_eq!(w.config, Some(PathBuf::from("my.cfg")));
     }
@@ -322,6 +332,8 @@ mod tests {
             ("one.cfg two.cfg", "only one settings file"),
             ("--open", "needs a model"),
             ("--printer", "needs the id"),
+            ("--panel", "needs the name of a panel"),
+            ("--panel project", "--panel needs --shot"),
         ] {
             let e = parse_window_args(&args(text)).unwrap_err();
             assert!(e.contains(want), "{text:?} -> {e}");
