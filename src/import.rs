@@ -23,6 +23,16 @@ const SEAMS: &[(&str, &str)] = &[
     ("aligned", "aligned"),
     ("rear", "rear"),
     ("back", "rear"),
+    ("corner", "corner"),
+];
+/// The ways the files write a switch.
+const SWITCHES: &[(&str, &str)] = &[
+    ("1", "on"),
+    ("true", "on"),
+    ("on", "on"),
+    ("0", "off"),
+    ("false", "off"),
+    ("off", "off"),
 ];
 const PATTERNS: &[(&str, &str)] = &[
     ("rectilinear", "rectilinear"),
@@ -92,6 +102,68 @@ const MAP: &[(&str, &str, Kind)] = &[
     ("initial_layer_speed", "first_layer_speed_mm_s", Kind::Plain),
     ("speed_layer_0", "first_layer_speed_mm_s", Kind::Plain),
     ("brim_width", "brim_width_mm", Kind::Plain),
+    (
+        "first_layer_temperature",
+        "first_layer_nozzle_c",
+        Kind::Plain,
+    ),
+    (
+        "nozzle_temperature_initial_layer",
+        "first_layer_nozzle_c",
+        Kind::Plain,
+    ),
+    (
+        "material_print_temperature_layer_0",
+        "first_layer_nozzle_c",
+        Kind::Plain,
+    ),
+    (
+        "first_layer_bed_temperature",
+        "first_layer_bed_c",
+        Kind::Plain,
+    ),
+    (
+        "hot_plate_temp_initial_layer",
+        "first_layer_bed_c",
+        Kind::Plain,
+    ),
+    (
+        "material_bed_temperature_layer_0",
+        "first_layer_bed_c",
+        Kind::Plain,
+    ),
+    ("infill_overlap", "infill_overlap_percent", Kind::Percent),
+    (
+        "infill_wall_overlap",
+        "infill_overlap_percent",
+        Kind::Percent,
+    ),
+    (
+        "support_material_interface_layers",
+        "support_interface_layers",
+        Kind::Plain,
+    ),
+    (
+        "support_interface_top_layers",
+        "support_interface_layers",
+        Kind::Plain,
+    ),
+    (
+        "external_perimeters_first",
+        "external_perimeters_first",
+        Kind::Word(SWITCHES),
+    ),
+    (
+        "only_retract_when_crossing_perimeters",
+        "retract_only_crossing",
+        Kind::Word(SWITCHES),
+    ),
+    ("min_skirt_length", "skirt_min_length_mm", Kind::Plain),
+    (
+        "skirt_brim_minimal_length",
+        "skirt_min_length_mm",
+        Kind::Plain,
+    ),
     ("elefant_foot_compensation", "elephant_foot_mm", Kind::Plain),
     ("retract_lift", "z_hop_mm", Kind::Plain),
     ("z_hop", "z_hop_mm", Kind::Plain),
@@ -591,6 +663,28 @@ mod tests {
             assert!(p3dp_slicer::config::KEYS.contains(to), "{from} -> {to}");
             assert_eq!(MAP.iter().filter(|m| m.0 == *from).count(), 1, "{from}");
         }
+    }
+
+    #[test]
+    fn the_keys_of_the_finer_settings_are_brought_with_their_switches() {
+        let r = run(br#"{"first_layer_temperature":"220","hot_plate_temp_initial_layer":"65","infill_overlap":"15%","support_material_interface_layers":"3","external_perimeters_first":"1","only_retract_when_crossing_perimeters":"false","min_skirt_length":"200","seam_position":"corner"}"#);
+        assert_eq!(value(&r, "first_layer_nozzle_c"), Some("220"));
+        assert_eq!(value(&r, "first_layer_bed_c"), Some("65"));
+        assert_eq!(value(&r, "infill_overlap_percent"), Some("15"));
+        assert_eq!(value(&r, "support_interface_layers"), Some("3"));
+        assert_eq!(value(&r, "external_perimeters_first"), Some("on"));
+        assert_eq!(value(&r, "retract_only_crossing"), Some("off"));
+        assert_eq!(value(&r, "skirt_min_length_mm"), Some("200"));
+        assert_eq!(value(&r, "seam"), Some("corner"));
+        let odd = run(br#"{"external_perimeters_first":"maybe","infill_overlap":"80%"}"#);
+        assert_eq!(
+            *fate(&odd, "external_perimeters_first"),
+            Fate::NotApplied(Why::UnknownWord)
+        );
+        assert!(matches!(
+            fate(&odd, "infill_overlap"),
+            Fate::NotApplied(Why::Refused(_))
+        ));
     }
 
     #[test]

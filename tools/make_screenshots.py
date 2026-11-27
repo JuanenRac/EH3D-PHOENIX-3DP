@@ -46,12 +46,29 @@ def quantize(src: Path, dst: Path) -> int:
     raise SystemExit(f"{dst.name}: could not be made smaller than {MAX_BYTES} bytes")
 
 
+def made_up_program() -> str:
+    """A made-up G-code program to look at: one layer of a square ring filled with lines, and a command that stores settings, to show that it is told."""
+    lines = ["G28", "M140 S60", "M104 S210", "M83", "G1 Z0.2 F600"]
+    for inset in (0.0, 1.0):
+        lo, hi = 70.0 + inset, 186.0 - inset
+        lines.append(f"G1 X{lo} Y{lo} F6000")
+        for x, y in ((hi, lo), (hi, hi), (lo, hi), (lo, lo)):
+            lines.append(f"G1 X{x} Y{y} E2 F1800")
+    for k in range(1, 28):
+        at = 72.0 + 4.0 * k
+        ends = (at, 72.0, 72.0, at) if at <= 184.0 else (184.0, at - 112.0, at - 112.0, 184.0)
+        lines.append(f"G1 X{ends[0]} Y{ends[1]} F6000")
+        lines.append(f"G1 X{ends[2]} Y{ends[3]} E1 F1800")
+    lines += ["M500", "M104 S0", "M140 S0"]
+    return "\n".join(lines) + "\n"
+
+
 def made_up_project(exe: Path, tool: Path, work: Path, env: dict) -> None:
     """A project `demo.eh3d` in `work` with the sample cube on its bed, a note and a document with macros (made-up bytes), to show the panel and its warning."""
     shutil.copy2(Path(__file__).resolve().parent.parent / "examples" / "cube-20mm.stl", work / "cube-20mm.stl")
     (work / "assembly-guide.md").write_text("# Assembly guide\n\n1. Print the cube with three walls.\n2. Measure it with a calliper.\n", encoding="utf-8")
     (work / "label-maker.docm").write_bytes(b"made-up bytes for a picture")
-    (work / "job.gcode").write_text("G28\nM140 S60\nM104 S210\nG1 X10 Y10 Z0.2 F3000\nM104 S0\n", encoding="utf-8")
+    (work / "job.gcode").write_text(made_up_program(), encoding="utf-8")
     commands = [
         [str(exe), "project", "save", "demo.eh3d", "--model", "cube-20mm.stl", "--printer", "bambu-lab-p1s", "--gcode", "job.gcode"],
         [str(tool), "attach", "demo.eh3d", "assembly-guide.md", "--title", "Assembly guide", "--ref", "PART1"],

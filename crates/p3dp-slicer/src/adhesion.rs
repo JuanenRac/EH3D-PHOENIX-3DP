@@ -30,13 +30,27 @@ fn ring_paths(outline: &[Loop], distances: &[f64], width: f64) -> Vec<Path> {
     out
 }
 
-/// The loops of a skirt: `skirt_loops` loops, the first `skirt_distance_mm` from the part.
+/// The most loops a skirt is given to reach `skirt_min_length_mm`.
+pub const MAX_SKIRT_LOOPS: u32 = 50;
+
+/// The loops of a skirt: `skirt_loops` loops, the first `skirt_distance_mm` from the part, and more outside them until the skirt is `skirt_min_length_mm` long (at most
+/// [`MAX_SKIRT_LOOPS`]).
 pub fn skirt_paths(outline: &[Loop], cfg: &SliceConfig, height: f64, head: &mut P) -> Vec<Path> {
     let w = cfg.line_width_mm;
     let s = cfg.spacing_for(w, height);
-    let distances: Vec<f64> = (0..cfg.skirt_loops)
-        .map(|k| cfg.skirt_distance_mm + w / 2.0 + f64::from(k) * s)
-        .collect();
+    let mut distances: Vec<f64> = Vec::new();
+    let mut length = 0.0;
+    for k in 0..MAX_SKIRT_LOOPS.max(cfg.skirt_loops) {
+        if k >= cfg.skirt_loops && length >= cfg.skirt_min_length_mm {
+            break;
+        }
+        let d = cfg.skirt_distance_mm + w / 2.0 + f64::from(k) * s;
+        length += grown(outline, d)
+            .iter()
+            .map(|l| crate::geom::loop_length(l))
+            .sum::<f64>();
+        distances.push(d);
+    }
     order_paths(ring_paths(outline, &distances, w), head)
 }
 

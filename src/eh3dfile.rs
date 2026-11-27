@@ -18,7 +18,7 @@ use p3dp_formats::project3mf::read_project;
 use p3dp_formats::read_mesh;
 use p3dp_formats::threemf::{self, Meta};
 use p3dp_gcode::template::{MAX_LINES, MAX_LINE_CHARS};
-use p3dp_gcode::{check_program, Violation};
+use p3dp_gcode::{check_program, read_motion, risky_commands, Outside, Risk, Violation};
 use p3dp_profiles::PrinterProfile;
 use p3dp_slicer::{SliceConfig, UserGcode};
 use serde_json::{json, Value};
@@ -38,6 +38,10 @@ pub const PLATE: &str = "plate/plate.json";
 const PLATE_DIR: &str = "plate/";
 const PROGRAM_DIR: &str = "programs/";
 const SETTINGS: &str = "settings/slice.txt";
+/// Where the printer profile of the person is kept, and the name of the record that says so.
+const PROFILE: (&str, &str) = ("printer_profile", "profiles/printer.txt");
+/// The largest printer profile that goes into a project or is read from one.
+pub const MAX_PROFILE_BYTES: usize = 16 << 10;
 /// Where the start and the end G-code of the person are kept, and the names of the record that say so.
 const START_BLOCK: (&str, &str) = ("start_gcode", "blocks/start.gcode");
 const END_BLOCK: (&str, &str) = ("end_gcode", "blocks/end.gcode");
@@ -93,6 +97,8 @@ pub struct Contents {
     pub start_gcode: Option<String>,
     /// The end G-code of the person; an empty text takes it out of the branch.
     pub end_gcode: Option<String>,
+    /// The printer profile of the person, as the text of a profile file; an empty text takes it out of the branch.
+    pub printer_profile: Option<String>,
 }
 
 impl Contents {
@@ -105,6 +111,7 @@ impl Contents {
             && self.program.is_none()
             && self.start_gcode.is_none()
             && self.end_gcode.is_none()
+            && self.printer_profile.is_none()
     }
 }
 
@@ -119,6 +126,10 @@ pub struct Opened {
     pub program: Option<String>,
     /// The start and end G-code of the person. They are checked against the printer when a slice uses them, as the ones named by file are.
     pub blocks: UserGcode,
+    /// The printer profile the project carries. It can only lower the limits of the same printer (see [`PrinterProfile::tightened_by`]).
+    pub profile: Option<PrinterProfile>,
+    /// The text of that profile, as it is kept.
+    pub profile_text: Option<String>,
     /// The report of the last import.
     pub report: Option<ConversionReport>,
     /// What is out of date or wrong.
@@ -184,15 +195,29 @@ pub enum Heat {
     },
 }
 
+/// Where the moves of a program go, against the build volume of a printer.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Moves {
+    /// The first lines that go past the volume.
+    pub outside: Vec<Outside>,
+    pub outside_count: usize,
+    /// Moves that could not be followed.
+    pub unfollowed: usize,
+}
+
 /// What there is to say about a G-code program of a project. Nothing of it is run, changed or sent.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Review {
     pub name: String,
     pub lines: usize,
     pub heat: Heat,
+    /// `None` when there is no printer to hold the moves to, or the file is not text.
+    pub moves: Option<Moves>,
+    /// The commands that act on the machine itself.
+    pub risks: Vec<Risk>,
 }
 
-/// Counts the lines of a program and compares its temperatures with the limits of a printer.
+/// Counts the lines of a program, compares its temperatures with the limits of a printer and its moves with the build volume, and lists the commands that act on the machine.
 pub fn review(name: &str, bytes: &[u8], printer: Option<&PrinterProfile>) -> Review {
     let text = String::from_utf8_lossy(bytes);
     let heat = if bytes.contains(&0) {
@@ -207,11 +232,42 @@ pub fn review(name: &str, bytes: &[u8], printer: Option<&PrinterProfile>) -> Rev
     } else {
         Heat::NoPrinter
     };
+    let is_text = !bytes.contains(&0);
+    let volume = match &heat {
+        Heat::Checked { .. } => printer.map(|p| p.volume_mm),
+        _ => None,
+    };
+    let moves = volume.map(|v| {
+        let m = read_motion(&text, Some(v));
+        Moves {
+            outside: m.outside,
+            outside_count: m.outside_count,
+            unfollowed: m.unfollowed,
+        }
+    });
     Review {
         name: name.to_string(),
         lines: text.lines().count(),
         heat,
+        moves,
+        risks: if is_text {
+            risky_commands(&text)
+        } else {
+            Vec::new()
+        },
     }
+}
+
+/// The profile of a printer file of the person: read whole and checked, or refused.
+pub fn profile_of(text: &str) -> Result<PrinterProfile, String> {
+    if text.len() > MAX_PROFILE_BYTES {
+        return Err("the printer profile is too large".to_string());
+    }
+    let profile = PrinterProfile::from_text(text).map_err(|e| format!("printer profile: {e}"))?;
+    profile
+        .validate()
+        .map_err(|e| format!("printer profile: {e}"))?;
+    Ok(profile)
 }
 
 /// Refuses a start or end G-code that no slice would take: too large, too long or with a control character.
@@ -442,7 +498,23 @@ fn opened_of(copy: &WorkingCopy, limits: &Limits) -> Result<Opened, String> {
         start: block(START_BLOCK)?,
         end: block(END_BLOCK)?,
     };
+    // a profile that cannot be read does not close the project: it is told and left out
+    let mut warnings = Vec::new();
+    let mut profile = None;
+    let mut profile_text = None;
+    if let Some(bytes) = copy.text(PROFILE.0).and_then(|rel| files.get(&rel)) {
+        let text = String::from_utf8_lossy(bytes).into_owned();
+        match profile_of(&text) {
+            Ok(found) => {
+                profile = Some(found);
+                profile_text = Some(text);
+            }
+            Err(e) => warnings.push(format!("{BRANCH}/{}: {e}", PROFILE.1)),
+        }
+    }
     Ok(Opened {
+        profile,
+        profile_text,
         blocks,
         parts: parts_of(&files, limits)?,
         settings,
@@ -450,7 +522,7 @@ fn opened_of(copy: &WorkingCopy, limits: &Limits) -> Result<Opened, String> {
         filament: copy.text("filament"),
         program: copy.text("program"),
         report: copy.report().map_err(describe)?,
-        warnings: Vec::new(),
+        warnings,
         written: None,
         files,
     })
@@ -460,7 +532,7 @@ fn opened_of(copy: &WorkingCopy, limits: &Limits) -> Result<Opened, String> {
 pub fn held(path: &Path, limits: &Limits) -> Result<Opened, String> {
     let (_, copy, warnings) = KIT.open(path).map_err(describe)?;
     let mut opened = opened_of(&copy, limits)?;
-    opened.warnings = warnings;
+    opened.warnings.splice(0..0, warnings);
     Ok(opened)
 }
 
@@ -505,6 +577,10 @@ pub fn changes(mut contents: Contents, held: &Opened) -> Contents {
     if contents.end_gcode.as_deref() == Some(held.blocks.end.as_deref().unwrap_or_default()) {
         contents.end_gcode = None;
     }
+    if contents.printer_profile.as_deref() == Some(held.profile_text.as_deref().unwrap_or_default())
+    {
+        contents.printer_profile = None;
+    }
     contents
 }
 
@@ -527,6 +603,13 @@ pub fn save_contents(
         if let Some(text) = text {
             check_block_text(what, text)?;
         }
+    }
+    if let Some(text) = contents
+        .printer_profile
+        .as_deref()
+        .filter(|t| !t.is_empty())
+    {
+        profile_of(text)?;
     }
     if contents
         .parts
@@ -558,6 +641,17 @@ pub fn save_contents(
             for ((key, rel), text) in [(START_BLOCK, &new.start_gcode), (END_BLOCK, &new.end_gcode)]
             {
                 let Some(text) = text else { continue };
+                copy.remove(rel);
+                if text.is_empty() {
+                    copy.set(key, rel);
+                    copy.forget_missing(&[key]);
+                } else {
+                    copy.put(rel, text.clone().into_bytes())?;
+                    copy.set(key, rel);
+                }
+            }
+            if let Some(text) = &new.printer_profile {
+                let (key, rel) = PROFILE;
                 copy.remove(rel);
                 if text.is_empty() {
                     copy.set(key, rel);

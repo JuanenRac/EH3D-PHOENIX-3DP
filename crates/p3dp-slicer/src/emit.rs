@@ -3,7 +3,7 @@
 
 use crate::error::SliceError;
 use crate::geom::{dist, P};
-use crate::plan::{Kind, Layer, Plan};
+use crate::plan::{Kind, Layer, Path, Plan};
 use crate::timing::{self, Block};
 use p3dp_core::Dialect;
 use p3dp_gcode::{BlockJob, JobParams, Place, Writer};
@@ -15,6 +15,8 @@ pub enum Move {
     Retract(f64),
     /// Push it forward again by this many millimetres.
     Unretract(f64),
+    /// Go back along the line just laid while pulling the filament back by this many millimetres.
+    Wipe { to: P, mm: f64 },
     /// Go to this height.
     Z(f64),
     /// Go to this point without extruding.
@@ -124,6 +126,10 @@ impl Plan {
             Kind::Raft => c.solid_infill_speed_mm_s,
             Kind::Tower => c.perimeter_speed_mm_s,
             Kind::Ironing => c.ironing_speed_mm_s,
+            Kind::OverhangPerimeter if c.overhang_speed_mm_s > 0.0 => {
+                c.overhang_speed_mm_s.min(c.external_perimeter_speed_mm_s)
+            }
+            Kind::OverhangPerimeter => c.external_perimeter_speed_mm_s,
         }
     }
 
@@ -189,17 +195,37 @@ impl Plan {
             *pulled = c.retract_mm;
         }
         moves.push(Move::Z(layer.z_mm));
+        // the outer walls of the layer, for the travels that stay inside them
+        let walls = if c.retract_only_crossing {
+            outer_walls(layer)
+        } else {
+            Vec::new()
+        };
+        // the path that ends where the head is, which a wipe goes back along
+        let mut laid: Option<&Path> = None;
         for path in &layer.paths {
             let Some(&start) = path.points.first() else {
                 continue;
             };
             let d = dist(at, start);
             if d > 1e-6 {
-                let long = d >= c.retract_min_travel_mm;
+                let long = d >= c.retract_min_travel_mm
+                    && !(c.retract_only_crossing && stays_inside(at, start, &walls));
                 if c.retract_mm > 0.0 && *pulled <= 0.0 && long {
                     let mm = self.retract_for_travel(d);
                     if mm > 1e-9 {
-                        moves.push(Move::Retract(mm));
+                        let wiped = match laid {
+                            Some(last) if c.wipe_mm > 0.0 => wipe_moves(last, c.wipe_mm, mm),
+                            _ => Vec::new(),
+                        };
+                        if wiped.is_empty() {
+                            moves.push(Move::Retract(mm));
+                        }
+                        moves.extend(
+                            wiped
+                                .into_iter()
+                                .map(|(to, part)| Move::Wipe { to, mm: part }),
+                        );
                         *pulled = mm;
                     }
                 }
@@ -228,6 +254,7 @@ impl Plan {
                 });
                 at = to;
             }
+            laid = Some(path);
         }
         (moves, at)
     }
@@ -275,6 +302,11 @@ impl Plan {
                         blocks.push(Block::planar(here, to, c.travel_speed_mm_s));
                         here = to;
                     }
+                    Move::Wipe { to, .. } => {
+                        s.travel_mm += dist(here, to);
+                        blocks.push(Block::planar(here, to, c.external_perimeter_speed_mm_s));
+                        here = to;
+                    }
                     Move::Line {
                         to,
                         kind,
@@ -282,7 +314,7 @@ impl Plan {
                         width_mm,
                     } => {
                         match kind {
-                            Kind::ExternalPerimeter | Kind::Perimeter => {
+                            Kind::ExternalPerimeter | Kind::Perimeter | Kind::OverhangPerimeter => {
                                 s.perimeter_mm += length_mm
                             }
                             Kind::Infill => s.infill_mm += length_mm,
@@ -370,27 +402,31 @@ impl Plan {
         ] {
             w.comment(&line)?;
         }
-        let minutes = (self.estimated_seconds() / 60.0)
-            .ceil()
-            .min(f64::from(u32::MAX)) as u32;
+        let times: Vec<f64> = self.summaries().iter().map(|s| s.time_s).collect();
+        let total_s: f64 = times.iter().sum();
+        let minutes_of = |s: f64| (s / 60.0).ceil().clamp(0.0, f64::from(u32::MAX)) as u32;
+        let minutes = minutes_of(total_s);
+        let or_all = |first: f64, rest: f64| if first > 0.0 { first } else { rest };
+        let first_nozzle = or_all(c.first_layer_nozzle_c, c.nozzle_c);
+        let first_bed = or_all(c.first_layer_bed_c, c.bed_c);
         w.preamble(&JobParams {
-            nozzle_c: c.nozzle_c,
-            bed_c: c.bed_c,
+            nozzle_c: first_nozzle,
+            bed_c: first_bed,
             chamber_c: (c.chamber_c > 0.0).then_some(c.chamber_c),
             fan_pct: c.fan_percent,
             estimated_minutes: Some(minutes),
         })?;
         let job = BlockJob {
-            nozzle_c: c.nozzle_c,
-            bed_c: c.bed_c,
+            nozzle_c: first_nozzle,
+            bed_c: first_bed,
             chamber_c: c.chamber_c,
             top_z_mm: self.layers.last().map_or(0.0, |l| coord(l.z_mm)),
         };
         if let Some(start) = &user.start {
             w.user_block(start, Place::Start, &job)?;
             // whatever the block set, the print starts hot and with the fan off
-            w.set_bed(c.bed_c, true)?;
-            w.set_nozzle(c.nozzle_c, true)?;
+            w.set_bed(first_bed, true)?;
+            w.set_nozzle(first_nozzle, true)?;
             w.set_fan(0.0)?;
         }
         if c.pressure_advance > 0.0 {
@@ -401,7 +437,7 @@ impl Plan {
             w.comment(&format!("starts with tool {tool}"))?;
             // RepRapFirmware keeps a temperature for each tool, so the first one needs its own
             if m.dialect == Dialect::Rrf {
-                w.change_tool(tool, c.nozzle_c)?;
+                w.change_tool(tool, first_nozzle)?;
             } else {
                 w.select_tool(tool)?;
             }
@@ -414,8 +450,47 @@ impl Plan {
         let mut last_z = 0.0;
         // the preamble switches the fan off
         let mut fan_now = 0.0f64;
-        for l in &self.layers {
+        let mut done_s = 0.0f64;
+        let mut percent_now: Option<u32> = None;
+        if c.progress_marks {
+            w.total_layers(self.layers.len() as u32);
+        }
+        for (number, l) in self.layers.iter().enumerate() {
             w.layer(l.index as u32, l.z_mm)?;
+            if c.progress_marks && total_s > 0.0 {
+                let percent = (done_s / total_s * 100.0).floor().clamp(0.0, 99.0) as u32;
+                if percent_now != Some(percent) {
+                    w.progress(percent, minutes_of(total_s - done_s));
+                    percent_now = Some(percent);
+                }
+            }
+            done_s += times.get(number).copied().unwrap_or(0.0);
+            // the temperatures of the rest of the print, from the second layer on
+            if number == 1 {
+                if (first_bed - c.bed_c).abs() > 1e-9 {
+                    w.set_bed(c.bed_c, false)?;
+                }
+                if (first_nozzle - c.nozzle_c).abs() > 1e-9 {
+                    w.set_nozzle(c.nozzle_c, false)?;
+                }
+            }
+            let pause = c.pause_at_layers.contains(&(number as u32 + 1));
+            let changes = self.tool_changes.iter().any(|e| e.layer == l.index);
+            // the filament is pulled back before a pause and before the head or the spool that is printing is left
+            if (pause || changes) && c.retract_mm > 0.0 && pulled <= 0.0 {
+                w.linear_move(
+                    None,
+                    None,
+                    None,
+                    Some(-c.retract_mm),
+                    Some(c.retract_speed_mm_s * 60.0),
+                )?;
+                pulled = c.retract_mm;
+            }
+            if pause {
+                w.comment(&format!("pause before layer {}", number + 1))?;
+                w.pause();
+            }
             for e in self.tool_changes.iter().filter(|e| e.layer == l.index) {
                 w.comment(&format!(
                     "tool change to {} for {:.0} mm3 of purge",
@@ -464,6 +539,13 @@ impl Plan {
                         None,
                         Some(c.travel_speed_mm_s * 60.0),
                     )?,
+                    Move::Wipe { to, mm } => w.linear_move(
+                        Some(coord(to[0])),
+                        Some(coord(to[1])),
+                        None,
+                        Some(-mm),
+                        Some(c.external_perimeter_speed_mm_s * 60.0),
+                    )?,
                     Move::Line {
                         to,
                         kind,
@@ -474,7 +556,8 @@ impl Plan {
                             w.comment(&format!("TYPE:{}", kind.name()))?;
                             kind_now = Some(kind);
                         }
-                        let want_fan = if kind == Kind::Bridge {
+                        let hanging = matches!(kind, Kind::Bridge | Kind::OverhangPerimeter);
+                        let want_fan = if hanging {
                             c.bridge_fan_percent
                         } else {
                             layer_fan
@@ -518,12 +601,110 @@ impl Plan {
                 )?;
             }
         }
+        if c.progress_marks {
+            w.progress(100, 0);
+        }
         if let Some(end) = &user.end {
+            let job = BlockJob {
+                nozzle_c: c.nozzle_c,
+                bed_c: c.bed_c,
+                ..job
+            };
             w.user_block(end, Place::End, &job)?;
         }
         w.end_safe()?;
         Ok(w.finish()?)
     }
+}
+
+/// The segments of the outer walls of a layer (whole or in runs), which hold between them the inside of the part.
+fn outer_walls(layer: &Layer) -> Vec<(P, P)> {
+    let mut out = Vec::new();
+    for p in &layer.paths {
+        if !matches!(p.kind, Kind::ExternalPerimeter | Kind::OverhangPerimeter) {
+            continue;
+        }
+        out.extend(p.points.windows(2).map(|w| (w[0], w[1])));
+        if let (true, Some(first), Some(last)) = (p.closed, p.points.first(), p.points.last()) {
+            out.push((*last, *first));
+        }
+    }
+    out
+}
+
+/// Whether two segments touch or cross.
+fn meet(a: P, b: P, c: P, d: P) -> bool {
+    let side = |p: P, q: P, r: P| (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+    let (d1, d2) = (side(c, d, a), side(c, d, b));
+    let (d3, d4) = (side(a, b, c), side(a, b, d));
+    let apart = |x: f64, y: f64| (x > 1e-9 && y > 1e-9) || (x < -1e-9 && y < -1e-9);
+    let boxes = (0..2).all(|k| {
+        a[k].min(b[k]) <= c[k].max(d[k]) + 1e-9 && c[k].min(d[k]) <= a[k].max(b[k]) + 1e-9
+    });
+    boxes && !apart(d1, d2) && !apart(d3, d4)
+}
+
+/// Whether a straight travel stays inside the outer walls: it touches none of them and its middle is inside an odd number of them.
+fn stays_inside(from: P, to: P, walls: &[(P, P)]) -> bool {
+    if walls.iter().any(|(a, b)| meet(from, to, *a, *b)) {
+        return false;
+    }
+    let m = [(from[0] + to[0]) / 2.0, (from[1] + to[1]) / 2.0];
+    let crossings = walls
+        .iter()
+        .filter(|(a, b)| {
+            (a[1] <= m[1]) != (b[1] <= m[1])
+                && a[0] + (m[1] - a[1]) / (b[1] - a[1]) * (b[0] - a[0]) > m[0]
+        })
+        .count();
+    crossings % 2 == 1
+}
+
+/// The moves that go back along a path from its end, up to `wipe_mm` long, and the filament each one pulls back: together `retract_mm` to the third decimal, as it is written.
+/// Nothing for a path too short to go back along.
+fn wipe_moves(path: &Path, wipe_mm: f64, retract_mm: f64) -> Vec<(P, f64)> {
+    let mut back: Vec<P> = path.points.iter().rev().copied().collect();
+    if path.closed {
+        if let Some(first) = path.points.first() {
+            back.insert(0, *first);
+        }
+    }
+    let mut legs: Vec<(P, f64)> = Vec::new();
+    let mut length = 0.0;
+    for w in back.windows(2) {
+        let leg = dist(w[0], w[1]);
+        if leg < 1e-6 {
+            continue;
+        }
+        let take = leg.min(wipe_mm - length);
+        let t = take / leg;
+        legs.push((
+            [
+                w[0][0] + (w[1][0] - w[0][0]) * t,
+                w[0][1] + (w[1][1] - w[0][1]) * t,
+            ],
+            take,
+        ));
+        length += take;
+        if length >= wipe_mm - 1e-9 {
+            break;
+        }
+    }
+    if length < 0.1 {
+        return Vec::new();
+    }
+    let milli = |v: f64| (v * 1000.0).round() / 1000.0;
+    let mut gone = 0.0;
+    let mut pulled = 0.0;
+    legs.into_iter()
+        .map(|(to, leg)| {
+            gone += leg;
+            let upto = milli(retract_mm * gone / length);
+            let part = upto - pulled;
+            pulled = upto;
+            (to, part)
+        })
+        .collect()
 }
 
 /// A coordinate to three decimals. The paths are inside the bed to a millionth of a millimetre (the plan checks it); the rounding takes off the float noise at the edge.
@@ -533,5 +714,55 @@ fn coord(v: f64) -> f64 {
         0.0
     } else {
         r
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn square() -> Vec<(P, P)> {
+        let q = [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]];
+        (0..4).map(|i| (q[i], q[(i + 1) % 4])).collect()
+    }
+
+    #[test]
+    fn a_travel_stays_inside_only_when_it_touches_no_wall_and_is_within_them() {
+        let walls = square();
+        assert!(stays_inside([2.0, 2.0], [8.0, 8.0], &walls));
+        assert!(!stays_inside([2.0, 2.0], [12.0, 2.0], &walls));
+        assert!(!stays_inside([12.0, 2.0], [14.0, 2.0], &walls));
+        // from a point on the wall itself: the careful answer is no
+        assert!(!stays_inside([0.0, 5.0], [8.0, 5.0], &walls));
+        assert!(!stays_inside([2.0, 2.0], [8.0, 8.0], &[]));
+    }
+
+    #[test]
+    fn a_wipe_goes_back_along_the_path_and_shares_the_filament_to_the_third_decimal() {
+        let path = Path {
+            kind: Kind::Infill,
+            points: vec![[0.0, 0.0], [10.0, 0.0], [10.0, 1.0]],
+            closed: false,
+            width_mm: 0.45,
+        };
+        let legs = wipe_moves(&path, 3.0, 1.0);
+        assert_eq!(legs.len(), 2);
+        assert_eq!(legs[0].0, [10.0, 0.0]);
+        assert_eq!(legs[1].0, [8.0, 0.0]);
+        let sum: f64 = legs.iter().map(|l| l.1).sum();
+        assert!((sum - 1.0).abs() < 1e-12);
+        assert!((legs[0].1 - 0.333).abs() < 1e-12);
+        // a closed path ends where it began, and is followed back from there
+        let loop_path = Path {
+            closed: true,
+            points: vec![[0.0, 0.0], [10.0, 0.0], [10.0, 10.0]],
+            ..path.clone()
+        };
+        assert_eq!(wipe_moves(&loop_path, 1.0, 0.5)[0].0[1], 1.0 / 2f64.sqrt());
+        let dot = Path {
+            points: vec![[0.0, 0.0], [0.05, 0.0]],
+            ..path
+        };
+        assert!(wipe_moves(&dot, 3.0, 1.0).is_empty());
     }
 }

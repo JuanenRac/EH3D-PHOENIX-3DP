@@ -5,14 +5,17 @@ use std::path::{Path, PathBuf};
 
 use eh3d_project::appbranch::read_bounded;
 use p3dp_core::Limits;
+use p3dp_gcode::read_motion;
 use p3dp_profiles::filament::FilamentCatalog;
-use p3dp_profiles::{suite_overlay, PrinterProfile};
+use p3dp_profiles::{suite_overlay, Bound, PrinterProfile};
 use p3dp_slicer::SliceConfig;
 
 use crate::eh3dfile::{self, Contents, Heat, Held, Identity, Part, BRANCH};
 
 /// The words that make `project` work on a project of the suite and not read a file of another program.
-pub const WORDS: [&str; 6] = ["list", "save", "import", "open", "take", "extract"];
+pub const WORDS: [&str; 7] = [
+    "list", "save", "import", "open", "take", "extract", "layers",
+];
 
 /// The largest settings file that is read.
 const MAX_SETTINGS_BYTES: u64 = 1 << 20;
@@ -67,8 +70,41 @@ fn printer_of(id: &str) -> Result<PrinterProfile, String> {
         .ok_or_else(|| format!("{id}: no such printer"))
 }
 
-/// Compares the temperatures of the G-code of the work with the limits of the printer that is asked for or, without one, of the printer of the project. A line past them is
-/// something to read: the exit code is 1. Nothing is changed.
+fn bounds_text(list: &[Bound]) -> String {
+    list.iter()
+        .map(|b| format!("{} {} (yours {})", b.key, b.other, b.own))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// Says what the printer profile of a project does to the one of the person, and gives the printer to check against: the one of the person, lowered where the project's is
+/// lower. A profile of a printer that is not the one checked against changes nothing.
+fn with_profile(
+    done: &mut Done,
+    own: PrinterProfile,
+    theirs: Option<&PrinterProfile>,
+) -> PrinterProfile {
+    let Some(theirs) = theirs.filter(|t| t.id == own.id) else {
+        return own;
+    };
+    let t = own.tightened_by(theirs);
+    if !t.lowered.is_empty() {
+        done.out.push_str(&format!(
+            "the profile of the project lowers: {}\n",
+            bounds_text(&t.lowered)
+        ));
+    }
+    if !t.refused.is_empty() {
+        done.err.push_str(&format!(
+            "note: the profile of the project asks for more than yours and is not followed there: {}\n",
+            bounds_text(&t.refused)
+        ));
+    }
+    t.profile
+}
+
+/// Compares the temperatures and the moves of the G-code of the work with the limits and the volume of the printer that is asked for or, without one, of the printer of the
+/// project, and lists the commands that act on the machine. Anything found is something to read: the exit code is 1. Nothing is changed.
 fn check_program_of(
     done: &mut Done,
     file: &str,
@@ -80,7 +116,11 @@ fn check_program_of(
         return Ok(());
     };
     let own = opened.printer.as_deref().and_then(|id| printer_of(id).ok());
-    let review = eh3dfile::review(name, bytes, asked.or(own.as_ref()));
+    let printer = asked
+        .cloned()
+        .or(own)
+        .map(|p| with_profile(done, p, opened.profile.as_ref()));
+    let review = eh3dfile::review(name, bytes, printer.as_ref());
     done.out
         .push_str(&format!("program {name}: {} line(s)\n", review.lines));
     match review.heat {
@@ -115,6 +155,104 @@ fn check_program_of(
             done.code = 1;
         }
     }
+    if let Some(moves) = &review.moves {
+        if moves.outside_count == 0 {
+            done.out.push_str("no move goes past the build volume\n");
+        } else {
+            for o in moves.outside.iter().take(MAX_LISTED) {
+                done.out.push_str(&format!(
+                    "line {}: {}{:.3} is outside the build volume\n",
+                    o.line, o.axis, o.value_mm
+                ));
+            }
+            done.err.push_str(&format!(
+                "{} line(s) of the program leave the build volume\n",
+                moves.outside_count
+            ));
+            done.code = 1;
+        }
+        if moves.unfollowed > 0 {
+            done.out.push_str(&format!(
+                "{} move(s) could not be followed and are not checked\n",
+                moves.unfollowed
+            ));
+        }
+    }
+    if !review.risks.is_empty() {
+        for r in review.risks.iter().take(MAX_LISTED) {
+            done.out.push_str(&format!(
+                "line {}: {} ({})\n",
+                r.line,
+                r.kind.name(),
+                r.command
+            ));
+        }
+        done.err.push_str(&format!(
+            "{} line(s) of the program act on the machine itself\n",
+            review.risks.len()
+        ));
+        done.code = 1;
+    }
+    Ok(())
+}
+
+/// The layers of the G-code of the work: their height, the lines that lay plastic and the filament they take; with a number, one layer only.
+fn layers_of(
+    done: &mut Done,
+    file: &str,
+    only: Option<usize>,
+    asked: Option<&PrinterProfile>,
+    limits: &Limits,
+) -> Result<(), String> {
+    let opened = eh3dfile::held(Path::new(file), limits)?;
+    let Some((name, bytes)) = opened.program_file() else {
+        return Err(format!("{file}: the project has no G-code"));
+    };
+    if bytes.contains(&0) {
+        return Err(format!("{name}: it is not a text file"));
+    }
+    let own = asked
+        .cloned()
+        .or_else(|| opened.printer.as_deref().and_then(|id| printer_of(id).ok()))
+        .map(|p| with_profile(done, p, opened.profile.as_ref()));
+    let motion = read_motion(&String::from_utf8_lossy(bytes), own.map(|p| p.volume_mm));
+    if let Some(n) = only {
+        if n == 0 || n > motion.layers.len() {
+            return Err(format!("--layer is from 1 to {}", motion.layers.len()));
+        }
+    }
+    done.out.push_str(&format!(
+        "program {name}: {} layer(s), {:.1} mm of filament\n",
+        motion.layers.len(),
+        motion.filament_mm
+    ));
+    for (i, l) in motion.layers.iter().enumerate() {
+        if only.is_some_and(|n| n != i + 1) {
+            continue;
+        }
+        done.out.push_str(&format!(
+            "layer {}: z {:.3} mm, {} line(s) of {:.1} mm, {} travel(s), {:.2} mm of filament\n",
+            i + 1,
+            l.z_mm,
+            l.extrusions.len(),
+            l.length_mm,
+            l.travels.len(),
+            l.filament_mm
+        ));
+    }
+    if motion.outside_count > 0 {
+        done.err.push_str(&format!(
+            "{} line(s) of the program leave the build volume\n",
+            motion.outside_count
+        ));
+        done.code = 1;
+    }
+    if motion.unfollowed > 0 {
+        done.out.push_str(&format!(
+            "{} move(s) could not be followed\n",
+            motion.unfollowed
+        ));
+    }
     Ok(())
 }
 
@@ -127,6 +265,7 @@ fn contents_of(args: &mut Vec<String>, limits: &Limits) -> Result<Contents, Stri
     let program = flag(args, "--gcode")?;
     let start = flag(args, "--start-gcode")?;
     let end = flag(args, "--end-gcode")?;
+    let profile = flag(args, "--printer-file")?;
     let read =
         |file: &str, limit: u64| read_bounded(Path::new(file), limit).map_err(|e| e.to_string());
     let name_of =
@@ -177,12 +316,24 @@ fn contents_of(args: &mut Vec<String>, limits: &Limits) -> Result<Contents, Stri
             *slot = Some(String::from_utf8(bytes).map_err(|_| format!("{file}: it is not text"))?);
         }
     }
+    if let Some(file) = &profile {
+        let bytes = read(file, eh3dfile::MAX_PROFILE_BYTES as u64)?;
+        let text = String::from_utf8(bytes).map_err(|_| format!("{file}: it is not text"))?;
+        // an empty file takes the profile out
+        if !text.is_empty() {
+            let id = eh3dfile::profile_of(&text)
+                .map_err(|e| format!("{file}: {e}"))?
+                .id;
+            contents.printer.get_or_insert(id);
+        }
+        contents.printer_profile = Some(text);
+    }
     Ok(contents)
 }
 
 fn job(mut args: Vec<String>, limits: &Limits) -> Result<Done, String> {
     if args.is_empty() {
-        return Err("project needs list, save, import, open, take or extract".into());
+        return Err("project needs list, save, import, open, take, extract or layers".into());
     }
     let what = args.remove(0);
     let mut done = Done::default();
@@ -318,6 +469,10 @@ fn job(mut args: Vec<String>, limits: &Limits) -> Result<Done, String> {
                     None => format!("{what} G-code none\n"),
                 });
             }
+            if let Some(profile) = &opened.profile {
+                done.out
+                    .push_str(&format!("printer profile {}\n", profile.id));
+            }
             if let Some(report) = &opened.report {
                 done.out.push_str(&format!(
                     "imported {} ({}), {} item(s) not read\n",
@@ -353,9 +508,22 @@ fn job(mut args: Vec<String>, limits: &Limits) -> Result<Done, String> {
             let count = eh3dfile::extract(Path::new(&file), &branch, Path::new(&dir))?;
             done.out = format!("{count} files written to {dir}\n");
         }
+        "layers" => {
+            let asked = flag(&mut args, "--printer")?
+                .map(|id| printer_of(&id))
+                .transpose()?;
+            let only = flag(&mut args, "--layer")?
+                .map(|v| {
+                    v.parse::<usize>()
+                        .map_err(|_| "--layer takes a number".to_string())
+                })
+                .transpose()?;
+            let [file] = words::<1>(&args, "layers needs FILE.eh3d")?;
+            layers_of(&mut done, &file, only, asked.as_ref(), limits)?;
+        }
         other => {
             return Err(format!(
-                "project {other}: it is list, save, import, open, take or extract"
+                "project {other}: it is list, save, import, open, take, extract or layers"
             ))
         }
     }

@@ -61,6 +61,8 @@ pub enum Kind {
     Tower,
     /// A pass over the solid skin of the top with very little plastic, to smooth it.
     Ironing,
+    /// A part of an outer wall that hangs past the layer below by more than half a line: slower, with the fan of a bridge.
+    OverhangPerimeter,
 }
 
 impl Kind {
@@ -76,6 +78,7 @@ impl Kind {
             Kind::Raft => "raft",
             Kind::Tower => "purge tower",
             Kind::Ironing => "ironing",
+            Kind::OverhangPerimeter => "overhang perimeter",
         }
     }
 }
@@ -167,6 +170,10 @@ pub fn plan(mesh: &Mesh, machine: &Machine, config: &SliceConfig) -> Result<Plan
     machine.limits.check(Zone::Nozzle, config.nozzle_c)?;
     machine.limits.check(Zone::Bed, config.bed_c)?;
     machine.limits.check(Zone::Chamber, config.chamber_c)?;
+    machine
+        .limits
+        .check(Zone::Nozzle, config.first_layer_nozzle_c)?;
+    machine.limits.check(Zone::Bed, config.first_layer_bed_c)?;
     if mesh.triangles.is_empty() {
         return Err(SliceError::EmptyMesh);
     }
@@ -237,9 +244,10 @@ pub fn plan(mesh: &Mesh, machine: &Machine, config: &SliceConfig) -> Result<Plan
             });
         }
     }
-    if config.z_hop_mm > 0.0 && size[2] + config.z_hop_mm > bz + 1e-9 {
+    // the lift is over the top of the print, which a raft raises
+    if config.z_hop_mm > 0.0 && size[2] + raft_total + config.z_hop_mm > bz + 1e-9 {
         return Err(SliceError::LiftPastTop {
-            needed_mm: size[2] + config.z_hop_mm,
+            needed_mm: size[2] + raft_total + config.z_hop_mm,
             height_mm: bz,
         });
     }
@@ -361,6 +369,16 @@ pub fn plan(mesh: &Mesh, machine: &Machine, config: &SliceConfig) -> Result<Plan
             top_layer.paths.extend(passes);
         }
     }
+    if let Some(late) = config
+        .pause_at_layers
+        .iter()
+        .find(|n| **n as usize > layers.len())
+    {
+        return Err(SliceError::Config(format!(
+            "pause_at_layers: layer {late}, and the print has {} layers",
+            layers.len()
+        )));
+    }
     // nothing may leave the bed (the model fits, and the paths are inside the model; this is the check that says so)
     for l in &layers {
         for p in l.paths.iter().flat_map(|p| &p.points) {
@@ -418,11 +436,101 @@ fn rear_vertex(l: &[P]) -> usize {
     best
 }
 
+/// The least turn that counts as a corner for the seam, in radians (about 11 degrees): the facets of a round wall are not corners.
+const CORNER_TURN: f64 = 0.2;
+
+/// The sharpest corner of a loop that turns into the part (the material is on the left of a loop, so that is a turn to the right), else the sharpest of the others; the one
+/// farthest back when several are as sharp, and the rear one when the loop has no corner.
+fn corner_vertex(l: &[P]) -> usize {
+    let n = l.len();
+    let turn = |i: usize| -> f64 {
+        let (a, b, c) = (l[(i + n - 1) % n], l[i], l[(i + 1) % n]);
+        let (u, v) = ([b[0] - a[0], b[1] - a[1]], [c[0] - b[0], c[1] - b[1]]);
+        (u[0] * v[1] - u[1] * v[0]).atan2(u[0] * v[0] + u[1] * v[1])
+    };
+    let best = |into_the_part: bool| -> Option<usize> {
+        let mut found: Option<(usize, f64)> = None;
+        for i in 0..n {
+            let t = turn(i);
+            let sharp = if into_the_part { -t } else { t };
+            if sharp < CORNER_TURN {
+                continue;
+            }
+            let better = found.is_none_or(|(j, s)| {
+                sharp > s + 1e-6
+                    || (sharp > s - 1e-6
+                        && (l[i][1] > l[j][1] + 1e-9
+                            || ((l[i][1] - l[j][1]).abs() <= 1e-9 && l[i][0] < l[j][0])))
+            });
+            if better {
+                found = Some((i, sharp));
+            }
+        }
+        found.map(|(i, _)| i)
+    };
+    best(true)
+        .or_else(|| best(false))
+        .unwrap_or_else(|| rear_vertex(l))
+}
+
+/// The longest piece of a wall that is judged on its own for hanging, in millimetres.
+const OVERHANG_PIECE_MM: f64 = 1.0;
+
+/// An outer wall (from its seam, closed) as paths: whole when nothing of it hangs, else the runs that rest on the layer below and the runs that hang past it (the middle of the
+/// line is not over the material below).
+fn split_overhang(wall: Vec<P>, below: &[Loop], width: f64) -> Vec<Path> {
+    let mut runs: Vec<(Kind, Vec<P>)> = Vec::new();
+    let n = wall.len();
+    for i in 0..n {
+        let (a, b) = (wall[i], wall[(i + 1) % n]);
+        let pieces = ((geom::dist(a, b) / OVERHANG_PIECE_MM).ceil() as usize).max(1);
+        let at = |t: f64| [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+        let mut corner = true;
+        for k in 0..pieces {
+            let (t0, t1) = (k as f64 / pieces as f64, (k + 1) as f64 / pieces as f64);
+            let kind = if geom::inside(at((t0 + t1) / 2.0), below) {
+                Kind::ExternalPerimeter
+            } else {
+                Kind::OverhangPerimeter
+            };
+            match runs.last_mut() {
+                Some((last, points)) if *last == kind => {
+                    // a straight run keeps only its ends; a corner of the wall is kept
+                    if corner {
+                        points.push(at(t1));
+                    } else if let Some(end) = points.last_mut() {
+                        *end = at(t1);
+                    }
+                }
+                _ => runs.push((kind, vec![at(t0), at(t1)])),
+            }
+            corner = false;
+        }
+    }
+    if runs.iter().all(|(k, _)| *k == Kind::ExternalPerimeter) {
+        return vec![Path {
+            kind: Kind::ExternalPerimeter,
+            points: wall,
+            closed: true,
+            width_mm: width,
+        }];
+    }
+    runs.into_iter()
+        .map(|(kind, points)| Path {
+            kind,
+            points,
+            closed: false,
+            width_mm: width,
+        })
+        .collect()
+}
+
 /// Where a perimeter that closes starts, by the rule of the seam. `before` are the seams of the layer below.
 fn seam_start(l: &[P], seam: Seam, before: &[P], head: P) -> usize {
     match seam {
         Seam::Nearest => nearest_vertex(l, head),
         Seam::Rear => rear_vertex(l),
+        Seam::Corner => corner_vertex(l),
         Seam::Aligned => {
             if before.is_empty() {
                 return rear_vertex(l);
@@ -538,7 +646,14 @@ fn layer_paths(
         warnings.push(Warning::ThinRegion { layer: index });
     }
     let mut seams: Vec<P> = Vec::new();
-    for (k, ring) in rings.iter().enumerate().rev() {
+    let mut order: Vec<(usize, &Vec<Loop>)> = rings.iter().enumerate().rev().collect();
+    if cfg.external_perimeters_first {
+        order.reverse();
+    }
+    // the layer below, when the walls that hang past it are to be slowed down
+    let below: Option<&Vec<Loop>> =
+        (cfg.overhang_speed_mm_s > 0.0 && index > 0).then(|| &outlines[index - 1]);
+    for (k, ring) in order {
         let kind = if k == 0 {
             Kind::ExternalPerimeter
         } else {
@@ -556,12 +671,15 @@ fn layer_paths(
                 seams.push(pts[0]);
             }
             st.head = pts[0];
-            paths.push(Path {
-                kind,
-                points: pts,
-                closed: true,
-                width_mm: width,
-            });
+            match below.filter(|_| k == 0) {
+                Some(below) => paths.extend(split_overhang(pts, below, width)),
+                None => paths.push(Path {
+                    kind,
+                    points: pts,
+                    closed: true,
+                    width_mm: width,
+                }),
+            }
         }
     }
     if !seams.is_empty() {
@@ -569,7 +687,8 @@ fn layer_paths(
     }
     // the infill, inside the innermost perimeter
     let s = cfg.spacing_for(width, h);
-    let d_region = width / 2.0 + f64::from(cfg.perimeters.saturating_sub(1)) * s + s / 2.0;
+    let d_region = width / 2.0 + f64::from(cfg.perimeters.saturating_sub(1)) * s + s / 2.0
+        - width * cfg.infill_overlap_percent / 100.0;
     let region: Vec<Loop> = outline.iter().flat_map(|l| inset(l, d_region)).collect();
     if !region.is_empty() && !open_vase {
         let fill = Fill {
@@ -650,6 +769,35 @@ mod tests {
             infill_percent: 100.0,
             ..SliceConfig::default()
         }
+    }
+
+    #[test]
+    fn the_corner_seam_takes_the_corner_that_turns_into_the_part_else_the_sharpest() {
+        // an L: the only corner that turns into the part is the elbow
+        let l: Vec<P> = vec![
+            [0.0, 0.0],
+            [20.0, 0.0],
+            [20.0, 8.0],
+            [8.0, 8.0],
+            [8.0, 20.0],
+            [0.0, 20.0],
+        ];
+        assert_eq!(l[corner_vertex(&l)], [8.0, 8.0]);
+        // a square has four alike: the one farthest back, and the leftmost of those
+        let q: Vec<P> = vec![[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]];
+        assert_eq!(q[corner_vertex(&q)], [0.0, 10.0]);
+        // a wedge: the sharpest turn
+        let w: Vec<P> = vec![[0.0, 0.0], [20.0, 0.0], [0.0, 4.0]];
+        assert_eq!(w[corner_vertex(&w)], [20.0, 0.0]);
+        // a ring of many facets has no corner: the rear one
+        let ring: Vec<P> = (0..64)
+            .map(|i| {
+                let a = std::f64::consts::TAU * f64::from(i) / 64.0;
+                [10.0 * a.cos(), 10.0 * a.sin()]
+            })
+            .collect();
+        assert_eq!(corner_vertex(&ring), rear_vertex(&ring));
+        assert_eq!(seam_start(&l, Seam::Corner, &[], [0.0, 0.0]), 3);
     }
 
     #[test]

@@ -288,6 +288,34 @@ impl Writer {
         Ok(())
     }
 
+    /// How far the print is and how many minutes are left (`M73`), which RepRapFirmware does not take.
+    pub fn progress(&mut self, percent: u32, minutes_left: u32) {
+        if self.dialect != Dialect::Rrf {
+            self.push(format!("M73 P{} R{minutes_left}", percent.min(100)));
+        }
+    }
+
+    /// The number of layers of the print, which Klipper shows beside the layer it is on.
+    pub fn total_layers(&mut self, layers: u32) {
+        if self.dialect == Dialect::Klipper {
+            self.push(format!("SET_PRINT_STATS_INFO TOTAL_LAYER={layers}"));
+        }
+    }
+
+    /// A pause for a change of colour or an insert, in the command of the firmware: `M600` (Marlin), `PAUSE` (Klipper, a macro of the printer), `M226` (RepRapFirmware) and
+    /// `M400 U1` (Bambu).
+    pub fn pause(&mut self) {
+        match self.dialect {
+            Dialect::Klipper => {
+                self.push("; needs the macro PAUSE in the printer configuration");
+                self.push("PAUSE");
+            }
+            Dialect::Rrf => self.push("M226"),
+            Dialect::Bambu => self.push("M400 U1"),
+            _ => self.push("M600"),
+        }
+    }
+
     /// A move in a straight line. A coordinate outside the build volume, a number that is not finite or a feed that is not between 1 and 100000 mm/min is an error.
     pub fn linear_move(
         &mut self,
@@ -384,6 +412,10 @@ impl Writer {
                 l.push_str(&format!(" CHAMBER={}", num(c)));
             }
             self.push(l);
+            // the macro is the printer's own and may leave another mode: absolute extrusion would read the lines that follow as positions of the filament
+            for line in ["G21", "G90", "M83", "M107"] {
+                self.push(line);
+            }
             return Ok(());
         }
         self.set_bed(bed, false)?;

@@ -14,10 +14,10 @@ pub struct Violation {
 }
 
 /// A word of a G, M or T command: its letter and the number after it (`Err` when what follows the letter is not a number).
-type Word = (char, Result<f64, ()>);
+pub(crate) type Word = (char, Result<f64, ()>);
 
 /// The words of a line the way a firmware reads them: with or without blanks between them (`M104S210`).
-fn words_of(code: &str) -> Vec<Word> {
+pub(crate) fn words_of(code: &str) -> Vec<Word> {
     let mut out = Vec::new();
     let mut chars = code.chars().peekable();
     while let Some(c) = chars.next() {
@@ -38,7 +38,7 @@ fn words_of(code: &str) -> Vec<Word> {
 }
 
 /// What of a line is a command: without the comment, the line number (`N12`) and the checksum (`*45`).
-fn command_of(raw: &str) -> &str {
+pub(crate) fn command_of(raw: &str) -> &str {
     let code = raw.split(';').next().unwrap_or("");
     let code = code.split('*').next().unwrap_or("").trim();
     match code.strip_prefix(['N', 'n']) {
@@ -94,7 +94,7 @@ fn is_text_command(word: &Word) -> bool {
 
 /// The commands of a line of words. RepRapFirmware runs several `G` and `M` commands written on one line, so each one is looked at; a command that carries a text takes
 /// the rest of the line.
-fn commands(words: &[Word]) -> Vec<&[Word]> {
+pub(crate) fn commands(words: &[Word]) -> Vec<&[Word]> {
     let mut out = Vec::new();
     let mut start = 0;
     for (i, word) in words.iter().enumerate().skip(1) {
@@ -197,16 +197,102 @@ fn named(code: &str, limits: &TempLimits) -> Vec<TempError> {
     found
 }
 
+/// The lines of a program: a line feed or a carriage return ends one.
+pub(crate) fn program_lines(text: &str) -> impl Iterator<Item = &str> {
+    text.split_terminator('\n')
+        .flat_map(|l| l.strip_suffix('\r').unwrap_or(l).split('\r'))
+}
+
+/// What a command does to the machine itself, beyond the print.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RiskKind {
+    /// Turns off or raises a protection: the software end stops, the cold extrusion guard, the limits of the axes or of a heater.
+    Protection,
+    /// Tells the machine it is somewhere else, or moves it without its limits.
+    Position,
+    /// Changes or stores figures of the machine: steps, tuning of a heater, saved settings.
+    Settings,
+    /// Restarts or writes the firmware, or clears a stop after an error.
+    Firmware,
+}
+
+impl RiskKind {
+    pub fn name(self) -> &'static str {
+        match self {
+            RiskKind::Protection => "turns off or raises a protection",
+            RiskKind::Position => "changes where the machine takes itself to be",
+            RiskKind::Settings => "changes or stores figures of the machine",
+            RiskKind::Firmware => "restarts or writes the firmware",
+        }
+    }
+}
+
+/// A line of a program that does something to the machine itself.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Risk {
+    /// The line number, starting at 1.
+    pub line: usize,
+    /// The command as it was written.
+    pub command: String,
+    pub kind: RiskKind,
+}
+
+fn risk_of(words: &[Word]) -> Option<RiskKind> {
+    let &(letter, Ok(number)) = words.first()? else {
+        return None;
+    };
+    let given = |l: char| values(words, l).next();
+    let zero = |l: char| given(l) == Some(Ok(0.0));
+    Some(match (letter, number as i64) {
+        ('M', 211) if zero('S') => RiskKind::Protection,
+        // `P0` forbids cold extrusion again; a lower least temperature or `P1` allows it
+        ('M', 302) if given('S').is_some() || given('P') == Some(Ok(1.0)) => RiskKind::Protection,
+        ('M', 143) if given('S').is_some() => RiskKind::Protection,
+        ('M', 564) if zero('S') || zero('H') => RiskKind::Protection,
+        ('G', 92) if ['X', 'Y', 'Z'].into_iter().any(|l| given(l).is_some()) => RiskKind::Position,
+        ('M', 206 | 428) => RiskKind::Position,
+        ('M', 92 | 301 | 304 | 500 | 502) => RiskKind::Settings,
+        ('M', 997 | 999) => RiskKind::Firmware,
+        _ => return None,
+    })
+}
+
+/// The lines of a program that do something to the machine itself: nothing a print needs, and worth a look before a program of somebody else is used. Only the commands the
+/// function knows are told; a macro with a name of its own is not looked into.
+pub fn risky_commands(text: &str) -> Vec<Risk> {
+    let mut out = Vec::new();
+    for (i, raw) in program_lines(text).enumerate() {
+        let code = command_of(raw);
+        let kind = if is_classic(code) {
+            let words = words_of(code);
+            commands(&words).into_iter().find_map(risk_of)
+        } else {
+            let name = code.split_ascii_whitespace().next().unwrap_or("");
+            match name.to_ascii_uppercase().as_str() {
+                "SET_KINEMATIC_POSITION" | "FORCE_MOVE" => Some(RiskKind::Position),
+                "SAVE_CONFIG" => Some(RiskKind::Settings),
+                "FIRMWARE_RESTART" | "RESTART" => Some(RiskKind::Firmware),
+                _ => None,
+            }
+        };
+        if let Some(kind) = kind {
+            out.push(Risk {
+                line: i + 1,
+                command: raw.split(';').next().unwrap_or("").trim().to_string(),
+                kind,
+            });
+        }
+    }
+    out
+}
+
 /// Checks a whole program. The commands it knows: `M104`, `M109` (nozzle), `M140`, `M190` (bed), `M141`, `M191` (chamber), `M303` (tuning), `G10 P.. S.. R..` and
 /// `M568` (RepRapFirmware tool), `SET_HEATER_TEMPERATURE` and the temperature parameters of `PRINT_START` and `START_PRINT`. A command is read with or without blanks,
 /// behind a line number and a checksum, a second command on the same line is looked at too, and a carriage return ends a line. Comments are ignored, and so is the text of
 /// a message or of a file name (`M117`, `M23`...). A value that is not a number is reported as such.
 pub fn check_program(text: &str, limits: &TempLimits) -> Vec<Violation> {
     let mut out = Vec::new();
-    let lines = text
-        .split_terminator('\n')
-        .flat_map(|l| l.strip_suffix('\r').unwrap_or(l).split('\r'));
-    for (i, raw) in lines.enumerate() {
+    for (i, raw) in program_lines(text).enumerate() {
         let code = command_of(raw);
         if code.is_empty() {
             continue;

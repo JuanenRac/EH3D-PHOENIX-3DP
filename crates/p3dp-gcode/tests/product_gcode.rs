@@ -3,7 +3,10 @@
 use p3dp_core::machine::{TempError, Zone};
 use p3dp_core::{Dialect, TempLimits};
 use p3dp_gcode::writer::num;
-use p3dp_gcode::{check_program, required_macros, requires_package, GcodeError, JobParams, Writer};
+use p3dp_gcode::{
+    check_program, read_motion, required_macros, requires_package, risky_commands, GcodeError,
+    JobParams, RiskKind, Writer,
+};
 
 const LIMITS: TempLimits = TempLimits {
     nozzle_c: 300.0,
@@ -414,17 +417,26 @@ fn the_start_of_a_klipper_job_is_one_macro_call() {
     w.preamble(&job(210.0, 60.0, None)).unwrap();
     assert_eq!(
         text(&w),
-        ["G21", "G90", "M83", "PRINT_START BED=60 EXTRUDER=210"]
+        [
+            "G21",
+            "G90",
+            "M83",
+            "PRINT_START BED=60 EXTRUDER=210",
+            "G21",
+            "G90",
+            "M83",
+            "M107"
+        ]
     );
     let mut c = Writer::new(Dialect::Klipper, WARM, VOLUME).unwrap();
     c.preamble(&job(210.0, 60.0, Some(40.0))).unwrap();
     assert_eq!(
-        c.lines().last().map(String::as_str),
+        c.lines().get(3).map(String::as_str),
         Some("PRINT_START BED=60 EXTRUDER=210 CHAMBER=40")
     );
     let mut z = Writer::new(Dialect::Klipper, WARM, VOLUME).unwrap();
     z.preamble(&job(210.0, 60.0, Some(0.0))).unwrap();
-    assert!(!z.lines().last().unwrap().contains("CHAMBER"));
+    assert!(!z.lines()[3].contains("CHAMBER"));
 }
 
 #[test]
@@ -848,4 +860,140 @@ fn a_block_may_not_give_every_axis_a_new_origin() {
     };
     assert!(check("G92").is_err());
     assert!(check("G92 E0").is_ok());
+}
+
+// ---- the movements of a program
+
+#[test]
+fn the_movements_are_read_by_layers_with_their_filament_and_travels() {
+    let program = "G28\nG90\nM83\nG1 Z0.2 F600\nG1 X10 Y10 F6000\nG1 X20 E1\nG1 Y20 E1\nG1 X50 Y50\nG1 E-1\nG1 Z0.4\nG1 E1\nG1 X60 E0.5\n";
+    let m = read_motion(program, Some(VOLUME));
+    assert_eq!(m.layers.len(), 2);
+    assert_eq!((m.layers[0].z_mm, m.layers[1].z_mm), (0.2, 0.4));
+    assert_eq!(m.layers[0].extrusions.len(), 2);
+    assert_eq!(m.layers[0].extrusions[0], [[10.0, 10.0], [20.0, 10.0]]);
+    assert!((m.layers[0].length_mm - 20.0).abs() < 1e-9);
+    assert!((m.filament_mm - 2.5).abs() < 1e-9);
+    // the travel after the lines of a layer belongs to the layer whose line it leads to
+    assert_eq!(m.layers[1].travels.len(), 1);
+    assert_eq!((m.outside_count, m.unfollowed, m.not_kept), (0, 0, 0));
+    // absolute extrusion, and a new origin of the extruder
+    let absolute =
+        "M82\nG90\nM82\nG1 X0 Y0 Z1\nG92 E0\nG1 X10 E2\nG1 X20 E3\nG92 E0\nG1 X30 E0.5\n";
+    assert!((read_motion(absolute, None).filament_mm - 3.5).abs() < 1e-9);
+}
+
+#[test]
+fn every_move_past_the_build_volume_is_counted_with_its_line() {
+    let program =
+        "G28\nG1 X10 Y10 Z1\nG1 X221\nG1 Y-1\nG1 Z251\nG91\nG1 X-100\nG1 X-200\nG90\nG1 X5 Y5 Z5\n";
+    let m = read_motion(program, Some(VOLUME));
+    let lines: Vec<(usize, char)> = m.outside.iter().map(|o| (o.line, o.axis)).collect();
+    // a line is told for the axes it moves, not for where an earlier line left the head
+    assert_eq!(lines, [(3, 'X'), (4, 'Y'), (5, 'Z'), (8, 'X')]);
+    assert_eq!(m.outside_count, 4);
+    assert_eq!(read_motion(program, None).outside_count, 0);
+    // a millionth past the edge is the rounding, not a move outside
+    assert_eq!(
+        read_motion("G1 X220.0005 Y0 Z0\n", Some(VOLUME)).outside_count,
+        0
+    );
+    // inches are turned into millimetres
+    assert_eq!(read_motion("G20\nG1 X9\n", Some(VOLUME)).outside_count, 1);
+}
+
+#[test]
+fn a_new_origin_and_an_unknown_place_are_followed_or_said() {
+    // G92 moves the numbers, not the head: X0 after it is where the head was
+    let shifted = "G1 X100 Y10 Z1\nG92 X0\nG1 X130\n";
+    let m = read_motion(shifted, Some(VOLUME));
+    assert_eq!(m.outside_count, 1);
+    assert!((m.outside[0].value_mm - 230.0).abs() < 1e-9);
+    // after homing, a relative move starts from a place nobody knows
+    let lost = "G28\nG91\nG1 X5\nG90\nG92 Y0\nG1 Y1000 X100\n";
+    let m = read_motion(lost, Some(VOLUME));
+    assert_eq!(m.unfollowed, 2, "{m:?}");
+    assert_eq!(m.outside_count, 0);
+    // and homing makes the numbers mean something again
+    let back = "G92 X0\nG28 X\nG1 X300\n";
+    assert_eq!(read_motion(back, Some(VOLUME)).outside_count, 1);
+}
+
+#[test]
+fn arcs_are_followed_through_their_bulge() {
+    // half a circle of radius 20 from (10, 100) to (50, 100): clockwise goes up, counter-clockwise goes down
+    let up = "G90\nM83\nG1 X10 Y100 Z1\nG2 X50 Y100 I20 J0 E3\n";
+    let m = read_motion(up, Some([220.0, 110.0, 250.0]));
+    assert_eq!(m.outside_count, 1, "{:?}", m.outside);
+    assert_eq!(m.outside[0].axis, 'Y');
+    assert!((m.filament_mm - 3.0).abs() < 1e-9);
+    assert!(m.layers[0].length_mm > 60.0);
+    let down = up.replace("G2 ", "G3 ");
+    assert_eq!(
+        read_motion(&down, Some([220.0, 110.0, 250.0])).outside_count,
+        0
+    );
+    // an arc given by its radius is not followed through its bulge, and it is said
+    let radius = "G1 X10 Y100 Z1\nG2 X50 Y100 R20\n";
+    assert_eq!(read_motion(radius, Some(VOLUME)).unfollowed, 1);
+}
+
+#[test]
+fn the_commands_that_act_on_the_machine_are_listed_with_what_they_do() {
+    let program = "M211 S0\nM302 P1\nM302 P0\nM143 H1 S400\nM564 S0\nG92 E0\nG92 X0\nM206 Z1\nM92 E100\nM500\nM997\nSET_KINEMATIC_POSITION Z=0\nSAVE_CONFIG\nFIRMWARE_RESTART\nM117 M500\n; M502\nM211 S1\nG28 M502\nM104 S200\n";
+    let found: Vec<(usize, RiskKind)> = risky_commands(program)
+        .into_iter()
+        .map(|r| (r.line, r.kind))
+        .collect();
+    use RiskKind::{Firmware, Position, Protection, Settings};
+    assert_eq!(
+        found,
+        [
+            (1, Protection),
+            (2, Protection),
+            (4, Protection),
+            (5, Protection),
+            (7, Position),
+            (8, Position),
+            (9, Settings),
+            (10, Settings),
+            (11, Firmware),
+            (12, Position),
+            (13, Settings),
+            (14, Firmware),
+            (18, Settings),
+        ]
+    );
+    assert!(risky_commands("G28\nG1 X10 E1\nM104 S200\nM84\n").is_empty());
+}
+
+#[test]
+fn a_klipper_start_sets_the_modes_again_after_the_macro_and_a_pause_follows_the_firmware() {
+    let mut w = writer(Dialect::Klipper);
+    w.preamble(&job(210.0, 60.0, None)).unwrap();
+    let at = w
+        .lines()
+        .iter()
+        .position(|l| l.starts_with("PRINT_START"))
+        .unwrap();
+    assert!(
+        text(&w)[at + 1..].contains(&"M83"),
+        "relative extrusion after the macro"
+    );
+    for (d, last) in [
+        (Dialect::Marlin, "M600"),
+        (Dialect::Klipper, "PAUSE"),
+        (Dialect::Rrf, "M226"),
+        (Dialect::Bambu, "M400 U1"),
+    ] {
+        let mut w = writer(d);
+        w.pause();
+        assert_eq!(text(&w).last(), Some(&last), "{d}");
+        let mut m = writer(d);
+        m.progress(140, 7);
+        assert_eq!(m.lines().len(), usize::from(d != Dialect::Rrf));
+        if d != Dialect::Rrf {
+            assert_eq!(text(&m), ["M73 P100 R7"]);
+        }
+    }
 }
