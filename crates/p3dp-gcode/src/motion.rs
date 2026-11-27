@@ -150,8 +150,11 @@ impl State {
 
     /// One straight piece from where the head is to `to`, with the filament it takes.
     fn piece(&mut self, line: usize, to: [Option<f64>; 3], e: f64, told: &mut bool) {
-        self.judge(line, to, told);
         let from = self.at;
+        // only the axes the piece moves are judged: a line is not told again for where an earlier one left the head
+        let moved: [Option<f64>; 3] =
+            std::array::from_fn(|i| to[i].filter(|v| from[i] != Some(*v)));
+        self.judge(line, moved, told);
         self.at = to;
         if let (Some(x0), Some(y0), Some(x1), Some(y1)) = (from[0], from[1], to[0], to[1]) {
             if (x1 - x0).hypot(y1 - y0) < 1e-9 {

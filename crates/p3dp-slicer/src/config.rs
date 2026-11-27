@@ -1165,7 +1165,7 @@ vase_mode = off
         );
         assert!(c.retract_adaptive && !c.vase_mode);
         assert_eq!(SliceConfig::from_text(&c.to_text()).unwrap(), c);
-        assert_eq!(KEYS.len(), 74);
+        assert_eq!(KEYS.len(), 86);
         for k in KEYS {
             assert!(c.value_of(k).is_some(), "{k}");
         }

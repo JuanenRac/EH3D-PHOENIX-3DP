@@ -889,8 +889,9 @@ fn every_move_past_the_build_volume_is_counted_with_its_line() {
         "G28\nG1 X10 Y10 Z1\nG1 X221\nG1 Y-1\nG1 Z251\nG91\nG1 X-100\nG1 X-200\nG90\nG1 X5 Y5 Z5\n";
     let m = read_motion(program, Some(VOLUME));
     let lines: Vec<(usize, char)> = m.outside.iter().map(|o| (o.line, o.axis)).collect();
-    assert_eq!(lines, [(3, 'X'), (4, 'X'), (5, 'X'), (7, 'X'), (8, 'X')]);
-    assert_eq!(m.outside_count, 5);
+    // a line is told for the axes it moves, not for where an earlier line left the head
+    assert_eq!(lines, [(3, 'X'), (4, 'Y'), (5, 'Z'), (8, 'X')]);
+    assert_eq!(m.outside_count, 4);
     assert_eq!(read_motion(program, None).outside_count, 0);
     // a millionth past the edge is the rounding, not a move outside
     assert_eq!(
@@ -909,7 +910,7 @@ fn a_new_origin_and_an_unknown_place_are_followed_or_said() {
     assert_eq!(m.outside_count, 1);
     assert!((m.outside[0].value_mm - 230.0).abs() < 1e-9);
     // after homing, a relative move starts from a place nobody knows
-    let lost = "G28\nG91\nG1 X5\nG90\nG92 Y0\nG1 Y10 X1000\n";
+    let lost = "G28\nG91\nG1 X5\nG90\nG92 Y0\nG1 Y1000 X100\n";
     let m = read_motion(lost, Some(VOLUME));
     assert_eq!(m.unfollowed, 2, "{m:?}");
     assert_eq!(m.outside_count, 0);

@@ -123,8 +123,7 @@ pub(crate) fn support_paths(
             (1..=cfg.support_interface_layers as usize)
                 .any(|up| !cells.get(k + up).is_some_and(|above| above.contains(c)))
         };
-        let (floor, body): (BTreeSet<(i64, i64)>, BTreeSet<(i64, i64)>) =
-            set.iter().copied().partition(near_top);
+        let (floor, body) = set.iter().copied().partition::<BTreeSet<_>, _>(near_top);
         out[k] = rows(&body, k, &outlines[k], pitch, cfg);
         out[k].extend(interface_rows(&floor, k, &outlines[k], pitch, cfg));
     }

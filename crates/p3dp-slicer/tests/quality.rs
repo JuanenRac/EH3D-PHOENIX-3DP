@@ -531,34 +531,43 @@ fn a_raft_is_counted_when_the_lift_is_held_to_the_height_of_the_printer() {
     assert!(plan(&cube(10.0), &low, &flat).is_ok());
 }
 
+/// Two pillars 5 mm wide and a plate over them, 30 x 10 x 6 mm, made from its profile in x and z: the plate hangs over 20 mm of nothing.
+fn table_mesh() -> p3dp_core::Mesh {
+    let poly: [[f64; 2]; 8] = [
+        [0.0, 0.0],
+        [5.0, 0.0],
+        [5.0, 5.0],
+        [25.0, 5.0],
+        [25.0, 0.0],
+        [30.0, 0.0],
+        [30.0, 6.0],
+        [0.0, 6.0],
+    ];
+    let caps: [[usize; 3]; 6] = [
+        [0, 1, 2],
+        [0, 2, 7],
+        [2, 3, 6],
+        [2, 6, 7],
+        [4, 5, 6],
+        [4, 6, 3],
+    ];
+    let at = |i: usize, y: f64| [poly[i][0], y, poly[i][1]];
+    let mut soup: Vec<[[f64; 3]; 3]> = Vec::new();
+    for t in caps {
+        soup.push([at(t[0], 0.0), at(t[1], 0.0), at(t[2], 0.0)]);
+        soup.push([at(t[0], 10.0), at(t[2], 10.0), at(t[1], 10.0)]);
+    }
+    for i in 0..poly.len() {
+        let j = (i + 1) % poly.len();
+        soup.push([at(i, 0.0), at(j, 10.0), at(j, 0.0)]);
+        soup.push([at(i, 0.0), at(i, 10.0), at(j, 10.0)]);
+    }
+    p3dp_core::Mesh::from_soup(&soup, &p3dp_core::Limits::default()).unwrap()
+}
+
 #[test]
 fn support_interface_layers_are_close_lines_under_the_overhang() {
-    // a plate over two pillars
-    let table = {
-        let mut soup = Vec::new();
-        for (m, shift) in [
-            (
-                slab([0.0, 0.0, 5.0, 10.0], [0.0, 0.0, 5.0, 10.0], 5.0),
-                [0.0, 0.0, 0.0],
-            ),
-            (
-                slab([25.0, 0.0, 30.0, 10.0], [25.0, 0.0, 30.0, 10.0], 5.0),
-                [0.0, 0.0, 0.0],
-            ),
-            (
-                slab([0.0, 0.0, 30.0, 10.0], [0.0, 0.0, 30.0, 10.0], 1.0),
-                [0.0, 0.0, 5.0],
-            ),
-        ] {
-            for t in &m.triangles {
-                soup.push(t.map(|i| {
-                    let v = m.vertices[i as usize].mm();
-                    [v[0] + shift[0], v[1] + shift[1], v[2] + shift[2]]
-                }));
-            }
-        }
-        p3dp_core::Mesh::from_soup(&soup, &p3dp_core::Limits::default()).unwrap()
-    };
+    let table = table_mesh();
     let plain = settings(&[("supports", "buildplate")]);
     let floor = settings(&[
         ("supports", "buildplate"),

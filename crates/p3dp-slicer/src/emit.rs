@@ -221,10 +221,11 @@ impl Plan {
                         if wiped.is_empty() {
                             moves.push(Move::Retract(mm));
                         }
-                        for (to, part) in wiped {
-                            moves.push(Move::Wipe { to, mm: part });
-                            at = to;
-                        }
+                        moves.extend(
+                            wiped
+                                .into_iter()
+                                .map(|(to, part)| Move::Wipe { to, mm: part }),
+                        );
                         *pulled = mm;
                     }
                 }

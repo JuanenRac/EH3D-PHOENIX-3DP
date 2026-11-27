@@ -4,6 +4,27 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The G-code of a project is drawn by layers:** *Show its layers* in the Project panel draws one layer at a time from above (the lines that lay plastic, the travels faint, what leaves the bed in the colour of a danger), with a slider, in the eight languages. It is only a picture: nothing is loaded into the plan and nothing is sent.
+- **Moves are checked against the build volume:** `project open`, `import`, `take` and `check-profile --gcode`, and the Project panel, tell every line that leaves the volume of the printer (exit code 1), with arcs followed through their bulge, a new origin (`G92`) taken into account and the moves that could not be followed counted instead of guessed. A macro with a name of its own is not followed. Host-tested only.
+- **Commands that act on the machine itself are listed** in the same places: software end stops or cold extrusion guard turned off, a heater limit raised, a new position or origin of an axis, steps, tuning or saved settings changed, a firmware restart or write.
+- **A new command `project layers FILE.eh3d [--layer N] [--printer ID]`** lists the layers of the G-code of a project: their height, lines, length, travels and filament.
+- **A project keeps your own printer profile** (`project save --printer-file FILE`; the window keeps it when the limits of the printer are yours; an empty file takes it out). It can only lower the temperature limits and the build volume of the same printer, in the command line and in the window (for that session; your settings file is not touched): a project of somebody else never raises a limit, and what it asked for is told.
+- **Walls that hang are slowed down** (`overhang_speed_mm_s`, off by default): the parts of an outer wall whose middle is not over the layer below are printed at that speed, never faster than the outer wall, with the fan of a bridge.
+- **Support interface layers** (`support_interface_layers`, `support_interface_spacing_mm`): the layers at the top of a support are laid close together, so the overhang rests on an even floor.
+- **The first layer has its own temperatures** (`first_layer_nozzle_c`, `first_layer_bed_c`), checked against the limits of the printer; the temperatures of the rest are set from the second layer without waiting.
+- **`infill_overlap_percent`** lets the infill and the skins reach into the innermost wall so they hold to it.
+- **`external_perimeters_first`** lays the outer wall before the inner ones.
+- **A seam in the sharpest corner** (`seam = corner`): the corner that turns into the part, else the sharpest one; a round wall keeps the rear seam.
+- **`retract_only_crossing`**: a travel that stays inside the outer walls is made without pulling the filament back or lifting the head.
+- **A wipe while retracting** (`wipe_mm`): the head goes back along the line it has just laid while the filament is pulled back, and the same filament is pulled back in all.
+- **Pauses before chosen layers** (`pause_at_layers = 10,25`), for a change of colour or an insert: `M600`, `PAUSE` (Klipper, a macro of your printer), `M226` or `M400 U1`, with the filament pulled back first. A layer the print does not have is refused.
+- **The G-code says how far the print is** (`M73` for Marlin, Klipper and Bambu printers, and the number of layers for Klipper); `progress_marks = off` leaves it out.
+- **`skirt_min_length_mm`** gives the skirt more loops until it is long enough to bring the nozzle to a steady flow, and `fit` counts them.
+- **The settings of other programs bring the new keys** with `import`: first layer temperatures, infill overlap, support interface layers, outer wall first, retraction only across walls, least skirt length and the corner seam.
+- **A section «Quality» in the slice settings of the window** with the new settings, in the eight languages.
+- Fix the start of a Klipper job: the macro `PRINT_START` is the printer's own and may leave absolute extrusion, which would read every line after it wrongly; millimetres, absolute positions, relative extrusion and the fan off are set again after it.
+- Fix a print with several materials: the filament was pulled back after the change of tool, on the new tool, so the one that was printing was left full; it is now pulled back before the change.
+- Fix `z_hop_mm` with a raft: the height the raft adds was not counted against the printer, and the slice failed late with a move outside the volume.
 - **RepRapFirmware: a tool is picked before the first extrusion, and each tool gets its own temperature.** The start of a job had no `T0`, so a Duet had no tool selected when it was asked to wait and to extrude; with several materials every temperature went to the tool 0 (`G10 P0`), so the other tools were never heated. The tool comes back after a start G-code that picked another one. Host-tested only.
 - **Relative moves of your start and end G-code are added up:** each step was checked on its own, so several steps after `G91` could walk out of the build volume; the end block now starts no lower than the height of the print.
 - **The temperature checker looks at every command of a line** (RepRapFirmware runs `T0 M104 S400` whole) and at the highest temperature of the automatic mode (`M104`/`M109` with `B`). The text of a message or of a file name (`M117`, `M23`...) is not taken for a command.

@@ -682,9 +682,9 @@ mod tests {
         assert!(first_t < change);
         // the filament of the tool that was printing is pulled back before the change, not after it
         assert!(
-            lines[change - 2].starts_with("G1 E-"),
-            "{}",
-            lines[change - 2]
+            lines[change - 3].starts_with("G1 E-"),
+            "{:?}",
+            &lines[change - 4..=change]
         );
         // the temperature of the new tool is set and waited for just before the tool is picked
         let petg = tools()[1].nozzle_c;

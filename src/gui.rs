@@ -1343,7 +1343,7 @@ impl App {
             ui.checkbox(flag, label.tr(lang));
         }
         // the name on a line of its own and the number under it, so a long name fits a narrow panel
-        let mut number = |ui: &mut egui::Ui, label: Msg, value: &mut f64, max: f64, unit: &str| {
+        let number = |ui: &mut egui::Ui, label: Msg, value: &mut f64, max: f64, unit: &str| {
             ui.add(egui::Label::new(label.tr(lang)).wrap());
             ui.add(
                 egui::DragValue::new(value)
