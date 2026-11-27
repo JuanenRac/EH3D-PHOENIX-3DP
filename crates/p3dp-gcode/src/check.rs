@@ -145,7 +145,8 @@ fn heat(words: &[Word], limits: &TempLimits) -> Vec<TempError> {
     };
     letters
         .iter()
-        .flat_map(|&l| values(words, l))
+        // a `B` is only a temperature when a number follows it
+        .flat_map(|&l| values(words, l).filter(move |v| l != 'B' || v.is_ok()))
         .filter_map(|v| judge(limits, zone, v))
         .collect()
 }
