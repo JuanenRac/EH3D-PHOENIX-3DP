@@ -83,9 +83,9 @@ pub const USAGE: &str = "phoenix-3dp: prepare and send 3D prints (simulators onl
   phoenix-3dp slice MODEL --printer ID [--process LEVEL] [--settings FILE] [--set \"key=value;key=value\"] [--filament ID] [--nozzle MM] [--hardened] [--turn DEG] [--scale PERCENT] [--copies N] [--start-gcode FILE] [--end-gcode FILE] [--report] [--out FILE.gcode|FILE.gcode.3mf] [--save-settings FILE] [--force]
   phoenix-3dp project FILE.3mf|FILE.bgcode|FILE.gcode|FILE.sl1 [--thumbnail FILE] [--extract-gcode FILE] [--force] [--bottom-layers N] [--lift MM] [--light-power MW]
   phoenix-3dp project list FILE.eh3d [--json]
-  phoenix-3dp project save FILE.eh3d [--model MODEL] [--settings FILE] [--printer ID] [--filament ID] [--gcode FILE.gcode] [--name NAME] [--id ID]
-  phoenix-3dp project import FILE.eh3d MODEL|FILE.gcode [--name NAME] [--id ID]
-  phoenix-3dp project open FILE.eh3d [--into DIR] | take FILE.eh3d BRANCH NAME | extract FILE.eh3d BRANCH DIR
+  phoenix-3dp project save FILE.eh3d [--model MODEL] [--settings FILE] [--printer ID] [--filament ID] [--gcode FILE.gcode] [--start-gcode FILE] [--end-gcode FILE] [--name NAME] [--id ID]
+  phoenix-3dp project import FILE.eh3d MODEL|FILE.gcode [--printer ID] [--name NAME] [--id ID]
+  phoenix-3dp project open FILE.eh3d [--into DIR] [--printer ID] | take FILE.eh3d BRANCH NAME [--printer ID] | extract FILE.eh3d BRANCH DIR
   phoenix-3dp version
 
 Every command also takes --config FILE (the settings) and --lang CODE (en, es, de, fr, it, ja, zh, pt).

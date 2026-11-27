@@ -107,6 +107,31 @@ fn tail_of(text: &str, max: usize) -> &str {
     &text[n..]
 }
 
+/// The whole lines of the first `max` bytes: a line that the cut would leave in half is not looked at, so no figure is read short.
+fn head_lines(text: &str, max: usize) -> &str {
+    let cut = head_of(text, max);
+    if cut.len() == text.len() || text[cut.len()..].starts_with(['\n', '\r']) {
+        return cut;
+    }
+    match cut.rfind('\n') {
+        Some(i) => &cut[..=i],
+        None => "",
+    }
+}
+
+/// The whole lines of the last `max` bytes that are not before `from`, so nothing is read twice or in half.
+fn tail_lines(text: &str, from: usize, max: usize) -> &str {
+    let tail = tail_of(text, max);
+    let start = (text.len() - tail.len()).max(from);
+    if start == 0 || text.as_bytes()[start - 1] == b'\n' {
+        return &text[start..];
+    }
+    match text[start..].find('\n') {
+        Some(i) => &text[start + i + 1..],
+        None => "",
+    }
+}
+
 /// The words of a comment line (`; thumbnail begin 16x16 40`), or `None` when the line is not a comment.
 fn comment(line: &str) -> Option<&str> {
     line.trim().strip_prefix(';').map(str::trim)
@@ -216,14 +241,11 @@ fn clip(s: &str) -> String {
     s.chars().take(MAX_TEXT).collect()
 }
 
-/// The `; key = value` lines of the start and of the end of a G-code file, in the order of the file (the start first), at most `max_notes` from each end. Thumbnail text is not a note.
+/// The `; key = value` lines of the start and of the end of a G-code file, in the order of the file (the start first), at most `max_notes` from each end. Only whole lines are
+/// read, and a line that is in both ends is read once. Thumbnail text is not a note.
 pub fn notes(text: &str, limits: &ScanLimits) -> Vec<(String, String)> {
-    let head = head_of(text, limits.head_bytes.min(64 << 10));
-    let tail = if text.len() > head.len() {
-        tail_of(text, limits.tail_bytes)
-    } else {
-        ""
-    };
+    let head = head_lines(text, limits.head_bytes.min(64 << 10));
+    let tail = tail_lines(text, head.len(), limits.tail_bytes);
     let mut out: Vec<(String, String)> = Vec::new();
     for segment in [head, tail] {
         let first = out.len();
@@ -450,6 +472,51 @@ mod tests {
             ..ScanLimits::default()
         };
         assert_eq!(notes(&"; k = v\n".repeat(10), &capped).len(), 3);
+    }
+
+    #[test]
+    fn a_line_cut_by_the_end_of_the_scan_is_not_read_short() {
+        let text = "; a = 1\n; filament used [g] = 1234.5\n; z = 9\n";
+        let at = text.find("34.5").unwrap();
+        let l = ScanLimits {
+            head_bytes: at,
+            tail_bytes: 0,
+            ..ScanLimits::default()
+        };
+        assert_eq!(notes(text, &l), [("a".to_string(), "1".to_string())]);
+        assert_eq!(summary(text, &l).filament_g, None);
+        // a cut right at the end of a line keeps that line
+        let l = ScanLimits {
+            head_bytes: 7,
+            tail_bytes: 0,
+            ..ScanLimits::default()
+        };
+        assert_eq!(notes(text, &l).len(), 1);
+        // the end is read from the next whole line
+        let l = ScanLimits {
+            head_bytes: 0,
+            tail_bytes: text.len() - at,
+            ..ScanLimits::default()
+        };
+        assert_eq!(notes(text, &l), [("z".to_string(), "9".to_string())]);
+    }
+
+    #[test]
+    fn a_line_that_both_ends_of_the_scan_cover_is_read_once() {
+        let text = format!("{}; once = 1\n", "G1 X1\n".repeat(20));
+        let l = ScanLimits {
+            head_bytes: text.len() - 3,
+            tail_bytes: text.len(),
+            ..ScanLimits::default()
+        };
+        assert_eq!(notes(&text, &l), [("once".to_string(), "1".to_string())]);
+        let big = format!(
+            "{}; once = 1\n{}",
+            "G1\n".repeat(21_000),
+            "G1\n".repeat(2_000)
+        );
+        assert!(big.len() > 64 << 10 && big.len() < 128 << 10);
+        assert_eq!(notes(&big, &ScanLimits::default()).len(), 1);
     }
 
     #[test]

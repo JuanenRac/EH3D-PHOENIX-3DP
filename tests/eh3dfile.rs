@@ -120,6 +120,7 @@ fn work() -> Contents {
             name: "plate.gcode".into(),
             bytes: b"G28\n".to_vec(),
         }),
+        ..Contents::default()
     }
 }
 
@@ -376,4 +377,128 @@ fn the_command_saves_lists_opens_and_extracts_and_a_damaged_file_is_an_error() {
     assert_eq!(go(&["project", "list", &junk]).code, 2);
     assert_eq!(go(&["project", "open", &junk]).code, 2);
     let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_start_and_end_gcode_are_kept_in_the_branch_replaced_and_taken_out() {
+    let dir = folder("blocks");
+    let project = dir.join("job.eh3d");
+    let limits = Limits::default();
+    save(&project, &work());
+    let blocks = Contents {
+        start_gcode: Some("G92 E0\nG1 E5\n".into()),
+        end_gcode: Some("G28 X Y\n".into()),
+        ..Contents::default()
+    };
+    assert!(save(&project, &blocks).is_some());
+    let held = eh3dfile::held(&project, &limits).unwrap();
+    assert_eq!(held.blocks.start.as_deref(), Some("G92 E0\nG1 E5\n"));
+    assert_eq!(held.blocks.end.as_deref(), Some("G28 X Y\n"));
+    assert!(
+        held.program.is_none(),
+        "the G-code of before was not made with these lines"
+    );
+    assert_eq!(held.parts.len(), 3);
+    assert!(
+        save(&project, &blocks).is_none(),
+        "the same is not written again"
+    );
+    // one is taken out with an empty text and the other stays
+    let gone = Contents {
+        start_gcode: Some(String::new()),
+        ..Contents::default()
+    };
+    assert!(save(&project, &gone).is_some());
+    let held = eh3dfile::held(&project, &limits).unwrap();
+    assert!(held.blocks.start.is_none() && held.blocks.end.is_some());
+    assert!(!held.files.contains_key("blocks/start.gcode"));
+    assert!(save(&project, &gone).is_none());
+    // what no slice would take does not go in
+    let before = fs::read(&project).unwrap();
+    for bad in [
+        "G4 S1\n".repeat(201),
+        "G".repeat(201),
+        "G28\u{0}\n".to_string(),
+    ] {
+        let contents = Contents {
+            start_gcode: Some(bad),
+            ..Contents::default()
+        };
+        assert!(
+            eh3dfile::save_contents(&project, &contents, &Identity::default(), &limits).is_err()
+        );
+    }
+    assert_eq!(fs::read(&project).unwrap(), before);
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_command_checks_the_temperatures_of_the_gcode_of_a_project() {
+    let dir = folder("heat");
+    let project = dir.join("job.eh3d");
+    let hot = file(&dir, "hot.gcode", b"G28\nM104 S999\n");
+    let fine = file(&dir, "fine.gcode", b"G28\nM104 S200\n");
+    let end = file(&dir, "end.gcode", b"G28 X Y\n");
+    let go = |words: &[&str]| {
+        let args: Vec<String> = words.iter().map(|w| (*w).to_string()).collect();
+        cli::run(&args, None)
+    };
+    let p = text(&project);
+    let saved = go(&["project", "save", &p, "--end-gcode", &text(&end)]);
+    assert_eq!(saved.code, 0, "{}", saved.err);
+    // no printer is known yet: it is said, and nothing is claimed
+    let imported = go(&["project", "import", &p, &text(&hot)]);
+    assert!(
+        imported.out.contains("temperatures not checked"),
+        "{} {}",
+        imported.out,
+        imported.err
+    );
+    let opened = go(&["project", "open", &p, "--printer", "bambu-lab-a1"]);
+    assert_eq!(opened.code, 1, "{}", opened.err);
+    assert!(
+        opened.out.contains("line 2: ") && opened.out.contains("M104 S999"),
+        "{}",
+        opened.out
+    );
+    assert!(opened.err.contains("past the limits of bambu-lab-a1"));
+    assert!(
+        opened.out.contains("start G-code none") && opened.out.contains("end G-code 1 line(s)"),
+        "{}",
+        opened.out
+    );
+    // with the printer in the project, an import is checked against it
+    assert_eq!(
+        go(&["project", "save", &p, "--printer", "bambu-lab-a1"]).code,
+        0
+    );
+    let again = go(&["project", "import", &p, &text(&hot)]);
+    assert_eq!(again.code, 1, "{} {}", again.out, again.err);
+    let good = go(&["project", "import", &p, &text(&fine)]);
+    assert!(
+        good.out
+            .contains("no temperature command goes past the limits of bambu-lab-a1"),
+        "{}",
+        good.out
+    );
+    assert_eq!(go(&["project", "open", &p, "--printer", "ghost"]).code, 2);
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_program_that_is_not_text_is_not_said_to_be_checked() {
+    let catalog = p3dp_profiles::Catalog::builtin().unwrap();
+    let a1 = catalog.find("bambu-lab-a1");
+    let binary = eh3dfile::review("x.gcode", b"GCDE\x01\x00\x00\x00", a1);
+    assert_eq!(binary.heat, eh3dfile::Heat::NotText);
+    let resin = catalog.find("elegoo-mars-4");
+    assert_eq!(
+        eh3dfile::review("x.gcode", b"M104 S999\n", resin).heat,
+        eh3dfile::Heat::NoPrinter
+    );
+    let r = eh3dfile::review("x.gcode", b"G28\nM104 S999\n", a1);
+    assert_eq!(r.lines, 2);
+    assert!(
+        matches!(r.heat, eh3dfile::Heat::Checked { ref violations, .. } if violations.len() == 1)
+    );
 }

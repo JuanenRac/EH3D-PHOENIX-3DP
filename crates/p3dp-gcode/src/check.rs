@@ -85,22 +85,56 @@ fn judge(limits: &TempLimits, zone: Zone, v: Result<f64, ()>) -> Option<TempErro
     }
 }
 
-/// The temperatures a G, M or T command asks for: the target (`S`) and, where the command has one, the temperature to wait or stand by at (`R`).
+/// The `M` commands whose rest of the line is a message or the name of a file: nothing in it is a command.
+const TEXT_COMMANDS: [i64; 11] = [23, 28, 30, 32, 36, 98, 117, 118, 291, 550, 587];
+
+fn is_text_command(word: &Word) -> bool {
+    matches!(word, ('M', Ok(n)) if TEXT_COMMANDS.contains(&(*n as i64)))
+}
+
+/// The commands of a line of words. RepRapFirmware runs several `G` and `M` commands written on one line, so each one is looked at; a command that carries a text takes
+/// the rest of the line.
+fn commands(words: &[Word]) -> Vec<&[Word]> {
+    let mut out = Vec::new();
+    let mut start = 0;
+    for (i, word) in words.iter().enumerate().skip(1) {
+        if is_text_command(&words[start]) {
+            break;
+        }
+        if matches!(word, ('G' | 'M', Ok(_))) {
+            out.push(&words[start..i]);
+            start = i;
+        }
+    }
+    out.push(&words[start..]);
+    out
+}
+
+/// The temperatures the `G` and `M` commands of a line ask for.
 fn classic(code: &str, limits: &TempLimits) -> Vec<TempError> {
     let words = words_of(code);
+    commands(&words)
+        .into_iter()
+        .flat_map(|c| heat(c, limits))
+        .collect()
+}
+
+/// The temperatures one command asks for: the target (`S`) and, where the command has one, the temperature to wait or stand by at (`R`) or the highest one of the automatic
+/// temperature (`B` of `M104` and `M109`).
+fn heat(words: &[Word], limits: &TempLimits) -> Vec<TempError> {
     let Some(&(letter, Ok(number))) = words.first() else {
         return Vec::new();
     };
     let (zone, letters): (Zone, &[char]) = match (letter, number as i64) {
-        ('M', 104 | 109) => (Zone::Nozzle, &['S', 'R']),
+        ('M', 104 | 109) => (Zone::Nozzle, &['S', 'R', 'B']),
         ('M', 140 | 190) => (Zone::Bed, &['S', 'R']),
         ('M', 141 | 191) => (Zone::Chamber, &['S', 'R']),
         // RepRapFirmware: the temperatures of a tool, only when the tool is named (`G10` alone retracts)
         ('M', 568) => (Zone::Nozzle, &['S', 'R']),
-        ('G', 10) if values(&words, 'P').next().is_some() => (Zone::Nozzle, &['S', 'R']),
+        ('G', 10) if values(words, 'P').next().is_some() => (Zone::Nozzle, &['S', 'R']),
         // the tuning of a heater heats it: E-1 is the bed and E-2 the chamber
         ('M', 303) => {
-            let zone = match values(&words, 'E').next() {
+            let zone = match values(words, 'E').next() {
                 Some(Ok(-1.0)) => Zone::Bed,
                 Some(Ok(-2.0)) => Zone::Chamber,
                 _ => Zone::Nozzle,
@@ -111,7 +145,7 @@ fn classic(code: &str, limits: &TempLimits) -> Vec<TempError> {
     };
     letters
         .iter()
-        .flat_map(|&l| values(&words, l))
+        .flat_map(|&l| values(words, l))
         .filter_map(|v| judge(limits, zone, v))
         .collect()
 }
@@ -164,7 +198,8 @@ fn named(code: &str, limits: &TempLimits) -> Vec<TempError> {
 
 /// Checks a whole program. The commands it knows: `M104`, `M109` (nozzle), `M140`, `M190` (bed), `M141`, `M191` (chamber), `M303` (tuning), `G10 P.. S.. R..` and
 /// `M568` (RepRapFirmware tool), `SET_HEATER_TEMPERATURE` and the temperature parameters of `PRINT_START` and `START_PRINT`. A command is read with or without blanks,
-/// behind a line number and a checksum, and a carriage return ends a line. Comments are ignored. A value that is not a number is reported as such.
+/// behind a line number and a checksum, a second command on the same line is looked at too, and a carriage return ends a line. Comments are ignored, and so is the text of
+/// a message or of a file name (`M117`, `M23`...). A value that is not a number is reported as such.
 pub fn check_program(text: &str, limits: &TempLimits) -> Vec<Violation> {
     let mut out = Vec::new();
     let lines = text

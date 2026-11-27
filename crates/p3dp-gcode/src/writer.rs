@@ -79,6 +79,8 @@ pub struct Writer {
     volume_mm: [f64; 3],
     header: Vec<String>,
     lines: Vec<String>,
+    /// The tool the program picked, when it picked one.
+    tool: Option<u8>,
 }
 
 impl Writer {
@@ -104,6 +106,7 @@ impl Writer {
             volume_mm,
             header: Vec::new(),
             lines: Vec::new(),
+            tool: None,
         })
     }
 
@@ -122,6 +125,10 @@ impl Writer {
 
     pub(crate) fn volume_mm(&self) -> [f64; 3] {
         self.volume_mm
+    }
+
+    pub(crate) fn tool(&self) -> Option<u8> {
+        self.tool
     }
 
     /// A line that was already checked (a block of the person).
@@ -168,12 +175,13 @@ impl Writer {
         Ok(())
     }
 
-    /// Sets (and, if asked, waits for) the temperature of the nozzle.
+    /// Sets (and, if asked, waits for) the temperature of the nozzle. RepRapFirmware keeps a temperature for each tool, so it is the one of the tool that was picked (the
+    /// tool 0 before one is).
     pub fn set_nozzle(&mut self, celsius: f64, wait: bool) -> Result<(), GcodeError> {
         let t = self.limits.check(Zone::Nozzle, celsius)?;
         let line = match (self.dialect, wait) {
             (Dialect::Rrf, _) => {
-                self.push(format!("G10 P0 S{}", num(t)));
+                self.push(format!("G10 P{} S{}", self.tool.unwrap_or(0), num(t)));
                 if wait && t > 0.0 {
                     self.push("M116");
                 }
@@ -230,8 +238,7 @@ impl Writer {
         Ok(())
     }
 
-    /// Picks a tool (a spool of a feeder or a head of a toolchanger): `T0` to `T15`. The temperature of the new tool is set before, with [`Writer::set_nozzle`], so that it is
-    /// checked against the limits like every other.
+    /// Picks a tool (a spool of a feeder or a head of a toolchanger): `T0` to `T15`. It sets no temperature: see [`Writer::change_tool`].
     pub fn select_tool(&mut self, tool: u8) -> Result<(), GcodeError> {
         if tool > 15 {
             return Err(GcodeError::Value(format!(
@@ -239,6 +246,28 @@ impl Writer {
             )));
         }
         self.push(format!("T{tool}"));
+        self.tool = Some(tool);
+        Ok(())
+    }
+
+    /// Picks a tool at its temperature and waits for it. The temperature is checked against the limits before anything is written. Most firmwares are brought to the
+    /// temperature and then given the tool; RepRapFirmware is given the temperature of that tool, then the tool, and then waited for.
+    pub fn change_tool(&mut self, tool: u8, celsius: f64) -> Result<(), GcodeError> {
+        let t = self.limits.check(Zone::Nozzle, celsius)?;
+        if tool > 15 {
+            return Err(GcodeError::Value(format!(
+                "the tool {tool} is not from 0 to 15"
+            )));
+        }
+        if self.dialect != Dialect::Rrf {
+            self.set_nozzle(t, true)?;
+            return self.select_tool(tool);
+        }
+        self.push(format!("G10 P{tool} S{}", num(t)));
+        self.select_tool(tool)?;
+        if t > 0.0 {
+            self.push("M116");
+        }
         Ok(())
     }
 
@@ -363,6 +392,10 @@ impl Writer {
         }
         self.set_nozzle(nozzle.min(150.0), false)?;
         self.push("G28");
+        // RepRapFirmware heats and extrudes with the tool that is picked, and none is when a job starts
+        if self.dialect == Dialect::Rrf {
+            self.select_tool(0)?;
+        }
         self.set_bed(bed, true)?;
         if let Some(c) = chamber.filter(|c| *c > 0.0) {
             self.set_chamber(c, true)?;
@@ -490,6 +523,10 @@ mod tests {
         w.preamble(&job()).unwrap();
         let t = w.lines().join("\n");
         assert!(t.contains("G10 P0 S150") && t.contains("G10 P0 S215\nM116"));
+        assert!(
+            t.contains("G28\nT0\n"),
+            "a tool is picked before it is waited for"
+        );
         w.end_safe().unwrap();
         assert!(w.lines().contains(&"G10 P0 S0".to_string()) && w.lines().last().unwrap() == "M0");
     }

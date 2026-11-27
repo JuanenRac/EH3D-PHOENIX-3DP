@@ -348,10 +348,22 @@ pub enum Msg {
     SuitePrinterUnknown,
     SuiteFilamentUnknown,
     SuiteSaveFirst,
+    ProjectProgramTitle,
+    ProjectProgramReadOnly,
+    ProjectProgramLines,
+    ProjectProgramHeatOk,
+    ProjectProgramHeatBad,
+    ProjectProgramLine,
+    ProjectProgramNoPrinter,
+    ProjectProgramNotText,
+    ProjectBlocksUse,
+    ProjectBlocksRemove,
+    ProjectBlocksLines,
+    ProjectBlocksNote,
 }
 
 impl Msg {
-    pub const ALL: [Msg; 274] = [
+    pub const ALL: [Msg; 286] = [
         Msg::TabPrepare,
         Msg::TabPreview,
         Msg::TabDevice,
@@ -626,6 +638,18 @@ impl Msg {
         Msg::SuitePrinterUnknown,
         Msg::SuiteFilamentUnknown,
         Msg::SuiteSaveFirst,
+        Msg::ProjectProgramTitle,
+        Msg::ProjectProgramReadOnly,
+        Msg::ProjectProgramLines,
+        Msg::ProjectProgramHeatOk,
+        Msg::ProjectProgramHeatBad,
+        Msg::ProjectProgramLine,
+        Msg::ProjectProgramNoPrinter,
+        Msg::ProjectProgramNotText,
+        Msg::ProjectBlocksUse,
+        Msg::ProjectBlocksRemove,
+        Msg::ProjectBlocksLines,
+        Msg::ProjectBlocksNote,
     ];
 
     /// The texts in the order English, Spanish, German, French, Italian, Japanese, Chinese, Portuguese (Portugal).
@@ -908,12 +932,24 @@ impl Msg {
             Msg::LblStartGcode => ["Your start G-code (file)", "Su G-code de inicio (archivo)", "Ihr Start-G-Code (Datei)", "Votre G-code de début (fichier)", "Il suo G-code iniziale (file)", "独自の開始 G-code（ファイル）", "您的起始 G-code（文件）", "O seu G-code de início (ficheiro)"],
             Msg::LblEndGcode => ["Your end G-code (file)", "Su G-code de fin (archivo)", "Ihr End-G-Code (Datei)", "Votre G-code de fin (fichier)", "Il suo G-code finale (file)", "独自の終了 G-code（ファイル）", "您的结束 G-code（文件）", "O seu G-code de fim (ficheiro)"],
             Msg::ExportKinds => ["A name ending in .gcode.3mf writes the package of a Bambu printer", "Un nombre terminado en .gcode.3mf escribe el paquete de una impresora Bambu", "Ein Name auf .gcode.3mf schreibt das Paket eines Bambu-Druckers", "Un nom finissant par .gcode.3mf écrit le paquet d'une imprimante Bambu", "Un nome che finisce in .gcode.3mf scrive il pacchetto di una stampante Bambu", ".gcode.3mf で終わる名前は Bambu プリンター用のパッケージを書き出します", "以 .gcode.3mf 结尾的名称会写出 Bambu 打印机的打包文件", "Um nome terminado em .gcode.3mf escreve o pacote de uma impressora Bambu"],
-            Msg::SuiteSliceAgain => ["The G-code of the project stays in it and is not loaded into the window: slice again to see and export it", "El G-code del proyecto se queda en él y no se carga en la ventana: vuelva a laminar para verlo y exportarlo", "Der G-Code des Projekts bleibt darin und wird nicht ins Fenster geladen: zum Ansehen und Exportieren erneut slicen", "Le G-code du projet y reste et n'est pas chargé dans la fenêtre : découpez de nouveau pour le voir et l'exporter", "Il G-code del progetto resta in esso e non viene caricato nella finestra: elabori di nuovo per vederlo ed esportarlo", "プロジェクトの G コードはプロジェクト内に残り、ウィンドウには読み込まれません。表示と書き出しには再スライスしてください", "项目中的 G 代码保留在项目内,不会载入窗口:请重新切片以查看和导出", "O G-code do projeto fica nele e não é carregado na janela: volte a fatiar para o ver e exportar"],
+            Msg::SuiteSliceAgain => ["The G-code of the project is not loaded into the plan: the Project tab shows it; slice again to see and export one", "El G-code del proyecto no se carga en el plan: se muestra en la pestaña Proyecto; vuelva a laminar para ver y exportar uno", "Der G-Code des Projekts wird nicht in den Plan geladen: der Reiter Projekt zeigt ihn; erneut slicen, um einen anzusehen und zu exportieren", "Le G-code du projet n'est pas chargé dans le plan : l'onglet Projet l'affiche ; découpez de nouveau pour en voir et exporter un", "Il G-code del progetto non viene caricato nel piano: la scheda Progetto lo mostra; elabori di nuovo per vederne ed esportarne uno", "プロジェクトの G コードは計画に読み込まれません。「プロジェクト」タブで表示します。表示と書き出しには再スライスしてください", "项目的 G 代码不会载入切片计划:可在“项目”选项卡中查看;请重新切片以查看和导出", "O G-code do projeto não é carregado no plano: o separador Projeto mostra-o; volte a fatiar para ver e exportar um"],
             Msg::SuiteFilePath => ["Path of the file", "Ruta del fichero", "Pfad der Datei", "Chemin du fichier", "Percorso del file", "ファイルのパス", "文件路径", "Caminho do ficheiro"],
             Msg::SuiteFolderPath => ["Path of the folder", "Ruta de la carpeta", "Pfad des Ordners", "Chemin du dossier", "Percorso della cartella", "フォルダーのパス", "文件夹路径", "Caminho da pasta"],
             Msg::SuitePrinterUnknown => ["The printer of the project, {}, is not in the catalog: the chosen one stays", "La impresora del proyecto, {}, no está en el catálogo: se mantiene la elegida", "Der Drucker des Projekts, {}, ist nicht im Katalog: der gewählte bleibt", "L'imprimante du projet, {}, n'est pas au catalogue : celle qui est choisie reste", "La stampante del progetto, {}, non è nel catalogo: resta quella scelta", "プロジェクトのプリンター {} はカタログにありません。選択中のプリンターのままです", "项目的打印机 {} 不在目录中:保留当前所选", "A impressora do projeto, {}, não está no catálogo: mantém-se a escolhida"],
             Msg::SuiteFilamentUnknown => ["The filament of the project, {}, is not in the database: none is chosen", "El filamento del proyecto, {}, no está en la base de datos: no se elige ninguno", "Das Filament des Projekts, {}, ist nicht in der Datenbank: keines ist gewählt", "Le filament du projet, {}, n'est pas dans la base : aucun n'est choisi", "Il filamento del progetto, {}, non è nella base dati: nessuno è scelto", "プロジェクトのフィラメント {} はデータベースにありません。何も選択されていません", "项目的耗材 {} 不在数据库中:未选择任何耗材", "O filamento do projeto, {}, não está na base de dados: nenhum fica escolhido"],
             Msg::SuiteSaveFirst => ["The bed has changes that are not in the project: save it first", "La cama tiene cambios que no están en el proyecto: guarde antes", "Das Druckbett hat Änderungen, die nicht im Projekt sind: zuerst speichern", "Le plateau a des changements qui ne sont pas dans le projet : enregistrez d'abord", "Il piano ha modifiche che non sono nel progetto: salvi prima", "ベッドにプロジェクトへ未保存の変更があります。先に保存してください", "打印床上有尚未存入项目的更改:请先保存", "A mesa tem alterações que não estão no projeto: guarde primeiro"],
+            Msg::ProjectProgramTitle => ["G-code of the project", "G-code del proyecto", "G-Code des Projekts", "G-code du projet", "G-code del progetto", "プロジェクトの G コード", "项目的 G 代码", "G-code do projeto"],
+            Msg::ProjectProgramReadOnly => ["Shown only: it is not sent to a printer, and slicing makes its own", "Solo se muestra: no se envía a ninguna impresora, y al laminar se crea otro", "Nur Anzeige: er wird an keinen Drucker gesendet, und das Slicen erzeugt einen eigenen", "Affiché seulement : il n'est envoyé à aucune imprimante, et la découpe crée le sien", "Solo mostrato: non viene inviato a nessuna stampante, e l'elaborazione ne crea uno proprio", "表示のみです。プリンターには送信せず、スライスすると新しく作られます", "仅供查看:不会发送到打印机,切片会生成新的", "Apenas mostrado: não é enviado para nenhuma impressora, e o fatiamento cria o seu"],
+            Msg::ProjectProgramLines => ["{}: {} lines", "{}: {} líneas", "{}: {} Zeilen", "{} : {} lignes", "{}: {} righe", "{}：{} 行", "{}：{} 行", "{}: {} linhas"],
+            Msg::ProjectProgramHeatOk => ["No temperature command goes past the limits of {}", "Ninguna orden de temperatura supera los límites de {}", "Kein Temperaturbefehl überschreitet die Grenzen von {}", "Aucune commande de température ne dépasse les limites de {}", "Nessun comando di temperatura supera i limiti di {}", "{} の上限を超える温度指令はありません", "没有温度指令超过 {} 的上限", "Nenhum comando de temperatura ultrapassa os limites de {}"],
+            Msg::ProjectProgramHeatBad => ["{} lines go past the limits of {}", "{} líneas superan los límites de {}", "{} Zeilen überschreiten die Grenzen von {}", "{} lignes dépassent les limites de {}", "{} righe superano i limiti di {}", "{} 行が {} の上限を超えています", "有 {} 行超过 {} 的上限", "{} linhas ultrapassam os limites de {}"],
+            Msg::ProjectProgramLine => ["Line {}: {}", "Línea {}: {}", "Zeile {}: {}", "Ligne {} : {}", "Riga {}: {}", "{} 行目：{}", "第 {} 行：{}", "Linha {}: {}"],
+            Msg::ProjectProgramNoPrinter => ["Temperatures not checked: choose a filament printer", "Temperaturas sin comprobar: elija una impresora de filamento", "Temperaturen nicht geprüft: wählen Sie einen Filamentdrucker", "Températures non vérifiées : choisissez une imprimante à filament", "Temperature non controllate: scelga una stampante a filamento", "温度は未確認です。フィラメント式プリンターを選択してください", "未检查温度:请选择一台耗材打印机", "Temperaturas não verificadas: escolha uma impressora de filamento"],
+            Msg::ProjectProgramNotText => ["Temperatures not checked: it is not a text file", "Temperaturas sin comprobar: no es un archivo de texto", "Temperaturen nicht geprüft: keine Textdatei", "Températures non vérifiées : ce n'est pas un fichier texte", "Temperature non controllate: non è un file di testo", "テキストファイルではないため温度は未確認です", "不是文本文件,未检查温度", "Temperaturas não verificadas: não é um ficheiro de texto"],
+            Msg::ProjectBlocksUse => ["Use the start and end G-code of the project", "Usar el G-code de inicio y fin del proyecto", "Start- und End-G-Code des Projekts verwenden", "Utiliser le G-code de début et de fin du projet", "Usa il G-code iniziale e finale del progetto", "プロジェクトの開始・終了 G コードを使う", "使用项目的起始和结束 G 代码", "Usar o G-code de início e fim do projeto"],
+            Msg::ProjectBlocksRemove => ["Take them out of the project", "Quitarlos del proyecto", "Aus dem Projekt entfernen", "Les retirer du projet", "Toglili dal progetto", "プロジェクトから削除", "从项目中移除", "Retirá-los do projeto"],
+            Msg::ProjectBlocksLines => ["Start: {} lines, end: {} lines", "Inicio: {} líneas, fin: {} líneas", "Start: {} Zeilen, Ende: {} Zeilen", "Début : {} lignes, fin : {} lignes", "Inizio: {} righe, fine: {} righe", "開始：{} 行、終了：{} 行", "起始：{} 行，结束：{} 行", "Início: {} linhas, fim: {} linhas"],
+            Msg::ProjectBlocksNote => ["The project carries its own start or end G-code: it is used only when ticked in the slice settings", "El proyecto trae su propio G-code de inicio o fin: solo se usa si se marca en los ajustes de laminado", "Das Projekt bringt eigenen Start- oder End-G-Code mit: er wird nur verwendet, wenn er in den Slice-Einstellungen angehakt ist", "Le projet apporte son propre G-code de début ou de fin : il n'est utilisé que s'il est coché dans les réglages de découpe", "Il progetto ha un proprio G-code iniziale o finale: si usa solo se spuntato nelle impostazioni di elaborazione", "プロジェクトには独自の開始・終了 G コードがあります。スライス設定でチェックした場合にのみ使います", "项目带有自己的起始或结束 G 代码:仅在切片设置中勾选后才使用", "O projeto traz o seu próprio G-code de início ou fim: só é usado se for assinalado nas definições de fatiamento"],
         }
     }
 
@@ -1134,7 +1170,7 @@ mod tests {
         seen.sort_by_key(|m| format!("{m:?}"));
         seen.dedup();
         assert_eq!(seen.len(), Msg::ALL.len());
-        assert_eq!(Msg::ALL.len(), 274);
+        assert_eq!(Msg::ALL.len(), 286);
     }
 
     #[test]

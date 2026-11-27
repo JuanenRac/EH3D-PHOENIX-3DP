@@ -51,8 +51,9 @@ def made_up_project(exe: Path, tool: Path, work: Path, env: dict) -> None:
     shutil.copy2(Path(__file__).resolve().parent.parent / "examples" / "cube-20mm.stl", work / "cube-20mm.stl")
     (work / "assembly-guide.md").write_text("# Assembly guide\n\n1. Print the cube with three walls.\n2. Measure it with a calliper.\n", encoding="utf-8")
     (work / "label-maker.docm").write_bytes(b"made-up bytes for a picture")
+    (work / "job.gcode").write_text("G28\nM140 S60\nM104 S210\nG1 X10 Y10 Z0.2 F3000\nM104 S0\n", encoding="utf-8")
     commands = [
-        [str(exe), "project", "save", "demo.eh3d", "--model", "cube-20mm.stl", "--printer", "bambu-lab-p1s"],
+        [str(exe), "project", "save", "demo.eh3d", "--model", "cube-20mm.stl", "--printer", "bambu-lab-p1s", "--gcode", "job.gcode"],
         [str(tool), "attach", "demo.eh3d", "assembly-guide.md", "--title", "Assembly guide", "--ref", "PART1"],
         [str(tool), "attach", "demo.eh3d", "label-maker.docm", "--title", "Label maker"],
     ]

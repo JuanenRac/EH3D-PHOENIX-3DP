@@ -1,6 +1,6 @@
 //! The start and end G-code a person writes for their own machine. The program writes its own start and end; these lines are added to them, never in their place, and every
-//! line is checked before one of them is written: only the commands of the list below, temperatures inside the limits of the model, moves inside its build volume. A line that
-//! is not understood refuses the whole block: nothing is skipped, changed or cut down.
+//! line is checked before one of them is written: only the commands of the list below, temperatures inside the limits of the model, moves inside its build volume (relative
+//! moves are added up, so a block cannot walk out of it step by step). A line that is not understood refuses the whole block: nothing is skipped, changed or cut down.
 //!
 //! Placeholders in braces are replaced by the figures of the job: `{nozzle_c}`, `{bed_c}`, `{chamber_c}`, `{max_x}`, `{max_y}`, `{max_z}` and `{top_z}`.
 
@@ -49,6 +49,8 @@ struct Rules {
     place: Place,
     top_z_mm: f64,
     relative: bool,
+    /// For each axis, the lowest and the highest place the head can be at, from what the block did so far.
+    at: [(f64, f64); 3],
 }
 
 /// The words of a command: the letter and what follows it.
@@ -86,7 +88,12 @@ impl Rules {
         Ok(out)
     }
 
-    fn movement(&self, words: &[&str]) -> Result<(), String> {
+    /// Where the head can be when nothing is known of an axis: anywhere in the volume.
+    fn anywhere(&self, axis: usize) -> (f64, f64) {
+        (0.0, self.volume_mm[axis])
+    }
+
+    fn movement(&mut self, words: &[&str]) -> Result<(), String> {
         let found = self.numbers(words, "XYZEF")?;
         if found.is_empty() {
             return Err("a move with nothing to move".to_string());
@@ -94,11 +101,12 @@ impl Rules {
         for (letter, v) in found {
             match letter {
                 'X' | 'Y' | 'Z' => {
-                    let max = match letter {
-                        'X' => self.volume_mm[0],
-                        'Y' => self.volume_mm[1],
-                        _ => self.volume_mm[2],
+                    let axis = match letter {
+                        'X' => 0,
+                        'Y' => 1,
+                        _ => 2,
                     };
+                    let max = self.volume_mm[axis];
                     let ok = if self.relative {
                         v.abs() <= max
                     } else {
@@ -123,6 +131,19 @@ impl Rules {
                                 num(self.top_z_mm)
                             ));
                         }
+                    }
+                    if self.relative {
+                        let (low, high) = self.at[axis];
+                        let (low, high) = (low + v, high + v);
+                        if high < -1e-9 || low > max + 1e-9 {
+                            return Err(format!(
+                                "{letter}{} after the moves before it leaves the build volume (0 to {max})",
+                                num(v)
+                            ));
+                        }
+                        self.at[axis] = (low.max(0.0), high.min(max));
+                    } else {
+                        self.at[axis] = (v, v);
                     }
                 }
                 'E' => {
@@ -153,7 +174,7 @@ impl Rules {
         Ok(())
     }
 
-    fn home(&self, words: &[&str]) -> Result<(), String> {
+    fn home(&mut self, words: &[&str]) -> Result<(), String> {
         let mut axes = Vec::new();
         for w in words {
             match w.to_ascii_uppercase().as_str() {
@@ -168,6 +189,12 @@ impl Rules {
                 "homing Z at the end would drive the head into the print: home X and Y only"
                     .to_string(),
             );
+        }
+        // where an axis ends up after homing is a matter of the machine
+        for (axis, letter) in ['X', 'Y', 'Z'].into_iter().enumerate() {
+            if axes.is_empty() || axes.contains(&letter) {
+                self.at[axis] = self.anywhere(axis);
+            }
         }
         Ok(())
     }
@@ -214,7 +241,12 @@ impl Rules {
             // with no word at all some firmwares give every axis a new origin
             "G92" if words.is_empty() => Err("G92 needs the E word".to_string()),
             "G92" => self.numbers(&words, "E").map(|_| ()),
-            "G21" | "G29" | "M82" | "M83" | "M84" | "M105" | "M400" => bare(&words),
+            "G29" => {
+                bare(&words)?;
+                self.probe();
+                Ok(())
+            }
+            "G21" | "M82" | "M83" | "M84" | "M105" | "M400" => bare(&words),
             "M104" | "M109" => self.temperature(&words, Zone::Nozzle),
             "M140" | "M190" => self.temperature(&words, Zone::Bed),
             "M141" | "M191" => self.temperature(&words, Zone::Chamber),
@@ -237,6 +269,7 @@ impl Rules {
                     .iter()
                     .all(|w| w.split_once('=').is_some_and(|(k, v)| plain(k) && plain(v)))
                 {
+                    self.probe();
                     Ok(())
                 } else {
                     Err(format!("{command} takes words of the form NAME=value"))
@@ -253,6 +286,13 @@ impl Rules {
                 "{other} is not a command that a start or end block may have"
             )),
         }
+    }
+}
+
+impl Rules {
+    /// A probing of the bed moves the head, and where it leaves it is a matter of the machine.
+    fn probe(&mut self) {
+        self.at = [self.anywhere(0), self.anywhere(1), self.anywhere(2)];
     }
 }
 
@@ -304,6 +344,15 @@ pub fn check_block(
         place,
         top_z_mm: job.top_z_mm,
         relative: false,
+        // after the last layer the head is no lower than the print
+        at: [
+            (0.0, volume_mm[0]),
+            (0.0, volume_mm[1]),
+            match place {
+                Place::Start => (0.0, volume_mm[2]),
+                Place::End => (job.top_z_mm.clamp(0.0, volume_mm[2]), volume_mm[2]),
+            },
+        ],
     };
     let mut out = Vec::new();
     for (i, raw) in text.lines().enumerate() {
@@ -327,8 +376,8 @@ pub fn check_block(
 }
 
 impl Writer {
-    /// Adds a block of the person, checked first as a whole, and then puts back what the rest of the program takes for granted: millimetres, absolute positions and relative
-    /// extrusion.
+    /// Adds a block of the person, checked first as a whole, and then puts back what the rest of the program takes for granted: millimetres, absolute positions, relative
+    /// extrusion and, when the program had picked a tool and the block picked one too, the tool of the program.
     pub fn user_block(
         &mut self,
         text: &str,
@@ -343,6 +392,12 @@ impl Writer {
             self.limits(),
             self.volume_mm(),
         )?;
+        let picks_a_tool = lines.iter().any(|l| {
+            let first = l.split([' ', '\t', ';']).next().unwrap_or("");
+            first
+                .strip_prefix(['T', 't'])
+                .is_some_and(|n| n.parse::<u8>().is_ok())
+        });
         self.comment(&format!("your {} G-code", place.name()))?;
         for line in lines {
             self.raw_line(line);
@@ -350,6 +405,9 @@ impl Writer {
         self.comment(&format!("end of your {} G-code", place.name()))?;
         for line in ["G21", "G90", "M83"] {
             self.raw_line(line.to_string());
+        }
+        if let Some(tool) = self.tool().filter(|_| picks_a_tool) {
+            self.select_tool(tool)?;
         }
         Ok(())
     }

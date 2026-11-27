@@ -694,6 +694,23 @@ mod tests {
     }
 
     #[test]
+    fn reprapfirmware_gives_each_tool_its_own_temperature_before_it_is_waited_for() {
+        let mut p = base();
+        let n = p.layers.len();
+        apply(&mut p, &job(vec![(n / 2, 1)]), Some(&a1())).unwrap();
+        p.machine.dialect = p3dp_core::Dialect::Rrf;
+        let g = p.gcode("test").unwrap();
+        let lines: Vec<&str> = g.lines().collect();
+        let change = lines.iter().position(|l| *l == "T1").expect("T1");
+        let petg = tools()[1].nozzle_c;
+        assert_eq!(lines[change - 1], format!("G10 P1 S{petg}"));
+        assert_eq!(lines[change + 1], "M116");
+        assert!(!g.contains(&format!("G10 P0 S{petg}")), "{g}");
+        // the program is turned off with the tool that is in use
+        assert!(g.contains("G10 P1 S0"));
+    }
+
+    #[test]
     fn what_the_printer_cannot_hold_is_refused() {
         let cat = Catalog::builtin().unwrap();
         let mut p = base();

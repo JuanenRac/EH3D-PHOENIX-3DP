@@ -399,6 +399,7 @@ fn the_start_of_a_reprapfirmware_job() {
             "M140 S60",
             "G10 P0 S150",
             "G28",
+            "T0",
             "M190 S60",
             "G10 P0 S210",
             "M116",
@@ -710,6 +711,121 @@ fn the_checker_sees_every_way_of_asking_for_heat() {
     }
     let fine = "M109 R200\nM303 E-1 S90\nG10 P0 R150 S200\nG1 E-2 S900\nG10\nSET_HEATER_TEMPERATURE HEATER=hotend TARGET=0\n";
     assert!(check_program(fine, &LIMITS).is_empty());
+}
+
+#[test]
+fn the_checker_looks_at_every_command_of_a_line_and_at_the_automatic_temperature() {
+    // RepRapFirmware runs each command of a line
+    for line in [
+        "M83 M104 S301",
+        "T0 M104 S301",
+        "G28 M140 S101",
+        "M104 S200 M140 S101",
+        "N5 G92 E0 M109 S301*17",
+        "M104 S200 B301",
+        "M109 S200 B301 F1",
+    ] {
+        let v = check_program(&format!("{line}\n"), &LIMITS);
+        assert_eq!(v.len(), 1, "{line:?}: {v:?}");
+    }
+    assert_eq!(check_program("M104 S301 M140 S101\n", &LIMITS).len(), 2);
+    // the text of a message or the name of a file is not a command
+    for line in [
+        "M117 M104 S999",
+        "M118 M140 S999",
+        "M23 M104 S999.gco",
+        "M104 S200 M117 M104 S999",
+        "M104 S200 M140 S60",
+        "M104 S200 B300",
+    ] {
+        assert!(
+            check_program(&format!("{line}\n"), &LIMITS).is_empty(),
+            "{line:?}"
+        );
+    }
+}
+
+#[test]
+fn relative_moves_of_a_block_are_added_up_and_may_not_leave_the_volume() {
+    let job = p3dp_gcode::BlockJob {
+        nozzle_c: 200.0,
+        bed_c: 60.0,
+        chamber_c: 0.0,
+        top_z_mm: VOLUME[2] - 4.0,
+    };
+    let check = |text: &str, place: p3dp_gcode::Place| {
+        p3dp_gcode::check_block(text, place, &job, Dialect::Marlin, LIMITS, VOLUME)
+    };
+    use p3dp_gcode::Place::{End, Start};
+    // each step is shorter than the bed, the two together are not
+    let step = format!("G1 X{}", VOLUME[0] * 0.6);
+    let e = check(&format!("G91\n{step}\n{step}"), Start)
+        .unwrap_err()
+        .to_string();
+    assert!(
+        e.contains("line 3") && e.contains("leaves the build volume"),
+        "{e}"
+    );
+    // from a known place
+    let from = format!("G1 X{}\nG91\nG1 X10", VOLUME[0] - 5.0);
+    assert!(check(&from, Start).is_err());
+    // back and forth is fine, and so is a step after homing
+    let there_and_back = format!("G91\n{step}\nG1 X-{}\n{step}", VOLUME[0] * 0.6);
+    assert!(check(&there_and_back, Start).is_ok());
+    assert!(check(&format!("G91\n{step}\nG28 X\n{step}"), Start).is_ok());
+    // at the end the head is at least as high as the print
+    assert!(check("G91\nG1 Z3", End).is_ok());
+    assert!(check("G91\nG1 Z5", End).is_err());
+    assert!(check("G91\nG1 Z3\nG1 Z3", End).is_err());
+    assert!(check("G91\nG1 Z5", Start).is_ok());
+}
+
+#[test]
+fn reprapfirmware_changes_the_tool_with_the_temperature_of_that_tool() {
+    let mut r = writer(Dialect::Rrf);
+    r.change_tool(2, 240.0).unwrap();
+    r.set_nozzle(235.0, false).unwrap();
+    r.change_tool(0, 0.0).unwrap();
+    assert_eq!(
+        text(&r),
+        [
+            "G10 P2 S240",
+            "T2",
+            "M116",
+            "G10 P2 S235",
+            "G10 P0 S0",
+            "T0"
+        ]
+    );
+    let mut m = writer(Dialect::Marlin);
+    m.change_tool(1, 240.0).unwrap();
+    assert_eq!(text(&m), ["M109 S240", "T1"]);
+    for bad in [writer(Dialect::Rrf), writer(Dialect::Marlin)] {
+        let mut w = bad;
+        assert!(w.change_tool(1, 999.0).is_err());
+        assert!(w.change_tool(16, 200.0).is_err());
+        assert!(w.lines().is_empty());
+    }
+}
+
+#[test]
+fn the_tool_of_the_program_comes_back_after_a_block_that_picked_another() {
+    let job = p3dp_gcode::BlockJob {
+        nozzle_c: 200.0,
+        bed_c: 60.0,
+        chamber_c: 0.0,
+        top_z_mm: 10.0,
+    };
+    let mut r = writer(Dialect::Rrf);
+    r.select_tool(0).unwrap();
+    r.user_block("T1\nG1 E5", p3dp_gcode::Place::Start, &job)
+        .unwrap();
+    assert_eq!(r.lines().last().map(String::as_str), Some("T0"));
+    // a program that picked no tool leaves the choice of the block
+    let mut m = writer(Dialect::Marlin);
+    m.user_block("T1\nG1 E5", p3dp_gcode::Place::Start, &job)
+        .unwrap();
+    assert_eq!(m.lines().last().map(String::as_str), Some("M83"));
 }
 
 #[test]

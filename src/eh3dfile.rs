@@ -1,6 +1,7 @@
 //! The branch `3dp/` of an `.eh3d` project: one file with a branch for each program of the suite (the format is the crate `eh3d-project` of EH3D-COMMON).
 //!
-//! This program writes only `3dp/`. It keeps there the parts of the bed with their placement, the settings of the slice, the printer, the filament and the G-code of the slice. What it
+//! This program writes only `3dp/`. It keeps there the parts of the bed with their placement, the settings of the slice, the printer, the filament, the G-code of the slice and the
+//! start and end G-code of the person. What it
 //! takes from another branch is a copy with a reference that remembers the content hash and the format of its source, so that a later change of the source is told as out of date. Every
 //! other branch, known or not, keeps its bytes. Nothing in a project is run and nothing here is sent to a printer.
 
@@ -16,7 +17,10 @@ use p3dp_core::{Limits, Mesh};
 use p3dp_formats::project3mf::read_project;
 use p3dp_formats::read_mesh;
 use p3dp_formats::threemf::{self, Meta};
-use p3dp_slicer::SliceConfig;
+use p3dp_gcode::template::{MAX_LINES, MAX_LINE_CHARS};
+use p3dp_gcode::{check_program, Violation};
+use p3dp_profiles::PrinterProfile;
+use p3dp_slicer::{SliceConfig, UserGcode};
 use serde_json::{json, Value};
 
 use crate::objects::{MAX_OBJECTS, SCALE_MAX, SCALE_MIN};
@@ -34,6 +38,11 @@ pub const PLATE: &str = "plate/plate.json";
 const PLATE_DIR: &str = "plate/";
 const PROGRAM_DIR: &str = "programs/";
 const SETTINGS: &str = "settings/slice.txt";
+/// Where the start and the end G-code of the person are kept, and the names of the record that say so.
+const START_BLOCK: (&str, &str) = ("start_gcode", "blocks/start.gcode");
+const END_BLOCK: (&str, &str) = ("end_gcode", "blocks/end.gcode");
+/// The largest start or end G-code that goes into a project or is read from one.
+pub const MAX_BLOCK_BYTES: usize = 256 << 10;
 /// The farthest a part may be placed from the corner of the bed, in millimetres.
 const MAX_PLACE_MM: f64 = 10_000.0;
 
@@ -80,6 +89,10 @@ pub struct Contents {
     /// The id of the filament.
     pub filament: Option<String>,
     pub program: Option<Held>,
+    /// The start G-code of the person; an empty text takes it out of the branch.
+    pub start_gcode: Option<String>,
+    /// The end G-code of the person; an empty text takes it out of the branch.
+    pub end_gcode: Option<String>,
 }
 
 impl Contents {
@@ -90,6 +103,8 @@ impl Contents {
             && self.printer.is_none()
             && self.filament.is_none()
             && self.program.is_none()
+            && self.start_gcode.is_none()
+            && self.end_gcode.is_none()
     }
 }
 
@@ -102,6 +117,8 @@ pub struct Opened {
     pub filament: Option<String>,
     /// The G-code of the work, as a name inside the branch.
     pub program: Option<String>,
+    /// The start and end G-code of the person. They are checked against the printer when a slice uses them, as the ones named by file are.
+    pub blocks: UserGcode,
     /// The report of the last import.
     pub report: Option<ConversionReport>,
     /// What is out of date or wrong.
@@ -143,6 +160,82 @@ pub fn mesh_of(name: &str, bytes: &[u8], limits: &Limits) -> Result<Mesh, String
         return Err(format!("{name}: {e}"));
     }
     Ok(mesh)
+}
+
+impl Opened {
+    /// The name and the bytes of the G-code program of the work.
+    pub fn program_file(&self) -> Option<(&str, &[u8])> {
+        let rel = self.program.as_deref()?;
+        self.files.get(rel).map(|b| (rel, b.as_slice()))
+    }
+}
+
+/// What the temperatures of a program come to.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Heat {
+    /// The file is not text, so nothing of it was looked at.
+    NotText,
+    /// No printer with temperature limits was given.
+    NoPrinter,
+    /// Every temperature command that is known was compared with the limits of the printer; these go past them.
+    Checked {
+        printer: String,
+        violations: Vec<Violation>,
+    },
+}
+
+/// What there is to say about a G-code program of a project. Nothing of it is run, changed or sent.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Review {
+    pub name: String,
+    pub lines: usize,
+    pub heat: Heat,
+}
+
+/// Counts the lines of a program and compares its temperatures with the limits of a printer.
+pub fn review(name: &str, bytes: &[u8], printer: Option<&PrinterProfile>) -> Review {
+    let text = String::from_utf8_lossy(bytes);
+    let heat = if bytes.contains(&0) {
+        Heat::NotText
+    } else if let Some((printer, limits)) =
+        printer.and_then(|p| p.limits.map(|l| (p.id.clone(), l)))
+    {
+        Heat::Checked {
+            printer,
+            violations: check_program(&text, &limits),
+        }
+    } else {
+        Heat::NoPrinter
+    };
+    Review {
+        name: name.to_string(),
+        lines: text.lines().count(),
+        heat,
+    }
+}
+
+/// Refuses a start or end G-code that no slice would take: too large, too long or with a control character.
+fn check_block_text(what: &str, text: &str) -> Result<(), String> {
+    let bad = |why: &str| Err(format!("{what} G-code: {why}"));
+    if text.len() > MAX_BLOCK_BYTES {
+        return bad("the file is too large");
+    }
+    if text.lines().count() > MAX_LINES {
+        return bad("it has too many lines");
+    }
+    if text
+        .lines()
+        .any(|l| l.trim().chars().count() > MAX_LINE_CHARS)
+    {
+        return bad("a line is too long");
+    }
+    if text
+        .chars()
+        .any(|c| c.is_control() && !matches!(c, '\t' | '\r' | '\n'))
+    {
+        return bad("it has a control character");
+    }
+    Ok(())
 }
 
 /// One line of the record of the plate.
@@ -333,7 +426,24 @@ fn opened_of(copy: &WorkingCopy, limits: &Limits) -> Result<Opened, String> {
         ),
         None => None,
     };
+    let block = |(key, name): (&str, &str)| -> Result<Option<String>, String> {
+        let Some(bytes) = copy.text(key).and_then(|rel| files.get(&rel)) else {
+            return Ok(None);
+        };
+        let bad = |why: &str| format!("{BRANCH}/{name}: {why}");
+        if bytes.len() > MAX_BLOCK_BYTES {
+            return Err(bad("the file is too large"));
+        }
+        String::from_utf8(bytes.clone())
+            .map(Some)
+            .map_err(|_| bad("it is not text"))
+    };
+    let blocks = UserGcode {
+        start: block(START_BLOCK)?,
+        end: block(END_BLOCK)?,
+    };
     Ok(Opened {
+        blocks,
         parts: parts_of(&files, limits)?,
         settings,
         printer: copy.text("printer"),
@@ -389,11 +499,17 @@ pub fn changes(mut contents: Contents, held: &Opened) -> Contents {
     if same_program {
         contents.program = None;
     }
+    if contents.start_gcode.as_deref() == Some(held.blocks.start.as_deref().unwrap_or_default()) {
+        contents.start_gcode = None;
+    }
+    if contents.end_gcode.as_deref() == Some(held.blocks.end.as_deref().unwrap_or_default()) {
+        contents.end_gcode = None;
+    }
     contents
 }
 
 /// Puts the work into the branch `3dp/` of the project at `path`, creating the project when it is not there. What is not given stays as it was, except that the G-code of a work whose
-/// parts, settings, printer or filament changed goes, because it is no longer the one of the work. Everything is checked before anything is written. The answer is `None` when
+/// parts, settings, printer, filament or start and end G-code changed goes, because it is no longer the one of the work. Everything is checked before anything is written. The answer is `None` when
 /// the branch holds all of it already, and then nothing is written.
 pub fn save_contents(
     path: &Path,
@@ -403,6 +519,14 @@ pub fn save_contents(
 ) -> Result<Option<Vec<String>>, String> {
     if contents.is_empty() {
         return Err("there is nothing to save: give a model, settings, a printer, a filament or a G-code program".into());
+    }
+    for (what, text) in [
+        ("start", &contents.start_gcode),
+        ("end", &contents.end_gcode),
+    ] {
+        if let Some(text) = text {
+            check_block_text(what, text)?;
+        }
     }
     if contents
         .parts
@@ -428,7 +552,21 @@ pub fn save_contents(
             let of_the_work = new.parts.is_some()
                 || new.settings.is_some()
                 || new.printer.is_some()
-                || new.filament.is_some();
+                || new.filament.is_some()
+                || new.start_gcode.is_some()
+                || new.end_gcode.is_some();
+            for ((key, rel), text) in [(START_BLOCK, &new.start_gcode), (END_BLOCK, &new.end_gcode)]
+            {
+                let Some(text) = text else { continue };
+                copy.remove(rel);
+                if text.is_empty() {
+                    copy.set(key, rel);
+                    copy.forget_missing(&[key]);
+                } else {
+                    copy.put(rel, text.clone().into_bytes())?;
+                    copy.set(key, rel);
+                }
+            }
             if let Some(parts) = &new.parts {
                 write_plate(copy, parts, limits)?;
             }
