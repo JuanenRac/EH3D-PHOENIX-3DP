@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.1.1] - Documents and manifest that say what the program does today
+
 - **The READMEs say how the window has been seen:** the program photographs its own window on a virtual screen; no person has used it on a real screen. No code changes.
 - **The notes of the project manifest say what the program does today** (`eh3d.project.json`); no code changes.
 
